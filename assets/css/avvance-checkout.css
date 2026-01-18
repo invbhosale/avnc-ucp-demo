@@ -1,0 +1,93 @@
+/**
+ * Avvance Checkout Styles
+ */
+
+/* Payment method description */
+.avvance-description,
+.avvance-blocks-description {
+    background: #f8f9fa;
+    border-left: none;
+    padding: 12px 15px;
+    margin: 10px 0;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+/* Cart resume banner */
+.avvance-resume-banner {
+    border-left-color: #0073aa !important;
+}
+
+.avvance-resume-banner p {
+    margin: 0.5em 0;
+}
+
+.avvance-resume-banner .button {
+    margin-right: 10px;
+}
+
+/* Thank you page */
+.avvance-thankyou {
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+.avvance-thankyou h2 {
+    margin-top: 0;
+    color: #0073aa;
+}
+
+.avvance-thankyou #avvance-status {
+    padding: 10px;
+    background: #e7f5ff;
+    border-left: 3px solid #0073aa;
+    margin: 15px 0;
+}
+
+.avvance-thankyou .button {
+    margin-top: 10px;
+}
+
+/* Admin order meta box */
+.avvance-order-details p {
+    margin: 10px 0;
+}
+
+.avvance-order-details code {
+    display: inline-block;
+    background: #f5f5f5;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    color: #333;
+}
+
+/* Loading spinner */
+@keyframes avvance-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.avvance-loading {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #0073aa;
+    border-radius: 50%;
+    animation: avvance-spin 1s linear infinite;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .avvance-resume-banner .button {
+        display: block;
+        width: 100%;
+        margin: 5px 0;
+    }
+}
