@@ -56,10 +56,10 @@
 }
 
 .avvance-logo-small {
-    height: 14px;
+    height: 16px;
     width: auto;
-    vertical-align: middle;
-    margin-left: 3px;
+    display: block;
+    margin: 2px auto 0;
 }
 
 .avvance-logo-checkout {
@@ -134,13 +134,14 @@
     text-align: center;
     margin: 8px 0;
     padding: 6px 0;
+    line-height: 1.4;
 }
 
 .avvance-message-small {
-    display: inline-flex;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     gap: 3px;
-    justify-content: center;
 }
 
 .avvance-message-small strong {
@@ -464,7 +465,7 @@
     }
     
     .avvance-logo-small {
-        height: 12px;
+        height: 14px;
     }
     
     .avvance-preapproved-banner {
