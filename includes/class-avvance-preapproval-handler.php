@@ -1,14 +1,11 @@
 <?php
 /**
- * Avvance Pre-Approval Handler - FIXED VERSION
- * Manages pre-approval requests, session storage, and webhook processing
+ * Avvance Pre-Approval Handler - FIXED VERSION (Date Handling)
  * 
- * CHANGES:
- * 1. Uses browser fingerprinting for cross-session tracking
- * 2. Stores pre-approval by fingerprint in database
- * 3. Widget checks database by fingerprint on every page load
- * 4. Webhook updates database by request_id
- * 5. Database is single source of truth
+ * FIXES:
+ * 1. Better date parsing for leadExpiryDate
+ * 2. More detailed logging for debugging
+ * 3. Handles timezone issues
  */
 
 if (!defined('ABSPATH')) {
@@ -186,15 +183,31 @@ class Avvance_PreApproval_Handler {
         global $wpdb;
         $table_name = $wpdb->prefix . 'avvance_preapprovals';
 
+        // ADDED: More detailed debugging
+        avvance_log('Searching for pre-approval in database...');
+        avvance_log('Table: ' . $table_name);
+        avvance_log('Request ID to find: ' . $request_id);
+
         $record = $wpdb->get_row($wpdb->prepare(
             "SELECT * FROM {$table_name} WHERE request_id = %s",
             $request_id
         ));
 
+        // ADDED: Debug the query
+        avvance_log('SQL Query: ' . $wpdb->last_query);
+        avvance_log('DB Error (if any): ' . ($wpdb->last_error ?: 'none'));
+
         if (!$record) {
             avvance_log('Pre-approval record not found for request ID: ' . $request_id, 'warning');
+            
+            // ADDED: Show what IS in the database
+            $all_records = $wpdb->get_results("SELECT request_id, session_id, browser_fingerprint, status FROM {$table_name} ORDER BY created_at DESC LIMIT 5");
+            avvance_log('Recent pre-approval records in database: ' . print_r($all_records, true));
+            
             return new WP_Error('record_not_found', 'Pre-approval record not found');
         }
+
+        avvance_log('✅ Pre-approval record found: ' . print_r($record, true));
 
         // Extract max pre-approved amount from metadata
         $max_amount = null;
@@ -207,28 +220,59 @@ class Avvance_PreApproval_Handler {
             }
         }
 
+        avvance_log('Max amount from metadata: ' . ($max_amount ?? 'NULL'));
+
+        // Parse expiry date with better error handling
+        $expiry_date = null;
+        if (isset($event_details['leadExpiryDate'])) {
+            $raw_date = $event_details['leadExpiryDate'];
+            avvance_log('Raw leadExpiryDate from webhook: ' . $raw_date);
+            
+            try {
+                // Handle ISO 8601 format with timezone: 2026-01-30T22:38:50.000+0000
+                $date_obj = new DateTime($raw_date);
+                $expiry_date = $date_obj->format('Y-m-d H:i:s');
+                avvance_log('Parsed expiry date: ' . $expiry_date);
+            } catch (Exception $e) {
+                avvance_log('Failed to parse expiry date: ' . $e->getMessage(), 'warning');
+                // Fallback: try strtotime
+                $timestamp = strtotime($raw_date);
+                if ($timestamp) {
+                    $expiry_date = date('Y-m-d H:i:s', $timestamp);
+                    avvance_log('Parsed expiry date (fallback): ' . $expiry_date);
+                }
+            }
+        }
+
         // Update database record
-        $wpdb->update(
+        $update_data = [
+            'status' => $lead_status,
+            'max_amount' => $max_amount,
+            'lead_id' => $lead_id,
+            'customer_name' => $event_details['customerName'] ?? '',
+            'customer_email' => $event_details['customerEmail'] ?? '',
+            'customer_phone' => $event_details['customerPhone'] ?? '',
+            'expiry_date' => $expiry_date,
+            'updated_at' => current_time('mysql'),
+            'webhook_payload' => wp_json_encode($event_details)
+        ];
+
+        avvance_log('Updating database with: ' . print_r($update_data, true));
+
+        $result = $wpdb->update(
             $table_name,
-            [
-                'status' => $lead_status,
-                'max_amount' => $max_amount,
-                'lead_id' => $lead_id,
-                'customer_name' => $event_details['customerName'] ?? '',
-                'customer_email' => $event_details['customerEmail'] ?? '',
-                'customer_phone' => $event_details['customerPhone'] ?? '',
-                'expiry_date' => isset($event_details['leadExpiryDate'])
-                    ? date('Y-m-d H:i:s', strtotime($event_details['leadExpiryDate']))
-                    : null,
-                'updated_at' => current_time('mysql'),
-                'webhook_payload' => wp_json_encode($event_details)
-            ],
+            $update_data,
             ['request_id' => $request_id],
             ['%s', '%f', '%s', '%s', '%s', '%s', '%s', '%s', '%s'],
             ['%s']
         );
 
-        avvance_log("✅ Pre-approval updated: Request ID {$request_id}, Status: {$lead_status}, Max Amount: " . ($max_amount ?? 'N/A'));
+        if ($result === false) {
+            avvance_log('Database update failed! Error: ' . $wpdb->last_error, 'error');
+            return new WP_Error('db_update_failed', 'Failed to update pre-approval record');
+        }
+
+        avvance_log("✅ Pre-approval updated successfully: Request ID {$request_id}, Status: {$lead_status}, Max Amount: " . ($max_amount ?? 'N/A') . " (Rows affected: {$result})");
 
         return true;
     }
@@ -261,20 +305,28 @@ class Avvance_PreApproval_Handler {
         // Create table if it doesn't exist
         self::create_preapproval_table();
         
-        $wpdb->insert(
+        $insert_data = [
+            'request_id' => $data['request_id'],
+            'session_id' => $data['session_id'],
+            'browser_fingerprint' => $data['browser_fingerprint'],
+            'status' => $data['status'] ?? 'pending',
+            'created_at' => current_time('mysql'),
+            'updated_at' => current_time('mysql')
+        ];
+        
+        avvance_log('Inserting pre-approval into database: ' . print_r($insert_data, true));
+        
+        $result = $wpdb->insert(
             $table_name,
-            [
-                'request_id' => $data['request_id'],
-                'session_id' => $data['session_id'],
-                'browser_fingerprint' => $data['browser_fingerprint'],
-                'status' => $data['status'] ?? 'pending',
-                'created_at' => current_time('mysql'),
-                'updated_at' => current_time('mysql')
-            ],
+            $insert_data,
             ['%s', '%s', '%s', '%s', '%s', '%s']
         );
         
-        avvance_log('Pre-approval saved to database with fingerprint: ' . $data['browser_fingerprint']);
+        if ($result === false) {
+            avvance_log('Database insert failed! Error: ' . $wpdb->last_error, 'error');
+        } else {
+            avvance_log('Pre-approval saved to database with fingerprint: ' . $data['browser_fingerprint'] . ' (Insert ID: ' . $wpdb->insert_id . ')');
+        }
     }
     
     /**

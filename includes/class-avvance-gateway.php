@@ -96,6 +96,137 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
                 'desc_tip' => true,
                 'placeholder' => 'e.g., aa613b14'
             ],
+            
+            // ==========================================
+            // WIDGET DISPLAY SETTINGS SECTION
+            // ==========================================
+            'widget_settings_title' => [
+                'title' => __('Widget Display Settings', 'avvance-for-woocommerce'),
+                'type'  => 'title',
+                'description' => __('Control where Avvance payment messaging appears on your store.', 'avvance-for-woocommerce'),
+            ],
+            
+            // Category page widget
+            'category_widget_enabled' => [
+                'title'       => __('Category Page Widget', 'avvance-for-woocommerce'),
+                'label'       => __('Show payment messaging on shop/category pages', 'avvance-for-woocommerce'),
+                'type'        => 'checkbox',
+                'description' => __('Display "Pay as low as $X/mo" under each product in shop and category listings.', 'avvance-for-woocommerce'),
+                'default'     => 'yes',
+                'desc_tip'    => true,
+            ],
+            
+            // Product page widget
+            'product_widget_enabled' => [
+                'title'       => __('Product Page Widget', 'avvance-for-woocommerce'),
+                'label'       => __('Show payment messaging on product pages', 'avvance-for-woocommerce'),
+                'type'        => 'checkbox',
+                'description' => __('Display financing information on individual product pages.', 'avvance-for-woocommerce'),
+                'default'     => 'yes',
+                'desc_tip'    => true,
+            ],
+            
+            // Product widget position
+            'product_widget_position' => [
+                'title'       => __('Product Widget Position', 'avvance-for-woocommerce'),
+                'type'        => 'select',
+                'class'       => 'wc-enhanced-select',
+                'description' => __('Choose where the widget appears on product pages.', 'avvance-for-woocommerce'),
+                'default'     => 'after_price',
+                'options'     => [
+                    'after_price'    => __('After product price (Recommended)', 'avvance-for-woocommerce'),
+                    'after_add_cart' => __('After Add to Cart button', 'avvance-for-woocommerce'),
+                    'both'           => __('Both locations', 'avvance-for-woocommerce'),
+                ],
+                'desc_tip'    => true,
+            ],
+            
+            // Cart page widget
+            'cart_widget_enabled' => [
+                'title'       => __('Cart Page Widget', 'avvance-for-woocommerce'),
+                'label'       => __('Show payment messaging on cart page', 'avvance-for-woocommerce'),
+                'type'        => 'checkbox',
+                'description' => __('Display financing options based on cart total.', 'avvance-for-woocommerce'),
+                'default'     => 'yes',
+                'desc_tip'    => true,
+            ],
+            
+            // Checkout widget
+            'checkout_widget_enabled' => [
+                'title'       => __('Checkout Widget', 'avvance-for-woocommerce'),
+                'label'       => __('Show payment details on checkout page', 'avvance-for-woocommerce'),
+                'type'        => 'checkbox',
+                'description' => __('Display payment messaging when Avvance is selected as the payment method.', 'avvance-for-woocommerce'),
+                'default'     => 'yes',
+                'desc_tip'    => true,
+            ],
+            
+            // ==========================================
+            // WIDGET APPEARANCE SETTINGS
+            // ==========================================
+            'widget_appearance_title' => [
+                'title' => __('Widget Appearance', 'avvance-for-woocommerce'),
+                'type'  => 'title',
+                'description' => __('Customize the look and feel of Avvance widgets.', 'avvance-for-woocommerce'),
+            ],
+            
+            // Theme/Color
+            'widget_theme' => [
+                'title'       => __('Widget Theme', 'avvance-for-woocommerce'),
+                'type'        => 'select',
+                'class'       => 'wc-enhanced-select',
+                'description' => __('Color scheme for the payment messaging widgets.', 'avvance-for-woocommerce'),
+                'default'     => 'light',
+                'options'     => [
+                    'light' => __('Light (for light backgrounds)', 'avvance-for-woocommerce'),
+                    'dark'  => __('Dark (for dark backgrounds)', 'avvance-for-woocommerce'),
+                ],
+                'desc_tip'    => true,
+            ],
+            
+            // Show Logo
+            'widget_show_logo' => [
+                'title'       => __('Show Avvance Logo', 'avvance-for-woocommerce'),
+                'label'       => __('Display the Avvance logo in widget messaging', 'avvance-for-woocommerce'),
+                'type'        => 'checkbox',
+                'description' => __('When disabled, "Avvance" text will be shown instead of the logo.', 'avvance-for-woocommerce'),
+                'default'     => 'yes',
+                'desc_tip'    => true,
+            ],
+            
+            // ==========================================
+            // ELIGIBILITY SETTINGS
+            // ==========================================
+            'eligibility_title' => [
+                'title' => __('Eligibility Settings', 'avvance-for-woocommerce'),
+                'type'  => 'title',
+                'description' => __('Configure minimum and maximum order amounts for Avvance financing.', 'avvance-for-woocommerce'),
+            ],
+            
+            'min_order_amount' => [
+                'title'       => __('Minimum Order Amount', 'avvance-for-woocommerce'),
+                'type'        => 'number',
+                'description' => __('Minimum order amount for Avvance to be available (in dollars). Widgets will not show for amounts below this.', 'avvance-for-woocommerce'),
+                'default'     => '300',
+                'custom_attributes' => [
+                    'min'  => '0',
+                    'step' => '1',
+                ],
+                'desc_tip'    => true,
+            ],
+            
+            'max_order_amount' => [
+                'title'       => __('Maximum Order Amount', 'avvance-for-woocommerce'),
+                'type'        => 'number',
+                'description' => __('Maximum order amount for Avvance (in dollars). Widgets will not show for amounts above this.', 'avvance-for-woocommerce'),
+                'default'     => '25000',
+                'custom_attributes' => [
+                    'min'  => '0',
+                    'step' => '1',
+                ],
+                'desc_tip'    => true,
+            ],
+            
             'webhook_title' => [
                 'title' => __('Webhook Configuration', 'avvance-for-woocommerce'),
                 'type' => 'title',
@@ -173,10 +304,13 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
             return false;
         }
         
-        // Check cart total (min $300, max $25,000)
+        // Check cart total using configured min/max amounts
         if (WC()->cart) {
             $total = WC()->cart->get_total('');
-            if ($total < 300 || $total > 25000) {
+            $min = floatval($this->get_option('min_order_amount', 300));
+            $max = floatval($this->get_option('max_order_amount', 25000));
+            
+            if ($total < $min || $total > $max) {
                 return false;
             }
         }
@@ -190,10 +324,17 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
     public function process_payment($order_id) {
         $order = wc_get_order($order_id);
         
-        // Validate order amount
+        // Validate order amount using configured min/max
         $total = $order->get_total();
-        if ($total < 300 || $total > 25000) {
-            wc_add_notice(__('Avvance financing is available for orders between $300 and $25,000.', 'avvance-for-woocommerce'), 'error');
+        $min = floatval($this->get_option('min_order_amount', 300));
+        $max = floatval($this->get_option('max_order_amount', 25000));
+        
+        if ($total < $min || $total > $max) {
+            wc_add_notice(sprintf(
+                __('Avvance financing is available for orders between $%s and $%s.', 'avvance-for-woocommerce'),
+                number_format($min, 2),
+                number_format($max, 2)
+            ), 'error');
             return ['result' => 'failure'];
         }
         
