@@ -1,11 +1,7 @@
 <?php
 /**
- * Avvance Widget Handler - FIXED VERSION
- * 
- * KEY CHANGES:
- * 1. Checks database for pre-approval on EVERY widget render
- * 2. Uses browser fingerprint instead of session
- * 3. No longer relies on cookies/sessions for pre-approval data
+ * Avvance Widget Handler
+ * Displays price breakdown widget with modal for pre-approval
  */
 
 if (!defined('ABSPATH')) {
@@ -33,8 +29,9 @@ class Avvance_Widget_Handler {
         add_action('wp_ajax_avvance_get_price_breakdown', [__CLASS__, 'ajax_get_price_breakdown']);
         add_action('wp_ajax_nopriv_avvance_get_price_breakdown', [__CLASS__, 'ajax_get_price_breakdown']);
         
-        // AJAX endpoint for checking pre-approval status (handled by PreApproval_Handler)
-        // Removed from here to avoid duplicate endpoints
+        // AJAX endpoint for checking pre-approval status
+        add_action('wp_ajax_avvance_check_preapproval_status', [__CLASS__, 'ajax_check_preapproval_status']);
+        add_action('wp_ajax_nopriv_avvance_check_preapproval_status', [__CLASS__, 'ajax_check_preapproval_status']);
     }
     
     /**
@@ -42,44 +39,6 @@ class Avvance_Widget_Handler {
      */
     private static function generate_session_id() {
         return 'avv_' . uniqid() . '_' . time();
-    }
-    
-    /**
-     * Get current pre-approval data from database
-     */
-    private static function get_current_preapproval() {
-        // Get browser fingerprint
-        $fingerprint = self::get_browser_fingerprint();
-        
-        if (!$fingerprint) {
-            return null;
-        }
-        
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'avvance_preapprovals';
-        
-        $record = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM {$table_name} 
-             WHERE browser_fingerprint = %s 
-             ORDER BY created_at DESC 
-             LIMIT 1",
-            $fingerprint
-        ), ARRAY_A);
-        
-        return $record;
-    }
-    
-    /**
-     * Get browser fingerprint from cookie
-     */
-    private static function get_browser_fingerprint() {
-        $cookie_name = 'avvance_browser_id';
-        
-        if (isset($_COOKIE[$cookie_name])) {
-            return sanitize_text_field($_COOKIE[$cookie_name]);
-        }
-        
-        return null;
     }
     
     /**
@@ -105,7 +64,7 @@ class Avvance_Widget_Handler {
             wp_localize_script('avvance-widget', 'avvanceWidget', [
                 'ajaxUrl' => admin_url('admin-ajax.php'),
                 'nonce' => wp_create_nonce('avvance_preapproval'),
-                'checkInterval' => 3000, // Poll every 3 seconds
+                'checkInterval' => 3000,
                 'logoUrl' => AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg'
             ]);
         }
@@ -116,6 +75,7 @@ class Avvance_Widget_Handler {
      */
     public static function ajax_get_price_breakdown() {
         avvance_log('=== PRICE BREAKDOWN REQUEST ===');
+        avvance_log('POST data: ' . print_r($_POST, true));
         
         $amount = isset($_POST['amount']) ? floatval($_POST['amount']) : 0;
         
@@ -153,6 +113,36 @@ class Avvance_Widget_Handler {
     }
     
     /**
+     * AJAX: Check pre-approval status
+     */
+    public static function ajax_check_preapproval_status() {
+        // Verify nonce for security
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'avvance_preapproval')) {
+            wp_send_json_success(['status' => 'none']); // Fail silently for security
+        }
+        
+        $preapproval_data = Avvance_PreApproval_Handler::get_preapproval_data();
+        
+        if (!$preapproval_data) {
+            wp_send_json_success(['status' => 'none']);
+        }
+        
+        // Check if expired (15 days)
+        if (isset($preapproval_data['expiry_date'])) {
+            $expiry = strtotime($preapproval_data['expiry_date']);
+            if ($expiry && $expiry < time()) {
+                wp_send_json_success(['status' => 'expired']);
+            }
+        }
+        
+        wp_send_json_success([
+            'status' => $preapproval_data['status'] ?? 'pending',
+            'max_amount' => $preapproval_data['max_amount'] ?? null,
+            'customer_name' => $preapproval_data['customer_name'] ?? null
+        ]);
+    }
+    
+    /**
      * Render widget on product page
      */
     public static function render_product_widget() {
@@ -177,10 +167,8 @@ class Avvance_Widget_Handler {
         // Generate session ID
         $session_id = self::generate_session_id();
         
-        // Get current pre-approval from database
-        $preapproval = self::get_current_preapproval();
-        
-        avvance_log('Product widget - Pre-approval data: ' . print_r($preapproval, true));
+        // Check for existing pre-approval
+        $preapproval = Avvance_PreApproval_Handler::get_preapproval_data();
         
         self::render_widget($price, $preapproval, $session_id, 'product');
         
@@ -198,7 +186,7 @@ class Avvance_Widget_Handler {
     public static function render_cart_widget() {
         static $rendered = false;
         if ($rendered) {
-            return;
+            return; // Already rendered, prevent duplicates
         }
 
         avvance_log('=== CART WIDGET RENDER CALLED (primary hook) ===');
@@ -212,7 +200,7 @@ class Avvance_Widget_Handler {
     public static function render_cart_widget_fallback() {
         static $rendered = false;
         if ($rendered) {
-            return;
+            return; // Already rendered, prevent duplicates
         }
 
         avvance_log('=== CART WIDGET RENDER CALLED (fallback hook 1) ===');
@@ -226,7 +214,7 @@ class Avvance_Widget_Handler {
     public static function render_cart_widget_fallback2() {
         static $rendered = false;
         if ($rendered) {
-            return;
+            return; // Already rendered, prevent duplicates
         }
 
         avvance_log('=== CART WIDGET RENDER CALLED (fallback hook 2) ===');
@@ -240,7 +228,9 @@ class Avvance_Widget_Handler {
     private static function render_cart_widget_internal() {
         // Check if Avvance is enabled
         $gateway = avvance_get_gateway();
-        
+        avvance_log('Gateway exists: ' . ($gateway ? 'yes' : 'no'));
+        avvance_log('Gateway enabled: ' . ($gateway ? $gateway->enabled : 'N/A'));
+
         if (!$gateway || $gateway->enabled !== 'yes') {
             avvance_log('Cart widget NOT rendered: Gateway not enabled');
             return;
@@ -254,6 +244,7 @@ class Avvance_Widget_Handler {
 
         // Get cart total
         $total = WC()->cart->get_total('');
+        avvance_log('Cart total: ' . $total);
 
         if ($total < 300 || $total > 25000) {
             avvance_log('Cart widget NOT rendered: Total out of range ($300-$25,000)');
@@ -265,10 +256,8 @@ class Avvance_Widget_Handler {
         // Generate session ID
         $session_id = self::generate_session_id();
 
-        // Get current pre-approval from database
-        $preapproval = self::get_current_preapproval();
-        
-        avvance_log('Cart widget - Pre-approval data: ' . print_r($preapproval, true));
+        // Check for existing pre-approval
+        $preapproval = Avvance_PreApproval_Handler::get_preapproval_data();
 
         // Render widget directly (not in table)
         echo '<div class="avvance-cart-widget-container" style="margin: 20px 0;">';
@@ -310,10 +299,8 @@ class Avvance_Widget_Handler {
         // Generate session ID
         $session_id = self::generate_session_id();
 
-        // Get current pre-approval from database
-        $preapproval = self::get_current_preapproval();
-        
-        avvance_log('Checkout widget - Pre-approval data: ' . print_r($preapproval, true));
+        // Check for existing pre-approval
+        $preapproval = Avvance_PreApproval_Handler::get_preapproval_data();
 
         self::render_widget($total, $preapproval, $session_id, 'checkout');
 
@@ -356,37 +343,20 @@ class Avvance_Widget_Handler {
      * Render CTA link based on pre-approval status
      */
     private static function render_cta_link($preapproval, $session_id) {
-        avvance_log('Rendering CTA with pre-approval: ' . print_r($preapproval, true));
-        
         if ($preapproval && isset($preapproval['status'])) {
-            // Check if qualified/pre-approved and not expired
-            $is_approved = in_array($preapproval['status'], ['PRE_APPROVED', 'Qualified lead', 'APPROVED']);
-            
-            if ($is_approved && isset($preapproval['max_amount']) && floatval($preapproval['max_amount']) > 0) {
-                // Check if not expired
-                $is_expired = false;
-                if (!empty($preapproval['expiry_date'])) {
-                    $expiry = strtotime($preapproval['expiry_date']);
-                    if ($expiry && $expiry < time()) {
-                        $is_expired = true;
-                    }
-                }
-                
-                if (!$is_expired) {
-                    $max_amount = number_format($preapproval['max_amount'], 0);
-                    avvance_log('Showing pre-approved message for amount: $' . $max_amount);
-                    ?>
-                    <span class="avvance-preapproved-message" data-preapproved="true">
-                        You're preapproved for up to $<?php echo esc_html($max_amount); ?>
-                    </span>
-                    <?php
-                    return;
-                }
+            // Check if qualified and not expired
+            if ($preapproval['status'] === 'Qualified lead' && isset($preapproval['max_amount'])) {
+                $max_amount = number_format($preapproval['max_amount'], 0);
+                ?>
+                <span class="avvance-preapproved-message">
+                    You're preapproved for up to $<?php echo esc_html($max_amount); ?>
+                </span>
+                <?php
+                return;
             }
         }
         
         // Default: Show "Check your spending power" link
-        avvance_log('Showing default CTA link');
         ?>
         <a href="#" 
            class="avvance-prequal-link" 

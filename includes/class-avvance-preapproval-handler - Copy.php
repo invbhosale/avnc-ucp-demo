@@ -1,14 +1,7 @@
 <?php
 /**
- * Avvance Pre-Approval Handler - FIXED VERSION
+ * Avvance Pre-Approval Handler
  * Manages pre-approval requests, session storage, and webhook processing
- * 
- * CHANGES:
- * 1. Uses browser fingerprinting for cross-session tracking
- * 2. Stores pre-approval by fingerprint in database
- * 3. Widget checks database by fingerprint on every page load
- * 4. Webhook updates database by request_id
- * 5. Database is single source of truth
  */
 
 if (!defined('ABSPATH')) {
@@ -17,43 +10,16 @@ if (!defined('ABSPATH')) {
 
 class Avvance_PreApproval_Handler {
     
-    const COOKIE_NAME = 'avvance_browser_id';
-    const COOKIE_EXPIRY = 30 * DAY_IN_SECONDS; // 30 days to match Avvance expiry
+    const COOKIE_NAME = 'avvance_preapproval';
+    const COOKIE_EXPIRY = 15 * DAY_IN_SECONDS; // 15 days
     
     public static function init() {
         // AJAX endpoint for creating pre-approval
         add_action('wp_ajax_avvance_create_preapproval', [__CLASS__, 'ajax_create_preapproval']);
         add_action('wp_ajax_nopriv_avvance_create_preapproval', [__CLASS__, 'ajax_create_preapproval']);
         
-        // AJAX endpoint for checking pre-approval status
-        add_action('wp_ajax_avvance_check_preapproval_status', [__CLASS__, 'ajax_check_preapproval_status']);
-        add_action('wp_ajax_nopriv_avvance_check_preapproval_status', [__CLASS__, 'ajax_check_preapproval_status']);
-    }
-    
-    /**
-     * Get or create browser fingerprint for tracking
-     */
-    private static function get_browser_fingerprint() {
-        // Check if cookie exists
-        if (isset($_COOKIE[self::COOKIE_NAME])) {
-            return sanitize_text_field($_COOKIE[self::COOKIE_NAME]);
-        }
-        
-        // Create new fingerprint
-        $fingerprint = 'avv_fp_' . wp_generate_uuid4();
-        
-        // Set cookie
-        setcookie(
-            self::COOKIE_NAME,
-            $fingerprint,
-            time() + self::COOKIE_EXPIRY,
-            COOKIEPATH,
-            COOKIE_DOMAIN,
-            is_ssl(),
-            true // httponly
-        );
-        
-        return $fingerprint;
+        // NOTE: Pre-approval status check is now handled by Widget_Handler
+        // to avoid duplicate AJAX endpoints
     }
     
     /**
@@ -61,23 +27,29 @@ class Avvance_PreApproval_Handler {
      */
     public static function ajax_create_preapproval() {
         avvance_log('=== CREATE PRE-APPROVAL REQUEST ===');
+        avvance_log('POST data: ' . print_r($_POST, true));
         
         // Verify nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'avvance_preapproval')) {
-            avvance_log('ERROR: Nonce verification failed', 'error');
-            wp_send_json_error(['message' => 'Security check failed']);
+        if (!isset($_POST['nonce'])) {
+            avvance_log('ERROR: Nonce not provided', 'error');
+            wp_send_json_error(['message' => 'Security check failed - nonce missing']);
         }
         
+        if (!wp_verify_nonce($_POST['nonce'], 'avvance_preapproval')) {
+            avvance_log('ERROR: Nonce verification failed', 'error');
+            wp_send_json_error(['message' => 'Security check failed - invalid nonce']);
+        }
+        
+        avvance_log('Nonce verified successfully');
+        
         $session_id = isset($_POST['session_id']) ? sanitize_text_field($_POST['session_id']) : '';
+        
+        avvance_log('Session ID: ' . $session_id);
         
         if (empty($session_id)) {
             avvance_log('ERROR: Session ID empty', 'error');
             wp_send_json_error(['message' => 'Invalid session ID']);
         }
-        
-        // Get browser fingerprint
-        $browser_fingerprint = self::get_browser_fingerprint();
-        avvance_log('Browser fingerprint: ' . $browser_fingerprint);
         
         $gateway = avvance_get_gateway();
         if (!$gateway) {
@@ -85,9 +57,13 @@ class Avvance_PreApproval_Handler {
             wp_send_json_error(['message' => 'Gateway not available']);
         }
         
+        avvance_log('Gateway found');
+        
         require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-preapproval-api.php';
         
         $hashed_mid = $gateway->get_option('hashed_merchant_id');
+        
+        avvance_log('Hashed Merchant ID: ' . ($hashed_mid ? $hashed_mid : 'EMPTY'));
         
         if (empty($hashed_mid)) {
             avvance_log('ERROR: Hashed Merchant ID not configured', 'error');
@@ -110,14 +86,17 @@ class Avvance_PreApproval_Handler {
             wp_send_json_error(['message' => 'Unable to create pre-approval request']);
         }
         
-        // Store pre-approval in database with browser fingerprint
+        // Store pre-approval data in session/cookie
         $preapproval_data = [
             'request_id' => $response['preApprovalRequestID'],
             'session_id' => $session_id,
-            'browser_fingerprint' => $browser_fingerprint,
+            'created_at' => time(),
             'status' => 'pending'
         ];
         
+        self::store_preapproval_data($preapproval_data);
+        
+        // Also store in database for webhook lookup
         self::save_preapproval_to_db($preapproval_data);
         
         avvance_log('Pre-approval created and stored. Request ID: ' . $response['preApprovalRequestID']);
@@ -129,48 +108,12 @@ class Avvance_PreApproval_Handler {
     }
     
     /**
-     * AJAX: Check pre-approval status
-     */
-    public static function ajax_check_preapproval_status() {
-        // Verify nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'avvance_preapproval')) {
-            wp_send_json_success(['status' => 'none']); // Fail silently for security
-        }
-        
-        // Get browser fingerprint
-        $browser_fingerprint = self::get_browser_fingerprint();
-        
-        // Get latest pre-approval for this browser from database
-        $preapproval = self::get_latest_preapproval_by_fingerprint($browser_fingerprint);
-        
-        if (!$preapproval) {
-            wp_send_json_success(['status' => 'none']);
-        }
-        
-        // Check if expired
-        if (!empty($preapproval['expiry_date'])) {
-            $expiry = strtotime($preapproval['expiry_date']);
-            if ($expiry && $expiry < time()) {
-                wp_send_json_success(['status' => 'expired']);
-            }
-        }
-        
-        // Return status
-        wp_send_json_success([
-            'status' => $preapproval['status'] ?? 'pending',
-            'max_amount' => !empty($preapproval['max_amount']) ? floatval($preapproval['max_amount']) : null,
-            'customer_name' => $preapproval['customer_name'] ?? null,
-            'expiry_date' => $preapproval['expiry_date'] ?? null
-        ]);
-    }
-    
-    /**
      * Process pre-approval webhook (called from main webhook handler)
      */
     public static function process_preapproval_webhook($payload) {
         $event_details = $payload['eventDetails'];
 
-        // Extract fields
+        // Use preApprovalRequestId for lookup (matches what we store when creating pre-approval)
         $request_id = $event_details['preApprovalRequestId'] ?? '';
         $lead_id = $event_details['leadid'] ?? '';
         $lead_status = $event_details['leadstatus'] ?? '';
@@ -180,7 +123,7 @@ class Avvance_PreApproval_Handler {
             return new WP_Error('missing_request_id', 'Missing preApprovalRequestId in webhook');
         }
 
-        avvance_log('Processing pre-approval webhook - Request ID: ' . $request_id . ', Lead ID: ' . $lead_id . ', Status: ' . $lead_status);
+        avvance_log('Processing pre-approval webhook - Request ID: ' . $request_id . ', Lead ID: ' . $lead_id);
 
         // Find the pre-approval record in database
         global $wpdb;
@@ -213,7 +156,7 @@ class Avvance_PreApproval_Handler {
             [
                 'status' => $lead_status,
                 'max_amount' => $max_amount,
-                'lead_id' => $lead_id,
+                'lead_id' => $lead_id, // Store lead_id separately for reference
                 'customer_name' => $event_details['customerName'] ?? '',
                 'customer_email' => $event_details['customerEmail'] ?? '',
                 'customer_phone' => $event_details['customerPhone'] ?? '',
@@ -228,27 +171,64 @@ class Avvance_PreApproval_Handler {
             ['%s']
         );
 
-        avvance_log("✅ Pre-approval updated: Request ID {$request_id}, Status: {$lead_status}, Max Amount: " . ($max_amount ?? 'N/A'));
+        avvance_log("Pre-approval updated: Request ID {$request_id}, Lead ID: {$lead_id}, Status: {$lead_status}, Max Amount: " . ($max_amount ?? 'N/A'));
 
         return true;
     }
     
     /**
-     * Get latest pre-approval for browser fingerprint
+     * Store pre-approval data in cookie and session
      */
-    private static function get_latest_preapproval_by_fingerprint($fingerprint) {
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'avvance_preapprovals';
+    private static function store_preapproval_data($data) {
+        // Store in cookie
+        setcookie(
+            self::COOKIE_NAME,
+            wp_json_encode($data),
+            time() + self::COOKIE_EXPIRY,
+            COOKIEPATH,
+            COOKIE_DOMAIN,
+            is_ssl(),
+            true
+        );
         
-        $record = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM {$table_name} 
-             WHERE browser_fingerprint = %s 
-             ORDER BY created_at DESC 
-             LIMIT 1",
-            $fingerprint
-        ), ARRAY_A);
+        // Store in WooCommerce session if available
+        if (WC()->session) {
+            WC()->session->set('avvance_preapproval', $data);
+        }
+    }
+    
+    /**
+     * Get pre-approval data from cookie or session
+     */
+    public static function get_preapproval_data() {
+        // Try WooCommerce session first
+        if (WC()->session) {
+            $session_data = WC()->session->get('avvance_preapproval');
+            if ($session_data) {
+                // Sync with database
+                return self::get_preapproval_from_db($session_data['request_id']);
+            }
+        }
         
-        return $record;
+        // Try cookie
+        if (isset($_COOKIE[self::COOKIE_NAME])) {
+            $cookie_data = json_decode(stripslashes($_COOKIE[self::COOKIE_NAME]), true);
+            if ($cookie_data && isset($cookie_data['request_id'])) {
+                return self::get_preapproval_from_db($cookie_data['request_id']);
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Clear pre-approval data
+     */
+    private static function clear_preapproval_data() {
+        setcookie(self::COOKIE_NAME, '', time() - 3600, COOKIEPATH, COOKIE_DOMAIN);
+        if (WC()->session) {
+            WC()->session->__unset('avvance_preapproval');
+        }
     }
     
     /**
@@ -266,15 +246,27 @@ class Avvance_PreApproval_Handler {
             [
                 'request_id' => $data['request_id'],
                 'session_id' => $data['session_id'],
-                'browser_fingerprint' => $data['browser_fingerprint'],
                 'status' => $data['status'] ?? 'pending',
                 'created_at' => current_time('mysql'),
                 'updated_at' => current_time('mysql')
             ],
-            ['%s', '%s', '%s', '%s', '%s', '%s']
+            ['%s', '%s', '%s', '%s', '%s']
         );
+    }
+    
+    /**
+     * Get pre-approval from database
+     */
+    private static function get_preapproval_from_db($request_id) {
+        global $wpdb;
+        $table_name = $wpdb->prefix . 'avvance_preapprovals';
         
-        avvance_log('Pre-approval saved to database with fingerprint: ' . $data['browser_fingerprint']);
+        $record = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$table_name} WHERE request_id = %s",
+            $request_id
+        ), ARRAY_A);
+        
+        return $record;
     }
     
     /**
@@ -290,7 +282,6 @@ class Avvance_PreApproval_Handler {
             request_id varchar(255) NOT NULL,
             lead_id varchar(255) DEFAULT NULL,
             session_id varchar(255) NOT NULL,
-            browser_fingerprint varchar(255) NOT NULL,
             status varchar(50) DEFAULT 'pending',
             max_amount decimal(10,2) DEFAULT NULL,
             customer_name varchar(255) DEFAULT NULL,
@@ -304,14 +295,10 @@ class Avvance_PreApproval_Handler {
             UNIQUE KEY request_id (request_id),
             KEY lead_id (lead_id),
             KEY session_id (session_id),
-            KEY browser_fingerprint (browser_fingerprint),
-            KEY status (status),
-            KEY created_at (created_at)
+            KEY status (status)
         ) {$charset_collate};";
         
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta($sql);
-        
-        avvance_log('Pre-approval table created/verified');
     }
 }

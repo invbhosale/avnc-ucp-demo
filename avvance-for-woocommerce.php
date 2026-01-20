@@ -159,6 +159,21 @@ final class Avvance_For_WooCommerce {
 // Initialize plugin
 Avvance_For_WooCommerce::instance();
 
+// After plugin initialization
+add_action('plugins_loaded', function() {
+    $migration_version = get_option('avvance_migration_version', '0');
+    
+    if (version_compare($migration_version, '1.1.0', '<')) {
+        require_once AVVANCE_PLUGIN_PATH . 'includes/avvance-preapproval-migration.php';
+        
+        if (Avvance_PreApproval_Migration::needs_migration()) {
+            Avvance_PreApproval_Migration::migrate();
+        }
+        
+        update_option('avvance_migration_version', '1.1.0');
+    }
+}, 5);
+
 // ADD THIS ACTIVATION HOOK:
 register_activation_hook(AVVANCE_PLUGIN_FILE, function() {
     require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-preapproval-handler.php';
