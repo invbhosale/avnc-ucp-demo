@@ -17,6 +17,133 @@
     var isProductPage = avvanceWidget.isProductPage || false;
     var isCheckoutPage = avvanceWidget.isCheckoutPage || false;
 
+    // Variables for pre-approval flow
+    var preapprovalWindow = null;
+    var statusCheckInterval = null;
+
+    // Check if status indicates pre-approval was successful
+    function isPreApprovedStatus(status) {
+        if (!status) return false;
+        var approvedStatuses = ['PRE_APPROVED', 'Qualified lead', 'APPROVED', 'qualified'];
+        return approvedStatuses.indexOf(status) !== -1 || status.toLowerCase().indexOf('approved') !== -1;
+    }
+
+    /**
+     * Open modal
+     */
+    function openModal() {
+        console.log('[Avvance Widget] Opening modal');
+        var $modal = $('#avvance-preapproval-modal');
+
+        if ($modal.length === 0) {
+            console.error('[Avvance Widget] ERROR: Modal element not found in DOM!');
+            alert('Modal not found. Please refresh the page.');
+            return;
+        }
+
+        $modal.fadeIn(200);
+        $('body').css('overflow', 'hidden');
+    }
+
+    /**
+     * Close modal
+     */
+    function closeModal() {
+        console.log('[Avvance Widget] Closing modal');
+        $('#avvance-preapproval-modal').fadeOut(200);
+        $('body').css('overflow', '');
+    }
+
+    /**
+     * Start polling for pre-approval status updates
+     */
+    function startStatusPolling() {
+        console.log('[Avvance Widget] Starting status polling');
+
+        if (statusCheckInterval) {
+            clearInterval(statusCheckInterval);
+        }
+
+        var pollCount = 0;
+        var maxPolls = 200;
+
+        statusCheckInterval = setInterval(function() {
+            pollCount++;
+            console.log('[Avvance Widget] Poll #' + pollCount);
+
+            if (preapprovalWindow && preapprovalWindow.closed) {
+                console.log('[Avvance Widget] Pre-approval window closed, stopping polling');
+                clearInterval(statusCheckInterval);
+                statusCheckInterval = null;
+            }
+
+            checkPreapprovalStatusWithCallback(function(data) {
+                if (data && isPreApprovedStatus(data.status) && data.max_amount) {
+                    console.log('[Avvance Widget] Pre-approval received! Status:', data.status, 'Amount:', data.max_amount);
+                    updateCTAToPreapproved(data.max_amount);
+
+                    clearInterval(statusCheckInterval);
+                    statusCheckInterval = null;
+
+                    if (preapprovalWindow && !preapprovalWindow.closed) {
+                        preapprovalWindow.close();
+                        console.log('[Avvance Widget] Closed pre-approval window');
+                    }
+                }
+            });
+
+            if (pollCount >= maxPolls) {
+                console.log('[Avvance Widget] Max polling attempts reached, stopping');
+                clearInterval(statusCheckInterval);
+                statusCheckInterval = null;
+            }
+        }, avvanceWidget.checkInterval || 3000);
+    }
+
+    /**
+     * Check pre-approval status via AJAX (with callback for polling)
+     */
+    function checkPreapprovalStatusWithCallback(callback) {
+        $.ajax({
+            url: avvanceWidget.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'avvance_check_preapproval_status',
+                nonce: avvanceWidget.nonce
+            },
+            success: function(response) {
+                if (response.success && response.data) {
+                    if (typeof callback === 'function') {
+                        callback(response.data);
+                    }
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('[Avvance Widget] Error checking pre-approval status', error);
+            }
+        });
+    }
+
+    /**
+     * Update CTA to show pre-approved message
+     */
+    function updateCTAToPreapproved(maxAmount) {
+        console.log('[Avvance Widget] Updating CTA to preapproved with amount:', maxAmount);
+
+        var formattedAmount = parseFloat(maxAmount).toLocaleString('en-US', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        });
+
+        var preapprovedMessage = '<span class="avvance-preapproved-message">' +
+            'You\'re preapproved for up to $' + formattedAmount +
+            '</span>';
+
+        $('.avvance-prequal-cta').html(preapprovedMessage);
+
+        console.log('[Avvance Widget] CTA updated to preapproved message');
+    }
+
     /**
      * Check for pre-approval status via AJAX
      */
@@ -404,20 +531,117 @@
      */
     $(document).ready(function() {
         console.log('[Avvance Widget] DOM ready, initializing...');
-        
+
         initWidgets();
-        
+
         if (isProductPage) {
             initVariableProductSupport();
         }
-        
+
         if (isCartPage) {
             initCartSupport();
         }
-        
+
         if (isCheckoutPage) {
             initCheckoutSupport();
         }
+
+        // Handle "Check your spending power" link clicks - open modal
+        $(document).on('click', '.avvance-prequal-link', function(e) {
+            e.preventDefault();
+            console.log('[Avvance Widget] Pre-qual link clicked');
+            openModal();
+        });
+
+        // Handle modal close
+        $(document).on('click', '.avvance-modal-close, .avvance-modal-overlay', function() {
+            console.log('[Avvance Widget] Modal close triggered');
+            closeModal();
+        });
+
+        // Prevent modal content clicks from closing modal
+        $(document).on('click', '.avvance-modal-content', function(e) {
+            e.stopPropagation();
+        });
+
+        // Handle "See if you qualify" button
+        $(document).on('click', '.avvance-qualify-button', function(e) {
+            e.preventDefault();
+            console.log('[Avvance Widget] Qualify button clicked');
+
+            var $button = $(this);
+            var $widget = $('.avvance-product-widget, .avvance-cart-widget, .avvance-checkout-widget').first();
+            var sessionId = $widget.data('session-id');
+
+            console.log('[Avvance Widget] Session ID:', sessionId);
+
+            if (!sessionId) {
+                console.error('[Avvance Widget] Missing session ID');
+                alert('Unable to start pre-approval. Please refresh the page and try again.');
+                return;
+            }
+
+            // Show loading state
+            $button.addClass('loading').prop('disabled', true);
+
+            // Create pre-approval request
+            $.ajax({
+                url: avvanceWidget.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'avvance_create_preapproval',
+                    nonce: avvanceWidget.nonce,
+                    session_id: sessionId
+                },
+                success: function(response) {
+                    console.log('[Avvance Widget] Pre-approval response:', response);
+                    $button.removeClass('loading').prop('disabled', false);
+
+                    if (response.success && response.data && response.data.url) {
+                        // Close modal
+                        closeModal();
+
+                        // Open pre-approval application in new window
+                        preapprovalWindow = window.open(
+                            response.data.url,
+                            'avvance_preapproval',
+                            'toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=600,height=700'
+                        );
+
+                        if (preapprovalWindow) {
+                            preapprovalWindow.focus();
+                            console.log('[Avvance Widget] Pre-approval window opened');
+                            startStatusPolling();
+                        } else {
+                            console.log('[Avvance Widget] WARNING: Pop-up blocked');
+                            alert('Please allow pop-ups to open your pre-approval application.');
+                            window.open(response.data.url, '_blank');
+                        }
+                    } else {
+                        console.error('[Avvance Widget] Invalid pre-approval response', response);
+                        var errorMsg = (response.data && response.data.message) ? response.data.message : 'Unable to create pre-approval request. Please try again.';
+                        alert(errorMsg);
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('[Avvance Widget] Pre-approval AJAX failed', {xhr: xhr, status: status, error: error});
+                    $button.removeClass('loading').prop('disabled', false);
+                    alert('An error occurred. Please try again or contact support.');
+                }
+            });
+        });
+
+        // Check for existing pre-approval on page load (after delay)
+        setTimeout(function() {
+            console.log('[Avvance Widget] Checking for existing pre-approval');
+            checkPreapprovalStatusWithCallback(function(data) {
+                console.log('[Avvance Widget] Pre-approval check result:', data);
+                if (data && isPreApprovedStatus(data.status) && data.max_amount) {
+                    console.log('[Avvance Widget] Updating to pre-approved status with amount:', data.max_amount);
+                    updateCTAToPreapproved(data.max_amount);
+                }
+            });
+        }, 500);
     });
 
 })(jQuery);

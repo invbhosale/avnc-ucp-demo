@@ -89,7 +89,10 @@ class Avvance_Widget_Handler {
         if (self::$settings['checkout_enabled']) {
             add_action('woocommerce_review_order_before_payment', [__CLASS__, 'render_checkout_widget'], 10);
         }
-        
+
+        // Ensure modal is rendered on cart/checkout pages (for WooCommerce Blocks compatibility)
+        add_action('wp_footer', [__CLASS__, 'ensure_modal_rendered'], 10);
+
         // AJAX endpoints
         add_action('wp_ajax_avvance_get_price_breakdown', [__CLASS__, 'ajax_get_price_breakdown']);
         add_action('wp_ajax_nopriv_avvance_get_price_breakdown', [__CLASS__, 'ajax_get_price_breakdown']);
@@ -650,9 +653,40 @@ class Avvance_Widget_Handler {
     }
     
     /**
+     * Ensure modal is rendered on cart/checkout pages (WooCommerce Blocks compatibility)
+     */
+    public static function ensure_modal_rendered() {
+        // Only render on cart or checkout pages
+        if (!is_cart() && !is_checkout()) {
+            return;
+        }
+
+        // Check if modal was already rendered by other hooks
+        static $modal_rendered_in_footer = false;
+        if ($modal_rendered_in_footer) {
+            return;
+        }
+
+        // Check if modal element already exists (rendered by product/cart widget hooks)
+        // We use a global flag since static vars in different methods are separate
+        global $avvance_modal_rendered;
+        if (!empty($avvance_modal_rendered)) {
+            return;
+        }
+
+        // Render the modal for Blocks cart/checkout pages
+        self::render_modal();
+        $modal_rendered_in_footer = true;
+        $avvance_modal_rendered = true;
+    }
+
+    /**
      * Render the pre-approval modal
      */
     private static function render_modal() {
+        // Mark modal as rendered globally
+        global $avvance_modal_rendered;
+        $avvance_modal_rendered = true;
         $gateway = avvance_get_gateway();
         $hashed_mid = $gateway ? $gateway->get_option('hashed_merchant_id') : '';
         ?>
