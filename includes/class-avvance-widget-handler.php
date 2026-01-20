@@ -35,6 +35,8 @@ class Avvance_Widget_Handler {
         
         // AJAX endpoint for checking pre-approval status (handled by PreApproval_Handler)
         // Removed from here to avoid duplicate endpoints
+        add_action('wp_ajax_avvance_check_preapproval', [__CLASS__, 'ajax_check_preapproval']);
+        add_action('wp_ajax_nopriv_avvance_check_preapproval', [__CLASS__, 'ajax_check_preapproval']);
     }
     
     /**
@@ -395,7 +397,76 @@ class Avvance_Widget_Handler {
         </a>
         <?php
     }
+    /**
+     * AJAX: Check pre-approval status
+     * Returns pre-approval data if exists and valid
+     */
+    public static function ajax_check_preapproval() {
+    avvance_log('=== CHECK PREAPPROVAL AJAX REQUEST ===');
     
+    // Get current pre-approval from database
+    $preapproval = self::get_current_preapproval();
+    
+    if (!$preapproval) {
+        avvance_log('No pre-approval found');
+        wp_send_json_success([
+            'has_preapproval' => false,
+            'message' => 'Check your spending power'
+        ]);
+    }
+    
+    avvance_log('Pre-approval found: ' . print_r($preapproval, true));
+    
+    // Check if approved
+    $is_approved = in_array($preapproval['status'], ['PRE_APPROVED', 'Qualified lead', 'APPROVED']);
+    
+    if (!$is_approved) {
+        avvance_log('Status not approved: ' . $preapproval['status']);
+        wp_send_json_success([
+            'has_preapproval' => false,
+            'message' => 'Check your spending power'
+        ]);
+    }
+    
+    // Check if has valid amount
+    $has_valid_amount = isset($preapproval['max_amount']) && floatval($preapproval['max_amount']) > 0;
+    
+    if (!$has_valid_amount) {
+        avvance_log('No valid amount');
+        wp_send_json_success([
+            'has_preapproval' => false,
+            'message' => 'Check your spending power'
+        ]);
+    }
+    
+    // Check if expired
+    $is_expired = false;
+    if (!empty($preapproval['expiry_date'])) {
+        $expiry = strtotime($preapproval['expiry_date']);
+        if ($expiry && $expiry < time()) {
+            $is_expired = true;
+        }
+    }
+    
+    if ($is_expired) {
+        avvance_log('Pre-approval expired');
+        wp_send_json_success([
+            'has_preapproval' => false,
+            'message' => 'Check your spending power'
+        ]);
+    }
+    
+    // All checks passed - return pre-approval
+    $max_amount = number_format($preapproval['max_amount'], 0);
+    avvance_log('Returning pre-approval: $' . $max_amount);
+    
+    wp_send_json_success([
+        'has_preapproval' => true,
+        'max_amount' => $preapproval['max_amount'],
+        'max_amount_formatted' => $max_amount,
+        'message' => "You're preapproved for up to $" . $max_amount
+    ]);
+    }
     /**
      * Render the pre-approval modal
      */
