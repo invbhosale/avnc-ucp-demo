@@ -77,26 +77,18 @@ class Avvance_UCP_Handler {
      * 2. API ROUTES: The "Brain" that listens to the Agent
      */
     public static function register_ucp_routes() {
-        avvance_log('UCP: Registering REST routes');
-
         // 1. Create Session Route
         register_rest_route(self::UCP_NAMESPACE, '/checkout/sessions', [
             'methods' => ['POST', 'GET'],
             'callback' => [__CLASS__, 'create_session'],
-            'permission_callback' => function ($request) {
-                avvance_log('UCP: Permission check for /checkout/sessions');
-                return true;
-            }
+            'permission_callback' => '__return_true'
         ]);
 
         // 2. Finalize Route
         register_rest_route(self::UCP_NAMESPACE, '/checkout/sessions/(?P<id>[\w-]+)/finalize', [
             'methods' => ['POST'],
             'callback' => [__CLASS__, 'finalize_session'],
-            'permission_callback' => function ($request) {
-                avvance_log('UCP: Permission check for /finalize');
-                return true;
-            }
+            'permission_callback' => '__return_true'
         ]);
     }
 
