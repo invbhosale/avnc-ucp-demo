@@ -43,8 +43,6 @@ class Avvance_Widget_Handler {
             'min_amount'          => floatval(self::$gateway->get_option('min_order_amount', 300)),
             'max_amount'          => floatval(self::$gateway->get_option('max_order_amount', 25000)),
         );
-        
-        avvance_log('Widget settings loaded: ' . print_r(self::$settings, true));
     }
     
     /**
