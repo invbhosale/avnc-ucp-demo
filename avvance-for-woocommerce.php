@@ -83,6 +83,7 @@ final class Avvance_For_WooCommerce {
 		require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-preapproval-api.php';
 		require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-preapproval-handler.php';
         require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-price-breakdown-api.php';
+        require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-ucp-handler.php';
 
     }
     
@@ -101,6 +102,9 @@ final class Avvance_For_WooCommerce {
 
 		// Initialize pre-approval handler (registers AJAX endpoints, DB table creation handled on activation)
 		Avvance_PreApproval_Handler::init();
+
+        // Initialize UCP Handler
+        Avvance_UCP_Handler::init();
         
         // Enqueue scripts
         add_action('wp_enqueue_scripts', [$this, 'enqueue_scripts']);
