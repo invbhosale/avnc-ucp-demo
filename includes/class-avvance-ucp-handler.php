@@ -357,6 +357,13 @@ class Avvance_UCP_Handler {
                     "handoff_mode" => "redirect"
                 ],
                 [
+                    "type" => "checkout",
+                    "id" => "standard-checkout",
+                    "uri" => $api_base . '&ucp_endpoint=/checkout/sessions',
+                    "supported_payment_methods" => ["credit_card"], // Generic identifier
+                    "handoff_mode" => "redirect"
+                ], 
+                [
                     "type" => "discovery",
                     "id" => "product-search",
                     "uri" => $api_base . '&ucp_endpoint=/products'
@@ -606,6 +613,13 @@ class Avvance_UCP_Handler {
         ];
     }
 
+    /**
+     * Finalize session and return payment URL
+     *
+     * Supports two payment methods:
+     * - avvance: Redirect to Avvance financing application (default)
+     * - credit_card: Redirect to WooCommerce standard payment page
+     */
     public static function finalize_session($request) {
         $order_id = $request->get_param('id');
         $params = $request->get_json_params();
@@ -614,6 +628,9 @@ class Avvance_UCP_Handler {
         if (!$order) {
             return new WP_Error('invalid_order', 'Order not found', ['status' => 404]);
         }
+
+        // Get payment method from request (default to 'avvance')
+        $payment_method = $params['payment_method'] ?? 'avvance';
 
         // Update Customer Data
         if (!empty($params['customer'])) {
@@ -633,16 +650,41 @@ class Avvance_UCP_Handler {
                 $order->set_billing_country(sanitize_text_field($addr['country'] ?? 'US'));
             } else {
                 // Fallback for demo
-                $order->set_billing_address_1('Address provided during financing');
+                $order->set_billing_address_1('Address provided during checkout');
                 $order->set_billing_city('TBD');
                 $order->set_billing_state('MN');
                 $order->set_billing_postcode('00000');
                 $order->set_billing_country('US');
             }
         }
+
+        // Handle credit_card payment method - redirect to WooCommerce payment page
+        if ($payment_method === 'credit_card') {
+            // Set a generic payment method or leave it to be selected on the payment page
+            $order->set_payment_method('');
+            $order->set_payment_method_title('Credit Card');
+            $order->update_meta_data('_avvance_ucp_payment_method', 'credit_card');
+            $order->save();
+
+            // Generate the WooCommerce "Pay for Order" URL
+            // This URL allows the customer to complete payment with any enabled gateway
+            $pay_link = $order->get_checkout_payment_url(true);
+
+            return [
+                "session_id" => (string) $order_id,
+                "status" => "action_required",
+                "next_action" => [
+                    "type" => "redirect",
+                    "url" => $pay_link,
+                    "description" => "Please complete your payment securely."
+                ]
+            ];
+        }
+
+        // Handle avvance payment method (default) - redirect to Avvance financing
+        $order->set_payment_method('avvance');
         $order->save();
 
-        // Call Avvance API
         $gateway = avvance_get_gateway();
         if (!$gateway) {
             return new WP_Error('avvance_error', 'Gateway not configured', ['status' => 500]);

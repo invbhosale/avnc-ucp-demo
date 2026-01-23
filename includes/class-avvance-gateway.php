@@ -21,14 +21,16 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
         $this->init_settings();
         
 		// Get settings
-		$this->title = 'U.S. Bank Avvance';  // Simple name for order/admin
-		$this->description = $this->get_option('description');
 		$this->enabled = $this->get_option('enabled');
 
-		// Hardcoded title and description (not editable by admin)
-		$this->title = 'Pay over time with <img src="' . AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg" alt="Avvance" style="height: 24px; vertical-align: middle; margin: 0 8px;"> <a href="https://www.usbank.com/avvance-installment-loans.html" target="_blank" rel="noopener noreferrer" style="font-size: 0.9em;">Learn more</a>';
+		// Clean title for orders and admin (what gets saved to order meta)
+		$this->title = 'U.S. Bank Avvance';
 
-		$this->description = "To view payment options that you may qualify for, select 'Pay with U.S. Bank Avvance' to leave this site and enter the U.S. Bank Avvance loan application in a new window. Qualification for payment options are subject to application approval.\n\nImportant: After completing your application, please return to this window to see your order confirmation. Keep this window open during your application.";       
+		// Description shown on checkout
+		$this->description = "To view payment options that you may qualify for, select 'Pay with U.S. Bank Avvance' to leave this site and enter the U.S. Bank Avvance loan application in a new window. Qualification for payment options are subject to application approval.\n\nImportant: After completing your application, please return to this window to see your order confirmation. Keep this window open during your application.";
+
+		// Filter to show marketing message on checkout page only
+		add_filter('woocommerce_gateway_title', [$this, 'customize_checkout_title'], 10, 2);       
 				// Set icon
 				$this->icon = AVVANCE_PLUGIN_URL . 'assets/images/avvance-icon.svg';
 				
@@ -269,19 +271,31 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
      * Payment fields (show disclosure)
      */
 	public function payment_fields() {
-		// Show fancy "Pay over time" message with logo and learn more link
-		echo '<div style="margin-bottom: 10px; font-size: 1.1em;">';
-		echo 'Pay over time with ';
-		echo '<img src="' . esc_url(AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg') . '" alt="Avvance" style="height: 24px; vertical-align: middle; margin: 0 8px;"> ';
-		echo '<a href="https://www.usbank.com/avvance-installment-loans.html" target="_blank" rel="noopener noreferrer" style="font-size: 0.9em; text-decoration: underline;">Learn more</a>';
-		echo '</div>';
-		
 		// Show disclosure description
 		if ($this->description) {
 			echo '<div class="avvance-description">';
 			echo wpautop(wp_kses_post($this->description));
 			echo '</div>';
 		}
+	}
+
+	/**
+	 * Customize the gateway title for checkout page display
+	 * Shows marketing message on checkout, clean title everywhere else (orders, admin, emails)
+	 */
+	public function customize_checkout_title($title, $gateway_id) {
+		// Only modify our gateway's title
+		if ($gateway_id !== $this->id) {
+			return $title;
+		}
+
+		// Show marketing message only on checkout page (frontend)
+		if (is_checkout() && !is_wc_endpoint_url('order-received')) {
+			return 'Pay over time with <img src="' . esc_url(AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg') . '" alt="Avvance" style="height: 24px; vertical-align: middle; margin: 0 8px;"> <a href="https://www.usbank.com/avvance-installment-loans.html" target="_blank" rel="noopener noreferrer" style="font-size: 0.9em;">Learn more</a>';
+		}
+
+		// Return clean title for orders, admin, emails, thank you page, etc.
+		return $title;
 	}
     
     /**
