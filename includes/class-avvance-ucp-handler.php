@@ -452,10 +452,23 @@ class Avvance_UCP_Handler {
      * NEW: PRODUCT DISCOVERY
      * ------------------------------------------------------------------------- */
     
+    /**
+     * Search products with optional financing data
+     *
+     * Returns product data with real-time financing offers from Avvance API.
+     * AI agents can use this to present monthly payment options to customers.
+     *
+     * @param WP_REST_Request $request
+     * @return array Product search results with financing data
+     */
     public static function search_products($request) {
         $query = $request->get_param('q');
         $limit = $request->get_param('limit');
-        $limit = $limit ? min(max(1, intval($limit)), 20) : 5; // Default 5, max 20
+        // Keep limit low for API performance (financing API called per product)
+        $limit = $limit ? min(max(1, intval($limit)), 5) : 3;
+
+        // Check if financing data should be included (default: true)
+        $include_financing = $request->get_param('include_financing') !== 'false';
 
         $args = [
             'status' => 'publish',
@@ -475,16 +488,27 @@ class Avvance_UCP_Handler {
         foreach ($products as $product) {
             $image_id = $product->get_image_id();
             $image_url = $image_id ? wp_get_attachment_url($image_id) : wc_placeholder_img_src();
+            $price = (float) $product->get_price();
 
-            $results[] = [
+            $data = [
                 'id' => (string) $product->get_id(),
                 'name' => $product->get_name(),
-                'price' => (float) $product->get_price(),
+                'price' => $price,
                 'currency' => get_woocommerce_currency(),
                 'image' => $image_url,
                 'desc' => strip_tags($product->get_short_description()) ?: $product->get_name(),
                 'link' => $product->get_permalink()
             ];
+
+            // Inject financing data for AI agents
+            if ($include_financing) {
+                $financing = self::get_financing_offer($price);
+                if ($financing) {
+                    $data['financing'] = $financing;
+                }
+            }
+
+            $results[] = $data;
         }
 
         return $results;
@@ -591,10 +615,12 @@ class Avvance_UCP_Handler {
      * Helper to format standard UCP response with Tax/Shipping breakdown
      */
     private static function format_session_response($order) {
-        return [
+        $total_amount = (float) $order->get_total();
+
+        $response = [
             "session_id" => (string) $order->get_id(),
             "total" => [
-                "amount" => $order->get_total(),
+                "amount" => $total_amount,
                 "currency" => $order->get_currency()
             ],
             "tax" => [
@@ -605,12 +631,143 @@ class Avvance_UCP_Handler {
             "shipping_options" => [
                 [
                     "id" => "standard",
-                    "label" => "Standard Shipping", 
+                    "label" => "Standard Shipping",
                     "amount" => (float) $order->get_shipping_total()
                 ]
             ],
             "status" => "active"
         ];
+
+        // Inject financing data for AI agents
+        $financing = self::get_financing_offer($total_amount);
+        if ($financing) {
+            $response['financing'] = $financing;
+        }
+
+        return $response;
+    }
+
+    /**
+     * Helper: Fetch real-time financing offers from Avvance Price Breakdown API
+     *
+     * Returns AI-friendly financing data with marketing text and payment options.
+     * Used to give agents "selling points" like "As low as $45/mo at 0% APR".
+     *
+     * @param float $amount The product or cart total amount
+     * @return array|null Financing offer data or null if not available
+     */
+    private static function get_financing_offer($amount) {
+        // 1. Basic Validation
+        $gateway = avvance_get_gateway();
+        if (!$gateway || $gateway->enabled !== 'yes') {
+            return null;
+        }
+
+        $min = floatval($gateway->get_option('min_order_amount', 300));
+        $max = floatval($gateway->get_option('max_order_amount', 25000));
+
+        if ($amount < $min || $amount > $max) {
+            return null;
+        }
+
+        // 2. Call Price Breakdown API
+        if (!class_exists('Avvance_Price_Breakdown_API')) {
+            require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-price-breakdown-api.php';
+        }
+
+        $api = new Avvance_Price_Breakdown_API([
+            'client_key' => $gateway->get_option('client_key'),
+            'client_secret' => $gateway->get_option('client_secret'),
+            'merchant_id' => $gateway->get_option('merchant_id'),
+            'environment' => $gateway->get_option('environment')
+        ]);
+
+        $offers = $api->get_price_breakdown($amount);
+
+        if (is_wp_error($offers) || empty($offers)) {
+            return null;
+        }
+
+        // 3. Parse API response
+        // API returns: [{apr: 0, monthlyPaymentAmount: 183.89}, {apr: 8.99, monthlyPaymentAmount: 105.24}]
+        $lowest_payment = null;
+        $best_offer = null;
+        $apr_options = [];
+
+        // Handle both array format and nested format
+        $loan_options = $offers;
+        if (isset($offers['loanOptions'])) {
+            $loan_options = $offers['loanOptions'];
+        }
+
+        if (is_array($loan_options)) {
+            foreach ($loan_options as $option) {
+                // Handle different property names
+                $monthly = floatval($option['monthlyPaymentAmount'] ?? $option['monthlyPayment'] ?? $option['paymentAmount'] ?? 0);
+                $apr = floatval($option['apr'] ?? $option['APR'] ?? 0);
+                $term = intval($option['termMonths'] ?? $option['term'] ?? 0);
+
+                if ($monthly <= 0) continue;
+
+                // Track lowest payment (prioritize 0% APR)
+                if (is_null($lowest_payment) || $apr === 0.0 || $monthly < $lowest_payment) {
+                    if ($apr === 0.0 || is_null($best_offer) || $best_offer['apr'] !== 0.0) {
+                        $lowest_payment = $monthly;
+                        $best_offer = [
+                            'monthly' => $monthly,
+                            'apr' => $apr,
+                            'term' => $term
+                        ];
+                    }
+                }
+
+                // Collect friendly APR strings for the Agent
+                // Format APR: show "0%" for zero, otherwise show 2 decimals
+                $apr_display = ($apr == 0) ? '0' : number_format($apr, 2);
+                if ($term > 0) {
+                    $apr_options[] = sprintf("%s%% APR for %d months ($%s/mo)",
+                        $apr_display,
+                        $term,
+                        number_format($monthly, 2)
+                    );
+                } else {
+                    $apr_options[] = sprintf("%s%% APR ($%s/mo)",
+                        $apr_display,
+                        number_format($monthly, 2)
+                    );
+                }
+            }
+        }
+
+        // 4. Return Agent-Friendly Data
+        if ($lowest_payment && $best_offer) {
+            // Construct the Pre-Qualify URL (using the UCP endpoint)
+            $api_base = home_url('/') . '?avvance_api=1';
+
+            // Format APR: show "0%" for zero, otherwise show 2 decimals
+            $best_apr_display = ($best_offer['apr'] == 0) ? '0' : number_format($best_offer['apr'], 2);
+
+            return [
+                "available" => true,
+                "marketing_text" => sprintf("As low as $%s/mo at %s%% APR with U.S. Bank Avvance.",
+                    number_format($lowest_payment, 2),
+                    $best_apr_display
+                ),
+                "lowest_monthly_payment" => [
+                    "amount" => round($lowest_payment, 2),
+                    "currency" => "USD"
+                ],
+                "best_apr" => round($best_offer['apr'], 2),
+                "apr_options" => array_slice($apr_options, 0, 4), // Limit to top 4
+                "action" => [
+                    "type" => "pre-qualify",
+                    "label" => "Check your spending power",
+                    "uri" => $api_base . '&ucp_endpoint=/pre-qualify'
+                ]
+            ];
+        }
+
+        return null;
     }
 
     /**
