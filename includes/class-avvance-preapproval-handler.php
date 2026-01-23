@@ -163,6 +163,10 @@ class Avvance_PreApproval_Handler {
     
     /**
      * Process pre-approval webhook (called from main webhook handler)
+     *
+     * LEAD STATUS VALUES (only 2 possible values):
+     * - PRE_APPROVED: Customer is pre-approved, includes maxPreApprovedAmount in metadata
+     * - NOT_APPROVED: Customer is declined, NO metadata included
      */
     public static function process_preapproval_webhook($payload) {
         $event_details = $payload['eventDetails'];
@@ -177,57 +181,55 @@ class Avvance_PreApproval_Handler {
             return new WP_Error('missing_request_id', 'Missing preApprovalRequestId in webhook');
         }
 
+        // Validate lead status - only PRE_APPROVED and NOT_APPROVED are valid
+        $valid_statuses = ['PRE_APPROVED', 'NOT_APPROVED'];
+        if (!in_array($lead_status, $valid_statuses)) {
+            avvance_log('Unknown lead status received: ' . $lead_status . ' (expected PRE_APPROVED or NOT_APPROVED)', 'warning');
+        }
+
         avvance_log('Processing pre-approval webhook - Request ID: ' . $request_id . ', Lead ID: ' . $lead_id . ', Status: ' . $lead_status);
 
         // Find the pre-approval record in database
         global $wpdb;
         $table_name = $wpdb->prefix . 'avvance_preapprovals';
 
-        // ADDED: More detailed debugging
         avvance_log('Searching for pre-approval in database...');
-        avvance_log('Table: ' . $table_name);
-        avvance_log('Request ID to find: ' . $request_id);
 
         $record = $wpdb->get_row($wpdb->prepare(
             "SELECT * FROM {$table_name} WHERE request_id = %s",
             $request_id
         ));
 
-        // ADDED: Debug the query
-        avvance_log('SQL Query: ' . $wpdb->last_query);
-        avvance_log('DB Error (if any): ' . ($wpdb->last_error ?: 'none'));
-
         if (!$record) {
             avvance_log('Pre-approval record not found for request ID: ' . $request_id, 'warning');
-            
-            // ADDED: Show what IS in the database
-            $all_records = $wpdb->get_results("SELECT request_id, session_id, browser_fingerprint, status FROM {$table_name} ORDER BY created_at DESC LIMIT 5");
-            avvance_log('Recent pre-approval records in database: ' . print_r($all_records, true));
-            
             return new WP_Error('record_not_found', 'Pre-approval record not found');
         }
 
-        avvance_log('✅ Pre-approval record found: ' . print_r($record, true));
+        avvance_log('Pre-approval record found for request ID: ' . $request_id);
 
-        // Extract max pre-approved amount from metadata
+        // Extract max pre-approved amount from metadata (only present for PRE_APPROVED)
         $max_amount = null;
-        if (isset($event_details['metadata']) && is_array($event_details['metadata'])) {
+        if ($lead_status === 'PRE_APPROVED' && isset($event_details['metadata']) && is_array($event_details['metadata'])) {
             foreach ($event_details['metadata'] as $meta) {
                 if (isset($meta['key']) && $meta['key'] === 'maxPreApprovedAmount') {
                     $max_amount = floatval($meta['value']);
+                    avvance_log('Max pre-approved amount: $' . number_format($max_amount, 2));
                     break;
                 }
             }
         }
 
-        avvance_log('Max amount from metadata: ' . ($max_amount ?? 'NULL'));
+        // For NOT_APPROVED, explicitly set max_amount to null
+        if ($lead_status === 'NOT_APPROVED') {
+            $max_amount = null;
+            avvance_log('Customer NOT_APPROVED - no max amount available');
+        }
 
         // Parse expiry date with better error handling
         $expiry_date = null;
         if (isset($event_details['leadExpiryDate'])) {
             $raw_date = $event_details['leadExpiryDate'];
-            avvance_log('Raw leadExpiryDate from webhook: ' . $raw_date);
-            
+
             try {
                 // Handle ISO 8601 format with timezone: 2026-01-30T22:38:50.000+0000
                 $date_obj = new DateTime($raw_date);
@@ -239,7 +241,6 @@ class Avvance_PreApproval_Handler {
                 $timestamp = strtotime($raw_date);
                 if ($timestamp) {
                     $expiry_date = date('Y-m-d H:i:s', $timestamp);
-                    avvance_log('Parsed expiry date (fallback): ' . $expiry_date);
                 }
             }
         }
@@ -257,8 +258,6 @@ class Avvance_PreApproval_Handler {
             'webhook_payload' => wp_json_encode($event_details)
         ];
 
-        avvance_log('Updating database with: ' . print_r($update_data, true));
-
         $result = $wpdb->update(
             $table_name,
             $update_data,
@@ -272,7 +271,11 @@ class Avvance_PreApproval_Handler {
             return new WP_Error('db_update_failed', 'Failed to update pre-approval record');
         }
 
-        avvance_log("✅ Pre-approval updated successfully: Request ID {$request_id}, Status: {$lead_status}, Max Amount: " . ($max_amount ?? 'N/A') . " (Rows affected: {$result})");
+        $status_message = ($lead_status === 'PRE_APPROVED')
+            ? "PRE_APPROVED - Max Amount: $" . number_format($max_amount, 2)
+            : "NOT_APPROVED - Customer declined";
+
+        avvance_log("✅ Pre-approval webhook processed: Request ID {$request_id}, Status: {$status_message}");
 
         return true;
     }

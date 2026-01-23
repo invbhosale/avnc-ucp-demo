@@ -21,11 +21,17 @@
     var preapprovalWindow = null;
     var statusCheckInterval = null;
 
-    // Check if status indicates pre-approval was successful
+    /**
+     * Check if status indicates pre-approval was successful
+     *
+     * Only 2 valid lead statuses from Avvance:
+     * - PRE_APPROVED: Customer is pre-approved (eligible)
+     * - NOT_APPROVED: Customer is declined (not eligible)
+     */
     function isPreApprovedStatus(status) {
         if (!status) return false;
-        var approvedStatuses = ['PRE_APPROVED', 'Qualified lead', 'APPROVED', 'qualified'];
-        return approvedStatuses.indexOf(status) !== -1 || status.toLowerCase().indexOf('approved') !== -1;
+        // Only PRE_APPROVED is considered approved
+        return status === 'PRE_APPROVED';
     }
 
     /**

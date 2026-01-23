@@ -806,22 +806,8 @@ class Avvance_UCP_Handler {
         }
 
         // Map internal status to UCP-friendly response
+        // Only 2 valid lead statuses from Avvance: PRE_APPROVED and NOT_APPROVED
         $status = $record['status'] ?? 'pending';
-        $status_upper = strtoupper($status);
-
-        // Determine eligibility based on status
-        // Approved statuses from Avvance webhook
-        $approved_statuses = ['APPROVED', 'PRE_APPROVED', 'PRE-APPROVED', 'PREAPPROVED'];
-        $pending_statuses = ['PENDING', 'IN_PROGRESS', 'SUBMITTED'];
-
-        $eligible = null;
-        if (in_array($status_upper, $pending_statuses)) {
-            $eligible = null; // Unknown yet
-        } elseif (in_array($status_upper, $approved_statuses)) {
-            $eligible = true;
-        } else {
-            $eligible = false;
-        }
 
         if ($is_expired) {
             return [
@@ -838,7 +824,9 @@ class Avvance_UCP_Handler {
             "status" => $status
         ];
 
-        if ($eligible === true) {
+        // Handle the two valid statuses from Avvance
+        if ($status === 'PRE_APPROVED') {
+            // Customer is pre-approved with max amount
             $response["eligible"] = true;
             $response["max_amount"] = !empty($record['max_amount']) ? floatval($record['max_amount']) : null;
             $response["customer_name"] = $record['customer_name'] ?? null;
@@ -846,10 +834,12 @@ class Avvance_UCP_Handler {
             $response["message"] = !empty($record['max_amount'])
                 ? sprintf("Pre-qualified for up to $%s", number_format($record['max_amount'], 2))
                 : "Pre-qualification approved";
-        } elseif ($eligible === false) {
+        } elseif ($status === 'NOT_APPROVED') {
+            // Customer is declined - no max amount available
             $response["eligible"] = false;
             $response["message"] = "Pre-qualification was not approved.";
         } else {
+            // Pending status - user hasn't completed the application yet
             $response["eligible"] = null;
             $response["message"] = "Pre-qualification is pending. User must complete the application.";
         }

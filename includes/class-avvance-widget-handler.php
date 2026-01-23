@@ -226,54 +226,62 @@ class Avvance_Widget_Handler {
     
     /**
      * AJAX: Check pre-approval status
+     *
+     * Lead status values (only 2 possible):
+     * - PRE_APPROVED: Customer is pre-approved with max amount
+     * - NOT_APPROVED: Customer is declined
      */
     public static function ajax_check_preapproval() {
         $preapproval = self::get_current_preapproval();
-        
+
         if (!$preapproval) {
             wp_send_json_success([
                 'has_preapproval' => false,
+                'status' => 'none',
                 'message' => 'Check your spending power'
             ]);
         }
-        
-        $is_approved = in_array($preapproval['status'], ['PRE_APPROVED', 'Qualified lead', 'APPROVED']);
-        
-        if (!$is_approved) {
+
+        $status = $preapproval['status'] ?? 'pending';
+
+        // Only PRE_APPROVED is considered approved (NOT_APPROVED is declined)
+        if ($status !== 'PRE_APPROVED') {
+            // For NOT_APPROVED or pending, show the default CTA
             wp_send_json_success([
                 'has_preapproval' => false,
+                'status' => $status,
                 'message' => 'Check your spending power'
             ]);
         }
-        
+
+        // PRE_APPROVED - check for valid max amount
         $has_valid_amount = isset($preapproval['max_amount']) && floatval($preapproval['max_amount']) > 0;
-        
+
         if (!$has_valid_amount) {
             wp_send_json_success([
                 'has_preapproval' => false,
+                'status' => $status,
                 'message' => 'Check your spending power'
             ]);
         }
-        
-        $is_expired = false;
+
+        // Check if expired
         if (!empty($preapproval['expiry_date'])) {
             $expiry = strtotime($preapproval['expiry_date']);
             if ($expiry && $expiry < time()) {
-                $is_expired = true;
+                wp_send_json_success([
+                    'has_preapproval' => false,
+                    'status' => 'expired',
+                    'message' => 'Check your spending power'
+                ]);
             }
         }
-        
-        if ($is_expired) {
-            wp_send_json_success([
-                'has_preapproval' => false,
-                'message' => 'Check your spending power'
-            ]);
-        }
-        
+
         $max_amount = number_format($preapproval['max_amount'], 0);
-        
+
         wp_send_json_success([
             'has_preapproval' => true,
+            'status' => 'PRE_APPROVED',
             'max_amount' => $preapproval['max_amount'],
             'max_amount_formatted' => $max_amount,
             'message' => "You're preapproved for up to $" . $max_amount
@@ -497,28 +505,26 @@ class Avvance_Widget_Handler {
         
         ?>
         <div id="avvance-checkout-widget-container" style="display: none; margin: 20px 0;">
-            <?php if ($preapproval && in_array($preapproval['status'], ['PRE_APPROVED', 'Qualified lead', 'APPROVED'])): ?>
-                <?php
-                $has_valid_amount = isset($preapproval['max_amount']) && floatval($preapproval['max_amount']) > 0;
-                $is_expired = false;
-                if (!empty($preapproval['expiry_date'])) {
-                    $expiry = strtotime($preapproval['expiry_date']);
-                    $is_expired = ($expiry && $expiry < time());
-                }
-                ?>
-                
-                <?php if ($has_valid_amount && !$is_expired): ?>
-                    <div class="avvance-preapproved-banner">
-                        <div class="avvance-checkmark">✓</div>
-                        <div class="avvance-banner-content">
-                            <strong>You're preapproved for up to $<?php echo number_format($preapproval['max_amount'], 0); ?></strong>
-                            <p>Complete your purchase with flexible monthly payments from U.S. Bank</p>
-                        </div>
+            <?php
+            // Only PRE_APPROVED status is considered approved (NOT_APPROVED is declined)
+            $is_preapproved = $preapproval && $preapproval['status'] === 'PRE_APPROVED';
+            $has_valid_amount = $is_preapproved && isset($preapproval['max_amount']) && floatval($preapproval['max_amount']) > 0;
+            $is_expired = false;
+
+            if ($is_preapproved && !empty($preapproval['expiry_date'])) {
+                $expiry = strtotime($preapproval['expiry_date']);
+                $is_expired = ($expiry && $expiry < time());
+            }
+            ?>
+
+            <?php if ($is_preapproved && $has_valid_amount && !$is_expired): ?>
+                <div class="avvance-preapproved-banner">
+                    <div class="avvance-checkmark">✓</div>
+                    <div class="avvance-banner-content">
+                        <strong>You're preapproved for up to $<?php echo number_format($preapproval['max_amount'], 0); ?></strong>
+                        <p>Complete your purchase with flexible monthly payments from U.S. Bank</p>
                     </div>
-                <?php else: ?>
-                    <?php self::render_checkout_standard_message($total, $session_id); ?>
-                <?php endif; ?>
-                
+                </div>
             <?php else: ?>
                 <?php self::render_checkout_standard_message($total, $session_id); ?>
             <?php endif; ?>
@@ -615,12 +621,16 @@ class Avvance_Widget_Handler {
     
     /**
      * Render CTA link based on pre-approval status
+     *
+     * Only PRE_APPROVED status shows the preapproved message.
+     * NOT_APPROVED or pending shows the default "Check your spending power" link.
      */
     private static function render_cta_link($preapproval, $session_id) {
-        if ($preapproval && isset($preapproval['status'])) {
-            $is_approved = in_array($preapproval['status'], ['PRE_APPROVED', 'Qualified lead', 'APPROVED']);
-            
-            if ($is_approved && isset($preapproval['max_amount']) && floatval($preapproval['max_amount']) > 0) {
+        // Only PRE_APPROVED status is considered approved
+        if ($preapproval && $preapproval['status'] === 'PRE_APPROVED') {
+            $has_valid_amount = isset($preapproval['max_amount']) && floatval($preapproval['max_amount']) > 0;
+
+            if ($has_valid_amount) {
                 $is_expired = false;
                 if (!empty($preapproval['expiry_date'])) {
                     $expiry = strtotime($preapproval['expiry_date']);
@@ -628,7 +638,7 @@ class Avvance_Widget_Handler {
                         $is_expired = true;
                     }
                 }
-                
+
                 if (!$is_expired) {
                     $max_amount = number_format($preapproval['max_amount'], 0);
                     ?>
@@ -640,10 +650,12 @@ class Avvance_Widget_Handler {
                 }
             }
         }
-        
+
+        // Default: show "Check your spending power" link
+        // This covers: no preapproval, NOT_APPROVED, pending, expired, or no valid amount
         ?>
-        <a href="#" 
-           class="avvance-prequal-link" 
+        <a href="#"
+           class="avvance-prequal-link"
            data-session-id="<?php echo esc_attr($session_id); ?>">
             Check your spending power
         </a>
