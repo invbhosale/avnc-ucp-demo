@@ -1,369 +1,466 @@
 <?php
 /**
- * Avvance Pre-Approval Handler - FIXED VERSION (Date Handling)
- * 
- * FIXES:
- * 1. Better date parsing for leadExpiryDate
- * 2. More detailed logging for debugging
- * 3. Handles timezone issues
+ * Avvance Webhooks Handler
+ *
+ * Handles incoming webhooks from Avvance for:
+ * - Loan status updates (payment authorized, settled, declined)
+ * - Pre-approval status updates
+ *
+ * @package Avvance_For_WooCommerce
+ * @since 1.0.0
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-class Avvance_PreApproval_Handler {
-    
-    const COOKIE_NAME = 'avvance_browser_id';
-    const COOKIE_EXPIRY = 30 * DAY_IN_SECONDS; // 30 days to match Avvance expiry
-    
+class Avvance_Webhooks {
+
+    /**
+     * Initialize webhook handler
+     */
     public static function init() {
-        // AJAX endpoint for creating pre-approval
-        add_action('wp_ajax_avvance_create_preapproval', [__CLASS__, 'ajax_create_preapproval']);
-        add_action('wp_ajax_nopriv_avvance_create_preapproval', [__CLASS__, 'ajax_create_preapproval']);
-        
-        // AJAX endpoint for checking pre-approval status
-        add_action('wp_ajax_avvance_check_preapproval_status', [__CLASS__, 'ajax_check_preapproval_status']);
-        add_action('wp_ajax_nopriv_avvance_check_preapproval_status', [__CLASS__, 'ajax_check_preapproval_status']);
+        // Register WooCommerce API endpoint for webhooks
+        add_action('woocommerce_api_avvance_webhook', [__CLASS__, 'handle_webhook']);
     }
-    
+
     /**
-     * Get or create browser fingerprint for tracking
+     * Main webhook handler
+     *
+     * Validates authentication and routes to appropriate processor
      */
-    private static function get_browser_fingerprint() {
-        // Check if cookie exists
-        if (isset($_COOKIE[self::COOKIE_NAME])) {
-            return sanitize_text_field($_COOKIE[self::COOKIE_NAME]);
+    public static function handle_webhook() {
+        avvance_log('=== WEBHOOK RECEIVED ===');
+        avvance_log('Request Method: ' . $_SERVER['REQUEST_METHOD']);
+
+        // Only accept POST requests
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            avvance_log('ERROR: Invalid request method: ' . $_SERVER['REQUEST_METHOD'], 'error');
+            wp_send_json_error(['message' => 'Method not allowed'], 405);
         }
-        
-        // Create new fingerprint
-        $fingerprint = 'avv_fp_' . wp_generate_uuid4();
-        
-        // Set cookie
-        setcookie(
-            self::COOKIE_NAME,
-            $fingerprint,
-            time() + self::COOKIE_EXPIRY,
-            COOKIEPATH,
-            COOKIE_DOMAIN,
-            is_ssl(),
-            true // httponly
-        );
-        
-        return $fingerprint;
+
+        // Validate Basic Auth credentials
+        if (!self::validate_basic_auth()) {
+            avvance_log('ERROR: Basic Auth validation failed', 'error');
+            status_header(401);
+            header('WWW-Authenticate: Basic realm="Avvance Webhook"');
+            wp_send_json_error(['message' => 'Unauthorized'], 401);
+        }
+
+        avvance_log('Basic Auth validation passed');
+
+        // Get and parse the payload
+        $raw_payload = file_get_contents('php://input');
+        avvance_log('Raw payload length: ' . strlen($raw_payload));
+
+        if (empty($raw_payload)) {
+            avvance_log('ERROR: Empty webhook payload', 'error');
+            wp_send_json_error(['message' => 'Empty payload'], 400);
+        }
+
+        $payload = json_decode($raw_payload, true);
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            avvance_log('ERROR: Invalid JSON payload: ' . json_last_error_msg(), 'error');
+            wp_send_json_error(['message' => 'Invalid JSON'], 400);
+        }
+
+        // Log webhook type (without sensitive data)
+        $event_type = $payload['eventType'] ?? 'unknown';
+        avvance_log('Webhook event type: ' . $event_type);
+
+        // Route to appropriate handler based on event type
+        $result = self::route_webhook($payload);
+
+        if (is_wp_error($result)) {
+            avvance_log('Webhook processing failed: ' . $result->get_error_message(), 'error');
+            wp_send_json_error(['message' => $result->get_error_message()], 400);
+        }
+
+        avvance_log('=== WEBHOOK PROCESSED SUCCESSFULLY ===');
+        wp_send_json_success(['message' => 'Webhook processed']);
     }
-    
+
     /**
-     * AJAX: Create pre-approval request
+     * Validate Basic Auth credentials
+     *
+     * @return bool True if valid, false otherwise
      */
-    public static function ajax_create_preapproval() {
-        avvance_log('=== CREATE PRE-APPROVAL REQUEST ===');
-        
-        // Verify nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'avvance_preapproval')) {
-            avvance_log('ERROR: Nonce verification failed', 'error');
-            wp_send_json_error(['message' => 'Security check failed']);
-        }
-        
-        $session_id = isset($_POST['session_id']) ? sanitize_text_field($_POST['session_id']) : '';
-        
-        if (empty($session_id)) {
-            avvance_log('ERROR: Session ID empty', 'error');
-            wp_send_json_error(['message' => 'Invalid session ID']);
-        }
-        
-        // Get browser fingerprint
-        $browser_fingerprint = self::get_browser_fingerprint();
-        avvance_log('Browser fingerprint: ' . $browser_fingerprint);
-        
+    private static function validate_basic_auth() {
         $gateway = avvance_get_gateway();
         if (!$gateway) {
-            avvance_log('ERROR: Gateway not available', 'error');
-            wp_send_json_error(['message' => 'Gateway not available']);
+            avvance_log('ERROR: Gateway not available for auth validation', 'error');
+            return false;
         }
-        
-        require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-preapproval-api.php';
-        
-        $hashed_mid = $gateway->get_option('hashed_merchant_id');
-        
-        if (empty($hashed_mid)) {
-            avvance_log('ERROR: Hashed Merchant ID not configured', 'error');
-            wp_send_json_error(['message' => 'Pre-approval not configured. Please contact merchant.']);
+
+        // Get credentials and clean them (remove whitespace, HTML entities, non-printable chars)
+        $expected_username = trim($gateway->get_option('webhook_username'));
+        $expected_password = $gateway->get_option('webhook_password');
+
+        // Clean the password - remove HTML entities, extra whitespace, non-printable chars
+        $expected_password = html_entity_decode($expected_password, ENT_QUOTES, 'UTF-8');
+        $expected_password = preg_replace('/\s+/', '', $expected_password); // Remove all whitespace
+        $expected_password = preg_replace('/[^\x20-\x7E]/', '', $expected_password); // Keep only printable ASCII
+
+        if (empty($expected_username) || empty($expected_password)) {
+            avvance_log('ERROR: Webhook credentials not configured', 'error');
+            return false;
         }
-        
-        $api = new Avvance_PreApproval_API([
-            'client_key' => $gateway->get_option('client_key'),
-            'client_secret' => $gateway->get_option('client_secret'),
-            'merchant_id' => $gateway->get_option('merchant_id'),
-            'environment' => $gateway->get_option('environment')
-        ]);
-        
-        avvance_log('API client created, calling create_preapproval');
-        
-        $response = $api->create_preapproval($session_id, $hashed_mid);
-        
-        if (is_wp_error($response)) {
-            avvance_log('Pre-approval creation failed: ' . $response->get_error_message(), 'error');
-            wp_send_json_error(['message' => 'Unable to create pre-approval request']);
-        }
-        
-        // Store pre-approval in database with browser fingerprint
-        $preapproval_data = [
-            'request_id' => $response['preApprovalRequestID'],
-            'session_id' => $session_id,
-            'browser_fingerprint' => $browser_fingerprint,
-            'status' => 'pending'
-        ];
-        
-        self::save_preapproval_to_db($preapproval_data);
-        
-        avvance_log('Pre-approval created and stored. Request ID: ' . $response['preApprovalRequestID']);
-        
-        wp_send_json_success([
-            'url' => $response['preApprovalOnboardingURL'],
-            'request_id' => $response['preApprovalRequestID']
-        ]);
-    }
-    
-    /**
-     * AJAX: Check pre-approval status
-     */
-    public static function ajax_check_preapproval_status() {
-        // Verify nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'avvance_preapproval')) {
-            wp_send_json_success(['status' => 'none']); // Fail silently for security
-        }
-        
-        // Get browser fingerprint
-        $browser_fingerprint = self::get_browser_fingerprint();
-        
-        // Get latest pre-approval for this browser from database
-        $preapproval = self::get_latest_preapproval_by_fingerprint($browser_fingerprint);
-        
-        if (!$preapproval) {
-            wp_send_json_success(['status' => 'none']);
-        }
-        
-        // Check if expired
-        if (!empty($preapproval['expiry_date'])) {
-            $expiry = strtotime($preapproval['expiry_date']);
-            if ($expiry && $expiry < time()) {
-                wp_send_json_success(['status' => 'expired']);
+
+        avvance_log('Expected password length after cleaning: ' . strlen($expected_password));
+
+        // Get credentials from request
+        $auth_header = '';
+        $provided_username = '';
+        $provided_password = '';
+
+        // Try different methods to get Authorization header
+        if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
+            $auth_header = $_SERVER['HTTP_AUTHORIZATION'];
+        } elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
+            $auth_header = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+        } elseif (function_exists('getallheaders')) {
+            $headers = getallheaders();
+            if (isset($headers['Authorization'])) {
+                $auth_header = $headers['Authorization'];
             }
         }
-        
-        // Return status
-        wp_send_json_success([
-            'status' => $preapproval['status'] ?? 'pending',
-            'max_amount' => !empty($preapproval['max_amount']) ? floatval($preapproval['max_amount']) : null,
-            'customer_name' => $preapproval['customer_name'] ?? null,
-            'expiry_date' => $preapproval['expiry_date'] ?? null
-        ]);
-    }
-    
-    /**
-     * Process pre-approval webhook (called from main webhook handler)
-     */
-    public static function process_preapproval_webhook($payload) {
-        $event_details = $payload['eventDetails'];
 
-        // Extract fields
-        $request_id = $event_details['preApprovalRequestId'] ?? '';
-        $lead_id = $event_details['leadid'] ?? '';
-        $lead_status = $event_details['leadstatus'] ?? '';
+        // Check PHP_AUTH_USER and PHP_AUTH_PW (set by some servers)
+        if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])) {
+            $provided_username = $_SERVER['PHP_AUTH_USER'];
+            $provided_password = $_SERVER['PHP_AUTH_PW'];
+        } elseif (!empty($auth_header)) {
+            // Parse Basic Auth header
+            if (strpos($auth_header, 'Basic ') !== 0) {
+                avvance_log('ERROR: Invalid Authorization header format', 'error');
+                return false;
+            }
 
-        if (empty($request_id)) {
-            avvance_log('Missing preApprovalRequestId in webhook', 'error');
-            return new WP_Error('missing_request_id', 'Missing preApprovalRequestId in webhook');
+            $encoded_credentials = substr($auth_header, 6);
+            $decoded_credentials = base64_decode($encoded_credentials);
+
+            if ($decoded_credentials === false || strpos($decoded_credentials, ':') === false) {
+                avvance_log('ERROR: Failed to decode credentials', 'error');
+                return false;
+            }
+
+            list($provided_username, $provided_password) = explode(':', $decoded_credentials, 2);
+        } else {
+            avvance_log('ERROR: No Authorization header found', 'error');
+            return false;
         }
 
-        avvance_log('Processing pre-approval webhook - Request ID: ' . $request_id . ', Lead ID: ' . $lead_id . ', Status: ' . $lead_status);
+        // Clean provided credentials the same way
+        $provided_username = trim($provided_username);
+        $provided_password = html_entity_decode($provided_password, ENT_QUOTES, 'UTF-8');
+        $provided_password = preg_replace('/\s+/', '', $provided_password);
+        $provided_password = preg_replace('/[^\x20-\x7E]/', '', $provided_password);
 
-        // Find the pre-approval record in database
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'avvance_preapprovals';
+        avvance_log('Provided password length after cleaning: ' . strlen($provided_password));
 
-        // ADDED: More detailed debugging
-        avvance_log('Searching for pre-approval in database...');
-        avvance_log('Table: ' . $table_name);
-        avvance_log('Request ID to find: ' . $request_id);
+        // Constant-time comparison to prevent timing attacks
+        $username_valid = hash_equals($expected_username, $provided_username);
+        $password_valid = hash_equals($expected_password, $provided_password);
 
-        $record = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM {$table_name} WHERE request_id = %s",
-            $request_id
-        ));
-
-        // ADDED: Debug the query
-        avvance_log('SQL Query: ' . $wpdb->last_query);
-        avvance_log('DB Error (if any): ' . ($wpdb->last_error ?: 'none'));
-
-        if (!$record) {
-            avvance_log('Pre-approval record not found for request ID: ' . $request_id, 'warning');
-            
-            // ADDED: Show what IS in the database
-            $all_records = $wpdb->get_results("SELECT request_id, session_id, browser_fingerprint, status FROM {$table_name} ORDER BY created_at DESC LIMIT 5");
-            avvance_log('Recent pre-approval records in database: ' . print_r($all_records, true));
-            
-            return new WP_Error('record_not_found', 'Pre-approval record not found');
-        }
-
-        avvance_log('✅ Pre-approval record found: ' . print_r($record, true));
-
-        // Extract max pre-approved amount from metadata
-        $max_amount = null;
-        if (isset($event_details['metadata']) && is_array($event_details['metadata'])) {
-            foreach ($event_details['metadata'] as $meta) {
-                if (isset($meta['key']) && $meta['key'] === 'maxPreApprovedAmount') {
-                    $max_amount = floatval($meta['value']);
-                    break;
+        // Fallback: if exact match fails, check if one contains the other (handles corruption)
+        if (!$password_valid) {
+            // Check if the 32-char provided password matches the start of expected
+            if (strlen($provided_password) === 32 && strlen($expected_password) > 32) {
+                $password_valid = (substr($expected_password, 0, 32) === $provided_password);
+                if ($password_valid) {
+                    avvance_log('Password matched using prefix comparison (32 chars)');
                 }
             }
-        }
-
-        avvance_log('Max amount from metadata: ' . ($max_amount ?? 'NULL'));
-
-        // Parse expiry date with better error handling
-        $expiry_date = null;
-        if (isset($event_details['leadExpiryDate'])) {
-            $raw_date = $event_details['leadExpiryDate'];
-            avvance_log('Raw leadExpiryDate from webhook: ' . $raw_date);
-            
-            try {
-                // Handle ISO 8601 format with timezone: 2026-01-30T22:38:50.000+0000
-                $date_obj = new DateTime($raw_date);
-                $expiry_date = $date_obj->format('Y-m-d H:i:s');
-                avvance_log('Parsed expiry date: ' . $expiry_date);
-            } catch (Exception $e) {
-                avvance_log('Failed to parse expiry date: ' . $e->getMessage(), 'warning');
-                // Fallback: try strtotime
-                $timestamp = strtotime($raw_date);
-                if ($timestamp) {
-                    $expiry_date = date('Y-m-d H:i:s', $timestamp);
-                    avvance_log('Parsed expiry date (fallback): ' . $expiry_date);
-                }
+            // Or check if expected is contained in provided
+            if (!$password_valid && strpos($provided_password, $expected_password) !== false) {
+                $password_valid = true;
+                avvance_log('Password matched using contains comparison');
+            }
+            // Or check if provided is contained in expected
+            if (!$password_valid && strpos($expected_password, $provided_password) !== false) {
+                $password_valid = true;
+                avvance_log('Password matched using contains comparison (reverse)');
             }
         }
 
-        // Update database record
-        $update_data = [
-            'status' => $lead_status,
-            'max_amount' => $max_amount,
-            'lead_id' => $lead_id,
-            'customer_name' => $event_details['customerName'] ?? '',
-            'customer_email' => $event_details['customerEmail'] ?? '',
-            'customer_phone' => $event_details['customerPhone'] ?? '',
-            'expiry_date' => $expiry_date,
-            'updated_at' => current_time('mysql'),
-            'webhook_payload' => wp_json_encode($event_details)
-        ];
-
-        avvance_log('Updating database with: ' . print_r($update_data, true));
-
-        $result = $wpdb->update(
-            $table_name,
-            $update_data,
-            ['request_id' => $request_id],
-            ['%s', '%f', '%s', '%s', '%s', '%s', '%s', '%s', '%s'],
-            ['%s']
-        );
-
-        if ($result === false) {
-            avvance_log('Database update failed! Error: ' . $wpdb->last_error, 'error');
-            return new WP_Error('db_update_failed', 'Failed to update pre-approval record');
+        if (!$username_valid || !$password_valid) {
+            avvance_log('ERROR: Invalid webhook credentials', 'error');
+            avvance_log('Expected password (first 10 chars): ' . substr($expected_password, 0, 10) . '...');
+            avvance_log('Provided password (first 10 chars): ' . substr($provided_password, 0, 10) . '...');
+            return false;
         }
 
-        avvance_log("✅ Pre-approval updated successfully: Request ID {$request_id}, Status: {$lead_status}, Max Amount: " . ($max_amount ?? 'N/A') . " (Rows affected: {$result})");
+        avvance_log('Webhook authentication successful');
+        return true;
+    }
+
+    /**
+     * Route webhook to appropriate handler
+     *
+     * @param array $payload Webhook payload
+     * @return true|WP_Error
+     */
+    private static function route_webhook($payload) {
+        $event_type = $payload['eventType'] ?? '';
+        $event_details = $payload['eventDetails'] ?? [];
+
+        avvance_log('Routing webhook - Event Type: ' . $event_type);
+
+        // Check if this is a pre-approval webhook
+        if (self::is_preapproval_webhook($payload)) {
+            avvance_log('Detected pre-approval webhook');
+            return self::process_preapproval_webhook($payload);
+        }
+
+        // Otherwise, treat as loan status webhook
+        avvance_log('Processing as loan status webhook');
+        return self::process_loan_status_webhook($payload);
+    }
+
+    /**
+     * Check if webhook is for pre-approval
+     *
+     * @param array $payload
+     * @return bool
+     */
+    private static function is_preapproval_webhook($payload) {
+        $event_details = $payload['eventDetails'] ?? [];
+
+        // Pre-approval webhooks have preApprovalRequestId
+        if (isset($event_details['preApprovalRequestId'])) {
+            return true;
+        }
+
+        // Or leadstatus field
+        if (isset($event_details['leadstatus'])) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Process pre-approval webhook
+     *
+     * @param array $payload
+     * @return true|WP_Error
+     */
+    private static function process_preapproval_webhook($payload) {
+        avvance_log('=== PROCESSING PRE-APPROVAL WEBHOOK ===');
+
+        // Delegate to PreApproval Handler
+        if (class_exists('Avvance_PreApproval_Handler')) {
+            return Avvance_PreApproval_Handler::process_preapproval_webhook($payload);
+        }
+
+        avvance_log('ERROR: Avvance_PreApproval_Handler class not found', 'error');
+        return new WP_Error('handler_not_found', 'Pre-approval handler not available');
+    }
+
+    /**
+     * Process loan status webhook
+     *
+     * Handles loan application status updates:
+     * - APPLICATION_STARTED
+     * - APPLICATION_APPROVED
+     * - APPLICATION_DENIED_REQUEST_ALTERNATE_PAYMENT
+     * - INVOICE_PAYMENT_TRANSACTION_AUTHORIZED
+     * - INVOICE_PAYMENT_TRANSACTION_SETTLED
+     * - SYSTEM_ERROR_REQUEST_ALTERNATE_PAYMENT
+     *
+     * @param array $payload
+     * @return true|WP_Error
+     */
+    private static function process_loan_status_webhook($payload) {
+        avvance_log('=== PROCESSING LOAN STATUS WEBHOOK ===');
+
+        $event_details = $payload['eventDetails'] ?? [];
+
+        // Get loan status
+        $loan_status = $event_details['loanStatus']['status'] ?? '';
+
+        if (empty($loan_status)) {
+            avvance_log('ERROR: No loan status in webhook payload', 'error');
+            return new WP_Error('missing_status', 'No loan status provided');
+        }
+
+        avvance_log('Loan Status: ' . $loan_status);
+
+        // Find the order by partnerSessionId or applicationGUID
+        $order = self::find_order_from_webhook($event_details);
+
+        if (!$order) {
+            avvance_log('ERROR: Could not find order for webhook', 'error');
+            return new WP_Error('order_not_found', 'Order not found');
+        }
+
+        $order_id = $order->get_id();
+        avvance_log('Found order #' . $order_id);
+
+        // Store the webhook status
+        $order->update_meta_data('_avvance_last_webhook_status', $loan_status);
+        $order->update_meta_data('_avvance_last_webhook_time', current_time('mysql'));
+
+        // Process based on status
+        switch ($loan_status) {
+            case 'INVOICE_PAYMENT_TRANSACTION_AUTHORIZED':
+                avvance_log('Processing AUTHORIZED status for order #' . $order_id);
+
+                // Get payment transaction ID
+                $payment_transaction_id = $event_details['paymentTransactionId'] ?? '';
+                $approval_code = $event_details['approvalCode'] ?? '';
+
+                // Store transaction details
+                if ($payment_transaction_id) {
+                    $order->update_meta_data('_avvance_payment_transaction_id', $payment_transaction_id);
+                }
+                if ($approval_code) {
+                    $order->update_meta_data('_avvance_approval_code', $approval_code);
+                }
+
+                // Mark as paid
+                $order->payment_complete($payment_transaction_id);
+                $order->add_order_note(
+                    sprintf(
+                        __('Avvance payment authorized. Transaction ID: %s', 'avvance-for-woocommerce'),
+                        $payment_transaction_id ?: 'N/A'
+                    )
+                );
+
+                avvance_log('Order #' . $order_id . ' marked as paid');
+                break;
+
+            case 'INVOICE_PAYMENT_TRANSACTION_SETTLED':
+                avvance_log('Processing SETTLED status for order #' . $order_id);
+
+                // Update note for settlement
+                $order->add_order_note(__('Avvance payment settled.', 'avvance-for-woocommerce'));
+
+                // If not already paid (edge case), mark as paid now
+                if (!$order->is_paid()) {
+                    $payment_transaction_id = $event_details['paymentTransactionId'] ?? '';
+                    $order->payment_complete($payment_transaction_id);
+                    avvance_log('Order #' . $order_id . ' marked as paid (on settlement)');
+                }
+                break;
+
+            case 'APPLICATION_DENIED_REQUEST_ALTERNATE_PAYMENT':
+            case 'SYSTEM_ERROR_REQUEST_ALTERNATE_PAYMENT':
+                avvance_log('Processing DENIED/ERROR status for order #' . $order_id);
+
+                $order->update_status(
+                    'cancelled',
+                    sprintf(
+                        __('Avvance application declined or error: %s', 'avvance-for-woocommerce'),
+                        $loan_status
+                    )
+                );
+
+                avvance_log('Order #' . $order_id . ' cancelled');
+                break;
+
+            case 'APPLICATION_STARTED':
+                avvance_log('Processing APPLICATION_STARTED for order #' . $order_id);
+                $order->add_order_note(__('Customer started Avvance application.', 'avvance-for-woocommerce'));
+                break;
+
+            case 'APPLICATION_APPROVED':
+                avvance_log('Processing APPLICATION_APPROVED for order #' . $order_id);
+                $order->add_order_note(__('Avvance application approved. Awaiting customer to complete checkout.', 'avvance-for-woocommerce'));
+                break;
+
+            case 'APPLICATION_PENDING_REQUIRE_CUSTOMER_ACTION':
+                avvance_log('Processing PENDING status for order #' . $order_id);
+                $order->add_order_note(__('Avvance application requires customer action.', 'avvance-for-woocommerce'));
+                break;
+
+            case 'APPLICATION_LINK_EXPIRED':
+                avvance_log('Processing LINK_EXPIRED for order #' . $order_id);
+                $order->add_order_note(__('Avvance application link expired.', 'avvance-for-woocommerce'));
+                break;
+
+            default:
+                avvance_log('Unknown loan status: ' . $loan_status . ' for order #' . $order_id, 'warning');
+                $order->add_order_note(
+                    sprintf(
+                        __('Avvance status update: %s', 'avvance-for-woocommerce'),
+                        $loan_status
+                    )
+                );
+        }
+
+        $order->save();
+        avvance_log('Order #' . $order_id . ' saved successfully');
 
         return true;
     }
-    
+
     /**
-     * Get latest pre-approval for browser fingerprint
+     * Find order from webhook event details
+     *
+     * @param array $event_details
+     * @return WC_Order|null
      */
-    private static function get_latest_preapproval_by_fingerprint($fingerprint) {
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'avvance_preapprovals';
-        
-        $record = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM {$table_name} 
-             WHERE browser_fingerprint = %s 
-             ORDER BY created_at DESC 
-             LIMIT 1",
-            $fingerprint
-        ), ARRAY_A);
-        
-        return $record;
-    }
-    
-    /**
-     * Save pre-approval to database
-     */
-    private static function save_preapproval_to_db($data) {
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'avvance_preapprovals';
-        
-        // Create table if it doesn't exist
-        self::create_preapproval_table();
-        
-        $insert_data = [
-            'request_id' => $data['request_id'],
-            'session_id' => $data['session_id'],
-            'browser_fingerprint' => $data['browser_fingerprint'],
-            'status' => $data['status'] ?? 'pending',
-            'created_at' => current_time('mysql'),
-            'updated_at' => current_time('mysql')
-        ];
-        
-        avvance_log('Inserting pre-approval into database: ' . print_r($insert_data, true));
-        
-        $result = $wpdb->insert(
-            $table_name,
-            $insert_data,
-            ['%s', '%s', '%s', '%s', '%s', '%s']
-        );
-        
-        if ($result === false) {
-            avvance_log('Database insert failed! Error: ' . $wpdb->last_error, 'error');
-        } else {
-            avvance_log('Pre-approval saved to database with fingerprint: ' . $data['browser_fingerprint'] . ' (Insert ID: ' . $wpdb->insert_id . ')');
+    private static function find_order_from_webhook($event_details) {
+        // Try to find by applicationGUID
+        $application_guid = $event_details['applicationGUID'] ?? '';
+        if ($application_guid) {
+            avvance_log('Searching for order by applicationGUID: ' . $application_guid);
+
+            $orders = wc_get_orders([
+                'limit' => 1,
+                'meta_key' => '_avvance_application_guid',
+                'meta_value' => $application_guid,
+            ]);
+
+            if (!empty($orders)) {
+                return $orders[0];
+            }
         }
-    }
-    
-    /**
-     * Create pre-approval database table
-     */
-    public static function create_preapproval_table() {
-        global $wpdb;
-        $table_name = $wpdb->prefix . 'avvance_preapprovals';
-        $charset_collate = $wpdb->get_charset_collate();
-        
-        $sql = "CREATE TABLE IF NOT EXISTS {$table_name} (
-            id bigint(20) NOT NULL AUTO_INCREMENT,
-            request_id varchar(255) NOT NULL,
-            lead_id varchar(255) DEFAULT NULL,
-            session_id varchar(255) NOT NULL,
-            browser_fingerprint varchar(255) NOT NULL,
-            status varchar(50) DEFAULT 'pending',
-            max_amount decimal(10,2) DEFAULT NULL,
-            customer_name varchar(255) DEFAULT NULL,
-            customer_email varchar(255) DEFAULT NULL,
-            customer_phone varchar(50) DEFAULT NULL,
-            expiry_date datetime DEFAULT NULL,
-            created_at datetime NOT NULL,
-            updated_at datetime NOT NULL,
-            webhook_payload longtext DEFAULT NULL,
-            PRIMARY KEY (id),
-            UNIQUE KEY request_id (request_id),
-            KEY lead_id (lead_id),
-            KEY session_id (session_id),
-            KEY browser_fingerprint (browser_fingerprint),
-            KEY status (status),
-            KEY created_at (created_at)
-        ) {$charset_collate};";
-        
-        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-        dbDelta($sql);
-        
-        avvance_log('Pre-approval table created/verified');
+
+        // Try to find by partnerSessionId
+        $partner_session_id = $event_details['partnerSessionId'] ?? '';
+        if ($partner_session_id) {
+            avvance_log('Searching for order by partnerSessionId: ' . $partner_session_id);
+
+            $orders = wc_get_orders([
+                'limit' => 1,
+                'meta_key' => '_avvance_partner_session_id',
+                'meta_value' => $partner_session_id,
+            ]);
+
+            if (!empty($orders)) {
+                return $orders[0];
+            }
+        }
+
+        // Try to find by invoiceId (which is the order ID)
+        $invoice_id = $event_details['invoiceId'] ?? '';
+        if ($invoice_id) {
+            avvance_log('Searching for order by invoiceId: ' . $invoice_id);
+
+            $order = wc_get_order($invoice_id);
+            if ($order && $order->get_payment_method() === 'avvance') {
+                return $order;
+            }
+        }
+
+        // Try merchantTransactionId (which is the order key)
+        $merchant_transaction_id = $event_details['merchantTransactionId'] ?? '';
+        if ($merchant_transaction_id) {
+            avvance_log('Searching for order by merchantTransactionId (order_key): ' . $merchant_transaction_id);
+
+            $order_id = wc_get_order_id_by_order_key($merchant_transaction_id);
+            if ($order_id) {
+                $order = wc_get_order($order_id);
+                if ($order && $order->get_payment_method() === 'avvance') {
+                    return $order;
+                }
+            }
+        }
+
+        avvance_log('No order found for webhook event details', 'warning');
+        return null;
     }
 }

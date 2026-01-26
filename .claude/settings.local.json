@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(git init:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(dir /s \"c:\\\\Users\\\\vaibh\\\\Downloads\\\\From demo store\\\\avvance-woocommerce\")"
     ]
   }
 }
