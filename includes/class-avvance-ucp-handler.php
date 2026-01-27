@@ -31,15 +31,12 @@ class Avvance_UCP_Handler {
         // 4. Add CORS headers for UCP endpoints (required for OpenAI GPT Actions)
         add_action('rest_api_init', [__CLASS__, 'add_cors_headers'], 15);
 
-        // 5. Early hook to bypass ModSecurity for UCP endpoints
-        add_action('init', [__CLASS__, 'bypass_modsecurity'], 1);
-
-        // 6. Register admin-ajax endpoints (ModSecurity-friendly alternative)
+        // 5. Register admin-ajax endpoints (ModSecurity-friendly alternative)
         // These use WordPress core admin-ajax.php which is rarely blocked
         add_action('wp_ajax_avvance_ucp', [__CLASS__, 'handle_ajax_request']);
         add_action('wp_ajax_nopriv_avvance_ucp', [__CLASS__, 'handle_ajax_request']);
 
-        // 7. Register front-end query var endpoint (most ModSecurity-friendly)
+        // 6. Register front-end query var endpoint (most ModSecurity-friendly)
         // URL: /?avvance_api=1&endpoint=/products&q=laptop
         // This appears as a normal page request to ModSecurity
         add_filter('query_vars', [__CLASS__, 'add_query_vars']);
@@ -263,32 +260,6 @@ class Avvance_UCP_Handler {
         }
 
         return new WP_Error('not_found', 'Endpoint not found', ['status' => 404]);
-    }
-
-    /**
-     * Attempt to bypass ModSecurity for UCP API requests
-     * This runs very early to intercept before ModSecurity blocks
-     */
-    public static function bypass_modsecurity() {
-        if (empty($_SERVER['REQUEST_URI']) || strpos($_SERVER['REQUEST_URI'], '/wp-json/ucp/v1/') === false) {
-            return;
-        }
-
-        // Spoof a browser-like User-Agent for ModSecurity
-        // This tricks ModSecurity rules that check User-Agent
-        $_SERVER['HTTP_USER_AGENT'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-
-        // Also set in environment for some server configs
-        putenv('HTTP_USER_AGENT=' . $_SERVER['HTTP_USER_AGENT']);
-
-        // Set headers that may help bypass ModSecurity rules
-        if (!headers_sent()) {
-            header('X-Content-Type-Options: nosniff');
-            header('X-Frame-Options: SAMEORIGIN');
-        }
-
-        // Some ModSecurity rules check for these PHP settings
-        @ini_set('expose_php', 'Off');
     }
 
     /**
