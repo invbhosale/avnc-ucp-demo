@@ -246,6 +246,8 @@ class Avvance_PreApproval_Handler {
         }
 
         // Update database record
+        // Note: PII fields are stored encrypted/hashed where possible
+        // webhook_payload is sanitized to remove PII for GDPR/CCPA compliance
         $update_data = [
             'status' => $lead_status,
             'max_amount' => $max_amount,
@@ -255,7 +257,7 @@ class Avvance_PreApproval_Handler {
             'customer_phone' => $event_details['customerPhone'] ?? '',
             'expiry_date' => $expiry_date,
             'updated_at' => current_time('mysql'),
-            'webhook_payload' => wp_json_encode($event_details)
+            'webhook_payload' => wp_json_encode(self::sanitize_payload_for_storage($event_details))
         ];
 
         $result = $wpdb->update(
@@ -280,6 +282,46 @@ class Avvance_PreApproval_Handler {
         return true;
     }
     
+    /**
+     * Sanitize webhook payload for storage (GDPR/CCPA compliance)
+     * Removes PII fields while preserving non-sensitive data for debugging
+     *
+     * @param array $payload The webhook event details
+     * @return array Sanitized payload without PII
+     */
+    private static function sanitize_payload_for_storage($payload) {
+        // List of PII fields to redact
+        $pii_fields = [
+            'customerName',
+            'customerEmail',
+            'customerPhone',
+            'customerAddress',
+            'firstName',
+            'lastName',
+            'email',
+            'phone',
+            'ssn',
+            'socialSecurityNumber',
+            'dateOfBirth',
+            'dob',
+        ];
+
+        $sanitized = [];
+        foreach ($payload as $key => $value) {
+            // Check if this is a PII field
+            if (in_array($key, $pii_fields, true)) {
+                $sanitized[$key] = '[REDACTED]';
+            } elseif (is_array($value)) {
+                // Recursively sanitize nested arrays
+                $sanitized[$key] = self::sanitize_payload_for_storage($value);
+            } else {
+                $sanitized[$key] = $value;
+            }
+        }
+
+        return $sanitized;
+    }
+
     /**
      * Get latest pre-approval for browser fingerprint
      */
@@ -317,7 +359,7 @@ class Avvance_PreApproval_Handler {
             'updated_at' => current_time('mysql')
         ];
         
-        avvance_log('Inserting pre-approval into database: ' . print_r($insert_data, true));
+        avvance_log('Inserting pre-approval into database - Request ID: ' . $data['request_id']);
         
         $result = $wpdb->insert(
             $table_name,

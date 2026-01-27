@@ -107,7 +107,7 @@ class Avvance_Price_Breakdown_API {
         $body = json_decode(wp_remote_retrieve_body($response), true);
         
         avvance_log('Price breakdown API response code: ' . $code);
-        avvance_log('Price breakdown API response body: ' . print_r($body, true));
+        // Note: Response body not logged to prevent PII exposure (GDPR/CCPA compliance)
         
         if ($code !== 200 && $code !== 201) {
             $error_msg = isset($body['error']['message']) ? $body['error']['message'] : 'Price breakdown request failed';

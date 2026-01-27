@@ -106,7 +106,7 @@ class Avvance_PreApproval_API {
         $body = json_decode(wp_remote_retrieve_body($response), true);
         
         avvance_log('Pre-approval API response code: ' . $code);
-        avvance_log('Pre-approval API response body: ' . print_r($body, true));
+        // Note: Response body not logged to prevent PII exposure (GDPR/CCPA compliance)
         
         if ($code !== 200 && $code !== 201) {
             $error_msg = isset($body['error']['message']) ? $body['error']['message'] : 'Pre-approval request failed';

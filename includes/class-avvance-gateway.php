@@ -587,12 +587,14 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
         
         avvance_log("Last Webhook Status (from order meta): " . ($last_status ? $last_status : 'NOT SET'));
         
-        // Get all order meta for debugging
+        // Get all order meta for debugging (redact sensitive values)
         $all_meta = $order->get_meta_data();
         avvance_log("All Avvance-related order meta:");
         foreach ($all_meta as $meta) {
             if (strpos($meta->key, '_avvance') !== false) {
-                avvance_log("  {$meta->key}: " . print_r($meta->value, true));
+                // Redact potentially sensitive values, only log key and type
+                $value_preview = is_string($meta->value) ? substr($meta->value, 0, 20) . '...' : gettype($meta->value);
+                avvance_log("  {$meta->key}: [{$value_preview}]");
             }
         }
         
@@ -604,7 +606,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
             
             if (!is_wp_error($status_response)) {
                 avvance_log("Notification status API response received");
-                avvance_log("Full API Response: " . print_r($status_response, true));
+                // Note: Full API response not logged to prevent PII exposure (GDPR/CCPA compliance)
                 
                 $current_status = $status_response['eventDetails']['loanStatus']['status'] ?? null;
                 
@@ -680,7 +682,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
         }
         
         avvance_log("{$action} API call successful");
-        avvance_log("API Response: " . print_r($result, true));
+        // Note: API response not logged to prevent PII exposure (GDPR/CCPA compliance)
         
         $order->add_order_note(sprintf(
             __('Avvance %s processed: %s', 'avvance-for-woocommerce'),

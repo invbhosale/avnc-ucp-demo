@@ -6,6 +6,12 @@
  * - Loan status updates (payment authorized, settled, declined)
  * - Pre-approval status updates
  *
+ * Authentication: US Bank Avvance uses HTTP Basic Auth for webhook authentication.
+ * They do NOT send HMAC signatures. Verified 2026-01-27 by inspecting actual webhook
+ * headers - no signature headers (X-Avvance-Signature, X-Webhook-Signature, etc.) are sent.
+ * Basic Auth credentials are configured in WooCommerce payment settings and registered
+ * with Avvance's enterprise platform.
+ *
  * @package Avvance_For_WooCommerce
  * @since 1.0.0
  */
