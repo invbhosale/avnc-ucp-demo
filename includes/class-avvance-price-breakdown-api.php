@@ -24,7 +24,9 @@ class Avvance_Price_Breakdown_API {
         $this->merchant_id = $settings['merchant_id'];
         $this->environment = $settings['environment'];
         
-        $this->base_url = 'https://alpha-api.usbank.com';
+        $this->base_url = ($this->environment === 'production')
+            ? 'https://alpha-api2.usbank.com'
+            : 'https://alpha-api.usbank.com';
     }
     
     /**

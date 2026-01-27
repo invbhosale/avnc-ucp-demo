@@ -24,7 +24,7 @@ class Avvance_API_Client {
         $this->environment = $settings['environment'];
         
         $this->base_url = ($this->environment === 'production')
-            ? 'https://alpha-api.usbank.com'
+            ? 'https://alpha-api2.usbank.com'
             : 'https://alpha-api.usbank.com';
     }
     
