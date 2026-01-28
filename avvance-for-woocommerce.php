@@ -75,6 +75,7 @@ final class Avvance_For_WooCommerce {
     
     private function includes() {
         require_once AVVANCE_PLUGIN_PATH . 'includes/avvance-functions.php';
+        require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-api-base.php';
         require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-api-client.php';
         require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-gateway.php';
         require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-webhooks.php';
