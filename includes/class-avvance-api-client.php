@@ -93,7 +93,7 @@ class Avvance_API_Client extends Avvance_API_Base {
         $code = wp_remote_retrieve_response_code($response);
         $body = json_decode(wp_remote_retrieve_body($response), true);
 
-        if ($code !== 201 || empty($body['consumerOnboardingURL'])) {
+        if (201 !== $code || empty($body['consumerOnboardingURL'])) {
             $error_msg = isset($body['error']['message']) ? $body['error']['message'] : 'API request failed';
             avvance_log('Financing request failed: ' . $error_msg, 'error');
             return new WP_Error('api_error', $error_msg);
@@ -147,11 +147,11 @@ class Avvance_API_Client extends Avvance_API_Base {
         // Log the actual response for debugging
         avvance_log("Notification status response code: {$code}, body: {$body}");
 
-        if ($code !== 200) {
+        if (200 !== $code) {
             avvance_log('Notification status request failed with code ' . $code, 'error');
 
             // If 401, clear the token cache and log details
-            if ($code === 401) {
+            if (401 === $code) {
                 $this->clear_token_cache();
                 avvance_log('Token cache cleared due to 401 on notification-status', 'error');
             }
@@ -202,7 +202,7 @@ class Avvance_API_Client extends Avvance_API_Base {
         // Log the raw response details
         avvance_log('API Response | Status Code: ' . $code . ' | Body: ' . wp_json_encode($body));
 
-        if ($code !== 201 && $code !== 200) {
+        if (201 !== $code && 200 !== $code) {
             $error_msg = isset($body['error']['message']) ? $body['error']['message'] : 'Void failed';
             avvance_log('Void request failed: ' . $error_msg, 'error');
             return new WP_Error('void_failed', $error_msg);
@@ -250,7 +250,7 @@ class Avvance_API_Client extends Avvance_API_Base {
         $code = wp_remote_retrieve_response_code($response);
         $body = json_decode(wp_remote_retrieve_body($response), true);
 
-        if ($code !== 201 && $code !== 200) {
+        if (201 !== $code && 200 !== $code) {
             $error_msg = isset($body['error']['message']) ? $body['error']['message'] : 'Refund failed';
             avvance_log('Refund request failed: ' . $error_msg, 'error');
             return new WP_Error('refund_failed', $error_msg);

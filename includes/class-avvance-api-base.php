@@ -112,7 +112,7 @@ abstract class Avvance_API_Base {
         $code = wp_remote_retrieve_response_code($response);
         $body = json_decode(wp_remote_retrieve_body($response), true);
 
-        if ($code !== 200 || empty($body['accessToken'])) {
+        if (200 !== $code || empty($body['accessToken'])) {
             avvance_log('Token request failed with code ' . $code, 'error');
             return new WP_Error('auth_failed', 'Failed to obtain access token');
         }

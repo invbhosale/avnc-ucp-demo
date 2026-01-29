@@ -209,9 +209,9 @@ class Avvance_PreApproval_Handler {
 
         // Extract max pre-approved amount from metadata (only present for PRE_APPROVED)
         $max_amount = null;
-        if ($lead_status === 'PRE_APPROVED' && isset($event_details['metadata']) && is_array($event_details['metadata'])) {
+        if ('PRE_APPROVED' === $lead_status && isset($event_details['metadata']) && is_array($event_details['metadata'])) {
             foreach ($event_details['metadata'] as $meta) {
-                if (isset($meta['key']) && $meta['key'] === 'maxPreApprovedAmount') {
+                if (isset($meta['key']) && 'maxPreApprovedAmount' === $meta['key']) {
                     $max_amount = floatval($meta['value']);
                     avvance_log('Max pre-approved amount: $' . number_format($max_amount, 2));
                     break;
@@ -220,7 +220,7 @@ class Avvance_PreApproval_Handler {
         }
 
         // For NOT_APPROVED, explicitly set max_amount to null
-        if ($lead_status === 'NOT_APPROVED') {
+        if ('NOT_APPROVED' === $lead_status) {
             $max_amount = null;
             avvance_log('Customer NOT_APPROVED - no max amount available');
         }
@@ -268,12 +268,12 @@ class Avvance_PreApproval_Handler {
             ['%s']
         );
 
-        if ($result === false) {
+        if (false === $result) {
             avvance_log('Database update failed! Error: ' . $wpdb->last_error, 'error');
             return new WP_Error('db_update_failed', 'Failed to update pre-approval record');
         }
 
-        $status_message = ($lead_status === 'PRE_APPROVED')
+        $status_message = ('PRE_APPROVED' === $lead_status)
             ? "PRE_APPROVED - Max Amount: $" . number_format($max_amount, 2)
             : "NOT_APPROVED - Customer declined";
 
@@ -346,9 +346,9 @@ class Avvance_PreApproval_Handler {
     private static function save_preapproval_to_db($data) {
         global $wpdb;
         $table_name = $wpdb->prefix . 'avvance_preapprovals';
-        
-        // Create table if it doesn't exist
-        self::create_preapproval_table();
+
+        // Ensure table exists (uses version check to avoid repeated dbDelta calls)
+        self::maybe_create_table();
         
         $insert_data = [
             'request_id' => $data['request_id'],
@@ -375,14 +375,33 @@ class Avvance_PreApproval_Handler {
     }
     
     /**
+     * Check if table needs to be created/updated
+     *
+     * Uses version tracking to avoid running dbDelta on every request.
+     */
+    private static function maybe_create_table() {
+        $installed_version = get_option('avvance_db_version', '0');
+        $current_version = '1.1.0';
+
+        if (version_compare($installed_version, $current_version, '<')) {
+            self::create_preapproval_table();
+            update_option('avvance_db_version', $current_version);
+        }
+    }
+
+    /**
      * Create pre-approval database table
+     *
+     * Called during plugin activation and when DB version changes.
+     * Uses WordPress dbDelta for safe table creation/updates.
      */
     public static function create_preapproval_table() {
         global $wpdb;
         $table_name = $wpdb->prefix . 'avvance_preapprovals';
         $charset_collate = $wpdb->get_charset_collate();
-        
-        $sql = "CREATE TABLE IF NOT EXISTS {$table_name} (
+
+        // Note: dbDelta requires specific formatting - no IF NOT EXISTS, specific spacing
+        $sql = "CREATE TABLE {$table_name} (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             request_id varchar(255) NOT NULL,
             lead_id varchar(255) DEFAULT NULL,
@@ -397,7 +416,7 @@ class Avvance_PreApproval_Handler {
             created_at datetime NOT NULL,
             updated_at datetime NOT NULL,
             webhook_payload longtext DEFAULT NULL,
-            PRIMARY KEY (id),
+            PRIMARY KEY  (id),
             UNIQUE KEY request_id (request_id),
             KEY lead_id (lead_id),
             KEY session_id (session_id),
@@ -405,10 +424,10 @@ class Avvance_PreApproval_Handler {
             KEY status (status),
             KEY created_at (created_at)
         ) {$charset_collate};";
-        
+
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta($sql);
-        
+
         avvance_log('Pre-approval table created/verified');
     }
 }

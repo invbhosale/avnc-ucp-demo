@@ -16,12 +16,37 @@ if (!defined('ABSPATH')) {
 class Avvance_Price_Breakdown_API extends Avvance_API_Base {
 
     /**
+     * Cache TTL for price breakdown responses (1 hour)
+     *
+     * @var int
+     */
+    const CACHE_TTL = HOUR_IN_SECONDS;
+
+    /**
      * Get price breakdown for amount
      *
+     * Results are cached for 1 hour per merchant/amount combination
+     * to reduce API calls for repeated product page views.
+     *
      * @param float $amount The intended spending amount
+     * @param bool $bypass_cache Force fresh API call (default: false)
      * @return array|WP_Error API response or error
      */
-    public function get_price_breakdown($amount) {
+    public function get_price_breakdown($amount, $bypass_cache = false) {
+        $amount = floatval($amount);
+
+        // Generate cache key based on merchant and amount
+        $cache_key = 'avvance_price_' . md5($this->merchant_id . '_' . $amount);
+
+        // Check cache first (unless bypass requested)
+        if (!$bypass_cache) {
+            $cached = get_transient($cache_key);
+            if (false !== $cached) {
+                avvance_log('Using cached price breakdown for amount: ' . $amount);
+                return $cached;
+            }
+        }
+
         $token = $this->get_access_token();
         if (is_wp_error($token)) {
             return $token;
@@ -39,7 +64,7 @@ class Avvance_Price_Breakdown_API extends Avvance_API_Base {
             ],
             'body' => wp_json_encode([
                 'merchantId' => $this->merchant_id,
-                'intendedSpendingAmount' => floatval($amount)
+                'intendedSpendingAmount' => $amount
             ]),
             'timeout' => 30
         ]);
@@ -55,7 +80,7 @@ class Avvance_Price_Breakdown_API extends Avvance_API_Base {
         avvance_log('Price breakdown API response code: ' . $code);
         // Note: Response body not logged to prevent PII exposure (GDPR/CCPA compliance)
 
-        if ($code !== 200 && $code !== 201) {
+        if (200 !== $code && 201 !== $code) {
             $error_msg = isset($body['error']['message']) ? $body['error']['message'] : 'Price breakdown request failed';
             avvance_log('Price breakdown request failed: ' . $error_msg, 'error');
             return new WP_Error('price_breakdown_failed', $error_msg);
@@ -66,8 +91,20 @@ class Avvance_Price_Breakdown_API extends Avvance_API_Base {
             return new WP_Error('invalid_response', 'Invalid price breakdown response');
         }
 
-        avvance_log('Price breakdown request successful');
+        // Cache successful response
+        set_transient($cache_key, $body, self::CACHE_TTL);
+        avvance_log('Price breakdown request successful (cached for ' . self::CACHE_TTL . 's)');
 
         return $body;
+    }
+
+    /**
+     * Clear cached price breakdown for a specific amount
+     *
+     * @param float $amount The amount to clear cache for
+     */
+    public function clear_cache($amount) {
+        $cache_key = 'avvance_price_' . md5($this->merchant_id . '_' . floatval($amount));
+        delete_transient($cache_key);
     }
 }

@@ -58,7 +58,7 @@ class Avvance_PreApproval_API extends Avvance_API_Base {
         avvance_log('Pre-approval API response code: ' . $code);
         // Note: Response body not logged to prevent PII exposure (GDPR/CCPA compliance)
 
-        if ($code !== 200 && $code !== 201) {
+        if (200 !== $code && 201 !== $code) {
             $error_msg = isset($body['error']['message']) ? $body['error']['message'] : 'Pre-approval request failed';
             avvance_log('Pre-approval request failed: ' . $error_msg, 'error');
             return new WP_Error('preapproval_failed', $error_msg);
