@@ -37,11 +37,12 @@ class Avvance_Webhooks {
      */
     public static function handle_webhook() {
         avvance_log('=== WEBHOOK RECEIVED ===');
-        avvance_log('Request Method: ' . $_SERVER['REQUEST_METHOD']);
+        $request_method = isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : '';
+        avvance_log('Request Method: ' . $request_method);
 
         // Only accept POST requests
-        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-            avvance_log('ERROR: Invalid request method: ' . $_SERVER['REQUEST_METHOD'], 'error');
+        if ('POST' !== $request_method) {
+            avvance_log('ERROR: Invalid request method: ' . $request_method, 'error');
             wp_send_json_error(['message' => 'Method not allowed'], 405);
         }
 
@@ -70,6 +71,11 @@ class Avvance_Webhooks {
             avvance_log('ERROR: Invalid JSON payload: ' . json_last_error_msg(), 'error');
             wp_send_json_error(['message' => 'Invalid JSON'], 400);
         }
+
+        // TEMPORARY: Log raw webhook JSON for debugging (REMOVE BEFORE PRODUCTION)
+        avvance_log('=== RAW WEBHOOK JSON ===');
+        avvance_log($raw_payload);
+        avvance_log('=== END RAW WEBHOOK JSON ===');
 
         // Log webhook type (without sensitive data)
         $event_type = $payload['eventType'] ?? 'unknown';
@@ -121,10 +127,11 @@ class Avvance_Webhooks {
         $provided_password = '';
 
         // Try different methods to get Authorization header
+        // Note: Auth headers contain Base64 credentials, wp_unslash only (no sanitize_text_field)
         if (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-            $auth_header = $_SERVER['HTTP_AUTHORIZATION'];
+            $auth_header = wp_unslash($_SERVER['HTTP_AUTHORIZATION']); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
         } elseif (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION'])) {
-            $auth_header = $_SERVER['REDIRECT_HTTP_AUTHORIZATION'];
+            $auth_header = wp_unslash($_SERVER['REDIRECT_HTTP_AUTHORIZATION']); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
         } elseif (function_exists('getallheaders')) {
             $headers = getallheaders();
             if (isset($headers['Authorization'])) {
@@ -134,11 +141,11 @@ class Avvance_Webhooks {
 
         // Check PHP_AUTH_USER and PHP_AUTH_PW (set by some servers)
         if (isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW'])) {
-            $provided_username = $_SERVER['PHP_AUTH_USER'];
-            $provided_password = $_SERVER['PHP_AUTH_PW'];
+            $provided_username = sanitize_text_field(wp_unslash($_SERVER['PHP_AUTH_USER']));
+            $provided_password = wp_unslash($_SERVER['PHP_AUTH_PW']); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- password must not be sanitized
         } elseif (!empty($auth_header)) {
             // Parse Basic Auth header
-            if (strpos($auth_header, 'Basic ') !== 0) {
+            if (0 !== strpos($auth_header, 'Basic ')) {
                 avvance_log('ERROR: Invalid Authorization header format', 'error');
                 return false;
             }
@@ -146,7 +153,7 @@ class Avvance_Webhooks {
             $encoded_credentials = substr($auth_header, 6);
             $decoded_credentials = base64_decode($encoded_credentials);
 
-            if ($decoded_credentials === false || strpos($decoded_credentials, ':') === false) {
+            if (false === $decoded_credentials || false === strpos($decoded_credentials, ':')) {
                 avvance_log('ERROR: Failed to decode credentials', 'error');
                 return false;
             }

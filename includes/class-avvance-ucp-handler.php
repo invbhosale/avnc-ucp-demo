@@ -22,7 +22,8 @@ class Avvance_UCP_Handler {
 
         // 3. Force-allow anonymous access to UCP endpoints
         add_filter('rest_authentication_errors', function ($result) {
-            if (!empty($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '/ucp/v1/') !== false) {
+            $request_uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
+            if (!empty($request_uri) && false !== strpos($request_uri, '/ucp/v1/')) {
                 return true; // Force authorization "OK"
             }
             return $result;
@@ -65,7 +66,8 @@ class Avvance_UCP_Handler {
      */
     public static function handle_frontend_api() {
         // Check if this is an API request
-        if (!isset($_GET['avvance_api']) || $_GET['avvance_api'] !== '1') {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- public API endpoint, no nonce required
+        if (!isset($_GET['avvance_api']) || '1' !== sanitize_text_field(wp_unslash($_GET['avvance_api']))) {
             return;
         }
 
@@ -76,14 +78,17 @@ class Avvance_UCP_Handler {
         header('Content-Type: application/json; charset=UTF-8');
 
         // Handle OPTIONS preflight
-        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        $request_method = isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : '';
+        if ('OPTIONS' === $request_method) {
             status_header(200);
             exit;
         }
 
         // Get endpoint from request
-        $endpoint = isset($_GET['ucp_endpoint']) ? sanitize_text_field($_GET['ucp_endpoint']) : '';
-        $method = isset($_GET['ucp_method']) ? strtoupper(sanitize_text_field($_GET['ucp_method'])) : $_SERVER['REQUEST_METHOD'];
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- public API endpoint
+        $endpoint = isset($_GET['ucp_endpoint']) ? sanitize_text_field(wp_unslash($_GET['ucp_endpoint'])) : '';
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- public API endpoint
+        $method = isset($_GET['ucp_method']) ? strtoupper(sanitize_text_field(wp_unslash($_GET['ucp_method']))) : $request_method;
 
         if (empty($endpoint)) {
             status_header(400);
@@ -105,10 +110,11 @@ class Avvance_UCP_Handler {
         $request = new WP_REST_Request($method, '/ucp/v1' . $endpoint);
 
         // Add query params (exclude our special params)
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- public API endpoint
         $excluded_params = ['avvance_api', 'ucp_endpoint', 'ucp_method'];
-        foreach ($_GET as $key => $value) {
-            if (!in_array($key, $excluded_params)) {
-                $request->set_param($key, sanitize_text_field($value));
+        foreach ($_GET as $key => $value) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            if (!in_array($key, $excluded_params, true)) {
+                $request->set_param(sanitize_key($key), sanitize_text_field(wp_unslash($value)));
             }
         }
 
@@ -152,13 +158,16 @@ class Avvance_UCP_Handler {
         header('Content-Type: application/json; charset=UTF-8');
 
         // Handle OPTIONS preflight
-        if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        $ajax_request_method = isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : '';
+        if ('OPTIONS' === $ajax_request_method) {
             wp_send_json_success();
         }
 
         // Get endpoint from request
-        $endpoint = isset($_REQUEST['endpoint']) ? sanitize_text_field($_REQUEST['endpoint']) : '';
-        $method = isset($_REQUEST['method']) ? strtoupper(sanitize_text_field($_REQUEST['method'])) : $_SERVER['REQUEST_METHOD'];
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing -- public API endpoint
+        $endpoint = isset($_REQUEST['endpoint']) ? sanitize_text_field(wp_unslash($_REQUEST['endpoint'])) : '';
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing -- public API endpoint
+        $method = isset($_REQUEST['method']) ? strtoupper(sanitize_text_field(wp_unslash($_REQUEST['method']))) : $ajax_request_method;
 
         if (empty($endpoint)) {
             wp_send_json_error(['message' => 'Missing endpoint parameter'], 400);
@@ -178,9 +187,10 @@ class Avvance_UCP_Handler {
         $request = new WP_REST_Request($method, '/ucp/v1' . $endpoint);
 
         // Add query params
-        foreach ($_GET as $key => $value) {
-            if (!in_array($key, ['action', 'endpoint', 'method'])) {
-                $request->set_param($key, sanitize_text_field($value));
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- public API endpoint
+        foreach ($_GET as $key => $value) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+            if (!in_array($key, ['action', 'endpoint', 'method'], true)) {
+                $request->set_param(sanitize_key($key), sanitize_text_field(wp_unslash($value)));
             }
         }
 
@@ -220,7 +230,7 @@ class Avvance_UCP_Handler {
         // Create session (POST or GET with items in query)
         // Accept GET to be AI-agent friendly
         if (preg_match('#^/checkout/sessions/?$#', $endpoint)) {
-            if ($method === 'GET') {
+            if ('GET' === $method) {
                 // For GET requests, check if there's item data
                 // This allows AI agents to create sessions via GET
                 return self::create_session($request);
@@ -267,7 +277,8 @@ class Avvance_UCP_Handler {
      */
     public static function add_cors_headers() {
         // Only apply to UCP endpoints
-        if (empty($_SERVER['REQUEST_URI']) || strpos($_SERVER['REQUEST_URI'], '/ucp/v1/') === false) {
+        $cors_uri = isset($_SERVER['REQUEST_URI']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_URI'])) : '';
+        if (empty($cors_uri) || false === strpos($cors_uri, '/ucp/v1/')) {
             return;
         }
 
@@ -467,7 +478,7 @@ class Avvance_UCP_Handler {
                 'price' => $price,
                 'currency' => get_woocommerce_currency(),
                 'image' => $image_url,
-                'desc' => strip_tags($product->get_short_description()) ?: $product->get_name(),
+                'desc' => wp_strip_all_tags($product->get_short_description()) ?: $product->get_name(),
                 'link' => $product->get_permalink()
             ];
 
@@ -957,7 +968,7 @@ class Avvance_UCP_Handler {
         global $wpdb;
         $table_name = $wpdb->prefix . 'avvance_preapprovals';
 
-        $record = $wpdb->get_row($wpdb->prepare(
+        $record = $wpdb->get_row($wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
             "SELECT * FROM {$table_name} WHERE request_id = %s",
             $request_id
         ), ARRAY_A);
@@ -1038,13 +1049,13 @@ class Avvance_UCP_Handler {
             'updated_at' => current_time('mysql')
         ];
 
-        $result = $wpdb->insert(
+        $result = $wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
             $table_name,
             $insert_data,
             ['%s', '%s', '%s', '%s', '%s', '%s']
         );
 
-        if ($result === false) {
+        if (false === $result) {
             avvance_log('UCP: Failed to save pre-approval to database: ' . $wpdb->last_error, 'error');
         }
 

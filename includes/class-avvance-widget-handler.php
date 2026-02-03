@@ -119,10 +119,10 @@ class Avvance_Widget_Handler {
         global $wpdb;
         $table_name = $wpdb->prefix . 'avvance_preapprovals';
         
-        $record = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM {$table_name} 
-             WHERE browser_fingerprint = %s 
-             ORDER BY created_at DESC 
+        $record = $wpdb->get_row($wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            "SELECT * FROM {$table_name}
+             WHERE browser_fingerprint = %s
+             ORDER BY created_at DESC
              LIMIT 1",
             $fingerprint
         ), ARRAY_A);
@@ -137,7 +137,7 @@ class Avvance_Widget_Handler {
         $cookie_name = 'avvance_browser_id';
         
         if (isset($_COOKIE[$cookie_name])) {
-            return sanitize_text_field($_COOKIE[$cookie_name]);
+            return sanitize_text_field(wp_unslash($_COOKIE[$cookie_name]));
         }
         
         return null;
@@ -195,6 +195,7 @@ class Avvance_Widget_Handler {
      * AJAX: Get price breakdown
      */
     public static function ajax_get_price_breakdown() {
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- public-facing AJAX for price display, no state change
         $amount = isset($_POST['amount']) ? floatval($_POST['amount']) : 0;
         
         if ($amount < 300 || $amount > 25000) {

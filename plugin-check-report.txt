@@ -1,0 +1,68 @@
+FILE: includes/class-avvance-webhooks.php
+Line	Column	Type	Code	Message
+339	25	ERROR	WordPress.WP.I18n.MissingTranslatorsComment	A function call to __() with texts containing placeholders was found, but was not accompanied by a "translators:" comment on the line above to clarify the meaning of the placeholders.
+Learn more (opens in a new tab)
+368	25	ERROR	WordPress.WP.I18n.MissingTranslatorsComment	A function call to __() with texts containing placeholders was found, but was not accompanied by a "translators:" comment on the line above to clarify the meaning of the placeholders.
+Learn more (opens in a new tab)
+400	25	ERROR	WordPress.WP.I18n.MissingTranslatorsComment	A function call to __() with texts containing placeholders was found, but was not accompanied by a "translators:" comment on the line above to clarify the meaning of the placeholders.
+Learn more (opens in a new tab)
+
+FILE: includes/class-avvance-gateway.php
+Line	Column	Type	Code	Message
+350	21	ERROR	WordPress.WP.I18n.MissingTranslatorsComment	A function call to __() with texts containing placeholders was found, but was not accompanied by a "translators:" comment on the line above to clarify the meaning of the placeholders.
+Learn more (opens in a new tab)
+633	33	ERROR	WordPress.WP.I18n.MissingTranslatorsComment	A function call to __() with texts containing placeholders was found, but was not accompanied by a "translators:" comment on the line above to clarify the meaning of the placeholders.
+Learn more (opens in a new tab)
+682	21	ERROR	WordPress.WP.I18n.MissingTranslatorsComment	A function call to __() with texts containing placeholders was found, but was not accompanied by a "translators:" comment on the line above to clarify the meaning of the placeholders.
+Learn more (opens in a new tab)
+701	17	ERROR	WordPress.WP.I18n.MissingTranslatorsComment	A function call to __() with texts containing placeholders was found, but was not accompanied by a "translators:" comment on the line above to clarify the meaning of the placeholders.
+Learn more (opens in a new tab)
+
+FILE: avvance-for-woocommerce.php
+Line	Column	Type	Code	Message
+0	0	WARNING	plugin_header_nonexistent_domain_path	The "Domain Path" header in the plugin file must point to an existing folder. Found: "languages"
+Learn more (opens in a new tab)
+
+FILE: includes/class-avvance-preapproval-handler.php
+Line	Column	Type	Code	Message
+199	13	WARNING	WordPress.DB.PreparedSQL.InterpolatedNotPrepared	Use placeholders and $wpdb->prepare(); found interpolated variable {$table_name} at "SELECT * FROM {$table_name} WHERE request_id = %s"
+333	13	WARNING	WordPress.DB.PreparedSQL.InterpolatedNotPrepared	Use placeholders and $wpdb->prepare(); found interpolated variable {$table_name} at "SELECT * FROM {$table_name}\r\n
+
+FILE: includes/class-avvance-ucp-handler.php
+Line	Column	Type	Code	Message
+972	13	WARNING	WordPress.DB.PreparedSQL.InterpolatedNotPrepared	Use placeholders and $wpdb->prepare(); found interpolated variable {$table_name} at "SELECT * FROM {$table_name} WHERE request_id = %s"
+
+FILE: includes/class-avvance-widget-handler.php
+Line	Column	Type	Code	Message
+123	13	WARNING	WordPress.DB.PreparedSQL.InterpolatedNotPrepared	Use placeholders and $wpdb->prepare(); found interpolated variable {$table_name} at "SELECT * FROM {$table_name}\r\n
+
+FILE: uninstall.php
+Line	Column	Type	Code	Message
+64	5	WARNING	WordPress.DB.DirectDatabaseQuery.DirectQuery	Use of a direct database call is discouraged.
+64	5	WARNING	WordPress.DB.DirectDatabaseQuery.NoCaching	Direct database call without caching detected. Consider using wp_cache_get() / wp_cache_set() or wp_cache_delete().
+69	5	WARNING	WordPress.DB.DirectDatabaseQuery.DirectQuery	Use of a direct database call is discouraged.
+69	5	WARNING	WordPress.DB.DirectDatabaseQuery.NoCaching	Direct database call without caching detected. Consider using wp_cache_get() / wp_cache_set() or wp_cache_delete().
+
+FILE: includes/class-avvance-webhooks.php
+Line	Column	Type	Code	Message
+426	17	WARNING	WordPress.DB.SlowDBQuery.slow_db_query_meta_key	Detected usage of meta_key, possible slow query.
+427	17	WARNING	WordPress.DB.SlowDBQuery.slow_db_query_meta_value	Detected usage of meta_value, possible slow query.
+442	17	WARNING	WordPress.DB.SlowDBQuery.slow_db_query_meta_key	Detected usage of meta_key, possible slow query.
+443	17	WARNING	WordPress.DB.SlowDBQuery.slow_db_query_meta_value	Detected usage of meta_value, possible slow query.
+
+FILE: includes/class-avvance-gateway.php
+Line	Column	Type	Code	Message
+10	1	WARNING	WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedClassFound	Classes declared by a theme/plugin should start with the theme/plugin prefix. Found: "WC_Gateway_Avvance".
+
+FILE: includes/class-avvance-preapproval-handler.php
+Line	Column	Type	Code	Message
+198	26	WARNING	PluginCheck.Security.DirectDB.UnescapedDBParameter	Unescaped parameter $table_name used in $wpdb->get_row($wpdb->prepare( "SELECT * FROM {$table_name} WHERE request_id = %s",\r\n $request_id\r\n ))\n$table_name assigned unsafely at line 194:\n $table_name = $wpdb->prefix . 'avvance_preapprovals'
+332	26	WARNING	PluginCheck.Security.DirectDB.UnescapedDBParameter	Unescaped parameter $table_name used in $wpdb->get_row($wpdb->prepare( "SELECT * FROM {$table_name}\r\n WHERE browser_fingerprint = %s\r\n ORDER BY created_at DESC\r\n LIMIT 1",\r\n $fingerprint\r\n ))\n$table_name assigned unsafely at line 330:\n $table_name = $wpdb->prefix . 'avvance_preapprovals'\n$record assigned unsafely at line 332:\n $record = $wpdb->get_row($wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared\r\n "SELECT * FROM {$table_name}\r\n WHERE browser_fingerprint = %s\r\n ORDER BY created_at DESC\r\n LIMIT 1",\r\n $fingerprint\r\n ), ARRAY_A)\n$fingerprint used without escaping.
+
+FILE: includes/class-avvance-ucp-handler.php
+Line	Column	Type	Code	Message
+971	26	WARNING	PluginCheck.Security.DirectDB.UnescapedDBParameter	Unescaped parameter $table_name used in $wpdb->get_row($wpdb->prepare( "SELECT * FROM {$table_name} WHERE request_id = %s",\r\n $request_id\r\n ))\n$table_name assigned unsafely at line 969:\n $table_name = $wpdb->prefix . 'avvance_preapprovals'\n$record assigned unsafely at line 971:\n $record = $wpdb->get_row($wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared\r\n "SELECT * FROM {$table_name} WHERE request_id = %s",\r\n $request_id\r\n ), ARRAY_A)\n$request_id assigned unsafely at line 962:\n $request_id = $request->get_param('request_id')\n$request used without escaping.
+
+FILE: includes/class-avvance-widget-handler.php
+Line	Column	Type	Code	Message
+122	26	WARNING	PluginCheck.Security.DirectDB.UnescapedDBParameter	Unescaped parameter $table_name used in $wpdb->get_row($wpdb->prepare( "SELECT * FROM {$table_name}\r\n WHERE browser_fingerprint = %s\r\n ORDER BY created_at DESC\r\n LIMIT 1",\r\n $fingerprint\r\n ))\n$table_name assigned unsafely at line 120:\n $table_name = $wpdb->prefix . 'avvance_preapprovals'\n$record assigned unsafely at line 122:\n $record = $wpdb->get_row($wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared\r\n "SELECT * FROM {$table_name}\r\n WHERE browser_fingerprint = %s\r\n ORDER BY created_at DESC\r\n LIMIT 1",\r\n $fingerprint\r\n ), ARRAY_A)\n$fingerprint assigned unsafely at line 113:\n $fingerprint = self::get_browser_fingerprint()

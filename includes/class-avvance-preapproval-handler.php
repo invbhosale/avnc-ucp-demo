@@ -33,7 +33,7 @@ class Avvance_PreApproval_Handler {
     private static function get_browser_fingerprint() {
         // Check if cookie exists
         if (isset($_COOKIE[self::COOKIE_NAME])) {
-            return sanitize_text_field($_COOKIE[self::COOKIE_NAME]);
+            return sanitize_text_field(wp_unslash($_COOKIE[self::COOKIE_NAME]));
         }
         
         // Create new fingerprint
@@ -60,12 +60,12 @@ class Avvance_PreApproval_Handler {
         avvance_log('=== CREATE PRE-APPROVAL REQUEST ===');
         
         // Verify nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'avvance_preapproval')) {
+        if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'avvance_preapproval')) {
             avvance_log('ERROR: Nonce verification failed', 'error');
             wp_send_json_error(['message' => 'Security check failed']);
         }
-        
-        $session_id = isset($_POST['session_id']) ? sanitize_text_field($_POST['session_id']) : '';
+
+        $session_id = isset($_POST['session_id']) ? sanitize_text_field(wp_unslash($_POST['session_id'])) : '';
         
         if (empty($session_id)) {
             avvance_log('ERROR: Session ID empty', 'error');
@@ -130,7 +130,7 @@ class Avvance_PreApproval_Handler {
      */
     public static function ajax_check_preapproval_status() {
         // Verify nonce
-        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'avvance_preapproval')) {
+        if (!isset($_POST['nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['nonce'])), 'avvance_preapproval')) {
             wp_send_json_success(['status' => 'none']); // Fail silently for security
         }
         
@@ -195,7 +195,7 @@ class Avvance_PreApproval_Handler {
 
         avvance_log('Searching for pre-approval in database...');
 
-        $record = $wpdb->get_row($wpdb->prepare(
+        $record = $wpdb->get_row($wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is safe
             "SELECT * FROM {$table_name} WHERE request_id = %s",
             $request_id
         ));
@@ -240,7 +240,7 @@ class Avvance_PreApproval_Handler {
                 // Fallback: try strtotime
                 $timestamp = strtotime($raw_date);
                 if ($timestamp) {
-                    $expiry_date = date('Y-m-d H:i:s', $timestamp);
+                    $expiry_date = gmdate('Y-m-d H:i:s', $timestamp);
                 }
             }
         }
@@ -260,7 +260,7 @@ class Avvance_PreApproval_Handler {
             'webhook_payload' => wp_json_encode(self::sanitize_payload_for_storage($event_details))
         ];
 
-        $result = $wpdb->update(
+        $result = $wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
             $table_name,
             $update_data,
             ['request_id' => $request_id],
@@ -329,10 +329,10 @@ class Avvance_PreApproval_Handler {
         global $wpdb;
         $table_name = $wpdb->prefix . 'avvance_preapprovals';
         
-        $record = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM {$table_name} 
-             WHERE browser_fingerprint = %s 
-             ORDER BY created_at DESC 
+        $record = $wpdb->get_row($wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+            "SELECT * FROM {$table_name}
+             WHERE browser_fingerprint = %s
+             ORDER BY created_at DESC
              LIMIT 1",
             $fingerprint
         ), ARRAY_A);
@@ -359,15 +359,15 @@ class Avvance_PreApproval_Handler {
             'updated_at' => current_time('mysql')
         ];
         
-        avvance_log('Inserting pre-approval into database - Request ID: ' . $data['request_id']);
+      //  avvance_log('Inserting pre-approval into database - Request ID: ' . $data['request_id']);
         
-        $result = $wpdb->insert(
+        $result = $wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
             $table_name,
             $insert_data,
             ['%s', '%s', '%s', '%s', '%s', '%s']
         );
-        
-        if ($result === false) {
+
+        if (false === $result) {
             avvance_log('Database insert failed! Error: ' . $wpdb->last_error, 'error');
         } else {
             avvance_log('Pre-approval saved to database with fingerprint: ' . $data['browser_fingerprint'] . ' (Insert ID: ' . $wpdb->insert_id . ')');
@@ -428,6 +428,6 @@ class Avvance_PreApproval_Handler {
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta($sql);
 
-        avvance_log('Pre-approval table created/verified');
+   //     avvance_log('Pre-approval table created/verified');
     }
 }

@@ -5,7 +5,7 @@
  * Description: U.S. Bank point-of-sale financing for WooCommerce. Offer customers flexible installment loans at checkout.
  * Version: 1.1.0
  * Requires at least: 6.0
- * Tested up to: 6.7
+ * Tested up to: 6.9
  * Requires PHP: 7.4
  * Author: U.S. Bank Avvance
  * Author URI: https://www.usbank.com/avvance
@@ -59,9 +59,6 @@ final class Avvance_For_WooCommerce {
             add_action('admin_notices', [$this, 'woocommerce_missing_notice']);
             return;
         }
-        
-        // Load text domain
-        load_plugin_textdomain('avvance-for-woocommerce', false, dirname(plugin_basename(__FILE__)) . '/languages');
         
         // Include required files
         $this->includes();
