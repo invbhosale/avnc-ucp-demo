@@ -335,8 +335,8 @@ class Avvance_Webhooks {
                 // Mark as paid
                 $order->payment_complete($payment_transaction_id);
                 $order->add_order_note(
-                    /* translators: %s: payment transaction ID */
                     sprintf(
+                        /* translators: %s: payment transaction ID */
                         __('Avvance payment authorized. Transaction ID: %s', 'avvance-for-woocommerce'),
                         $payment_transaction_id ?: 'N/A'
                     )
@@ -365,8 +365,8 @@ class Avvance_Webhooks {
 
                 $order->update_status(
                     'cancelled',
-                    /* translators: %s: loan status */
                     sprintf(
+                        /* translators: %s: loan status */
                         __('Avvance application declined or error: %s', 'avvance-for-woocommerce'),
                         $loan_status
                     )
@@ -398,8 +398,8 @@ class Avvance_Webhooks {
             default:
                 avvance_log('Unknown loan status: ' . $loan_status . ' for order #' . $order_id, 'warning');
                 $order->add_order_note(
-                    /* translators: %s: loan status */
                     sprintf(
+                        /* translators: %s: loan status */
                         __('Avvance status update: %s', 'avvance-for-woocommerce'),
                         $loan_status
                     )

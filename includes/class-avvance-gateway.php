@@ -345,8 +345,8 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 
         if ( $total < $min || $total > $max ) {
             wc_add_notice(
-                /* translators: %1$s: minimum order amount, %2$s: maximum order amount */
                 sprintf(
+                    /* translators: %1$s: minimum order amount, %2$s: maximum order amount */
                     __( 'Avvance financing is available for orders between $%1$s and $%2$s.', 'avvance-for-woocommerce' ),
                     number_format( $min, 2 ),
                     number_format( $max, 2 )
@@ -628,8 +628,8 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 
                         $order->update_meta_data( '_avvance_last_webhook_status', $current_status );
                         $order->add_order_note(
-                            /* translators: %1$s: previous status, %2$s: new status */
                             sprintf(
+                                /* translators: %1$s: previous status, %2$s: new status */
                                 __( 'Avvance status updated during refund: %1$s → %2$s', 'avvance-for-woocommerce' ),
                                 $last_status,
                                 $current_status
@@ -677,8 +677,8 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
             avvance_log( '=== REFUND PROCESS FAILED ===' );
 
             return new WP_Error( 'invalid_status',
-                /* translators: %s: current order status */
                 sprintf(
+                    /* translators: %s: current order status */
                     __( 'Order cannot be refunded in current status: %s. Valid statuses are AUTHORIZED or SETTLED.', 'avvance-for-woocommerce' ),
                     $last_status
                 )
@@ -696,8 +696,8 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
         // Note: API response not logged to prevent PII exposure (GDPR/CCPA compliance)
 
         $order->add_order_note(
-            /* translators: %1$s: action type (refund or void), %2$s: refund amount or "full amount" */
             sprintf(
+                /* translators: %1$s: action type (refund or void), %2$s: refund amount or "full amount" */
                 __( 'Avvance %1$s processed: %2$s', 'avvance-for-woocommerce' ),
                 $action,
                 $amount ? wc_price( $amount ) : __( 'full amount', 'avvance-for-woocommerce' )
