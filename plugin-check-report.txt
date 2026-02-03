@@ -18,11 +18,6 @@ Learn more (opens in a new tab)
 701	17	ERROR	WordPress.WP.I18n.MissingTranslatorsComment	A function call to __() with texts containing placeholders was found, but was not accompanied by a "translators:" comment on the line above to clarify the meaning of the placeholders.
 Learn more (opens in a new tab)
 
-FILE: avvance-for-woocommerce.php
-Line	Column	Type	Code	Message
-0	0	WARNING	plugin_header_nonexistent_domain_path	The "Domain Path" header in the plugin file must point to an existing folder. Found: "languages"
-Learn more (opens in a new tab)
-
 FILE: includes/class-avvance-preapproval-handler.php
 Line	Column	Type	Code	Message
 199	13	WARNING	WordPress.DB.PreparedSQL.InterpolatedNotPrepared	Use placeholders and $wpdb->prepare(); found interpolated variable {$table_name} at "SELECT * FROM {$table_name} WHERE request_id = %s"
@@ -49,10 +44,6 @@ Line	Column	Type	Code	Message
 427	17	WARNING	WordPress.DB.SlowDBQuery.slow_db_query_meta_value	Detected usage of meta_value, possible slow query.
 442	17	WARNING	WordPress.DB.SlowDBQuery.slow_db_query_meta_key	Detected usage of meta_key, possible slow query.
 443	17	WARNING	WordPress.DB.SlowDBQuery.slow_db_query_meta_value	Detected usage of meta_value, possible slow query.
-
-FILE: includes/class-avvance-gateway.php
-Line	Column	Type	Code	Message
-10	1	WARNING	WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedClassFound	Classes declared by a theme/plugin should start with the theme/plugin prefix. Found: "WC_Gateway_Avvance".
 
 FILE: includes/class-avvance-preapproval-handler.php
 Line	Column	Type	Code	Message
