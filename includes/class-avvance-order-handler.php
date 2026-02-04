@@ -121,43 +121,59 @@ class Avvance_Order_Handler {
         $order_id = isset($_POST['order_id']) ? absint($_POST['order_id']) : 0;
         $nonce = isset($_POST['nonce']) ? sanitize_text_field(wp_unslash($_POST['nonce'])) : '';
 
+        avvance_log('Manual status check initiated for order: ' . $order_id);
+
         if (!wp_verify_nonce($nonce, 'avvance_manual_check_' . $order_id)) {
+            avvance_log('Manual status check failed: invalid nonce for order ' . $order_id, 'error');
             wp_send_json_error(['message' => __('Invalid security token', 'avvance-for-woocommerce')]);
         }
 
         $order = wc_get_order($order_id);
         if (!$order) {
+            avvance_log('Manual status check failed: order not found ' . $order_id, 'error');
             wp_send_json_error(['message' => __('Order not found', 'avvance-for-woocommerce')]);
         }
 
         // If already paid, redirect to order received
         if ($order->is_paid()) {
+            avvance_log('Manual status check: order ' . $order_id . ' already paid, redirecting');
             wp_send_json_success(['redirect' => $order->get_checkout_order_received_url()]);
         }
 
         // Call notification status API
         $gateway = avvance_get_gateway();
         if (!$gateway) {
+            avvance_log('Manual status check failed: gateway not available', 'error');
             wp_send_json_error(['message' => __('Gateway not available', 'avvance-for-woocommerce')]);
         }
 
+        $partner_session_id = $order->get_meta('_avvance_partner_session_id');
         $application_guid = $order->get_meta('_avvance_application_guid');
-        if (!$application_guid) {
+        avvance_log('Manual status check: partner_session_id = ' . ($partner_session_id ?: '(empty)') . ', application_guid = ' . ($application_guid ?: '(empty)') . ', order_id = ' . $order_id);
+
+        if (!$partner_session_id) {
+            avvance_log('Manual status check failed: no partner session ID on order ' . $order_id, 'error');
             wp_send_json_error(['message' => __('Application ID not found', 'avvance-for-woocommerce')]);
         }
+
+        $environment = $gateway->get_option('environment');
+        avvance_log('Manual status check: creating API client with environment=' . $environment . ', merchant_id=' . $gateway->get_option('merchant_id'));
 
         $api = new Avvance_API_Client([
             'client_key' => $gateway->get_option('client_key'),
             'client_secret' => $gateway->get_option('client_secret'),
             'merchant_id' => $gateway->get_option('merchant_id'),
-            'environment' => $gateway->get_option('environment')
+            'environment' => $environment
         ]);
 
-        $response = $api->get_notification_status($application_guid);
+        $response = $api->get_notification_status($partner_session_id);
 
         if (is_wp_error($response)) {
+            avvance_log('Manual status check API error: ' . $response->get_error_code() . ' - ' . $response->get_error_message(), 'error');
             wp_send_json_error(['message' => __('Unable to check status. Please try again.', 'avvance-for-woocommerce')]);
         }
+
+        avvance_log('Manual status check API response: ' . wp_json_encode($response));
 
         // Process the status manually (same logic as webhook)
         $status = $response['eventDetails']['loanStatus']['status'] ?? '';

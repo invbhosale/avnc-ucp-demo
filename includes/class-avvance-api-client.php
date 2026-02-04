@@ -110,29 +110,37 @@ class Avvance_API_Client extends Avvance_API_Base {
     /**
      * Get notification status
      *
-     * @param string $application_guid Application GUID
+     * @param string $notification_id Partner session ID used as the notification identifier
      * @return array|WP_Error API response or error
      */
-    public function get_notification_status($application_guid) {
+    public function get_notification_status($notification_id) {
         // FORCE fresh token for notification-status (don't use cache)
         $token = $this->get_fresh_access_token();
 
         if (is_wp_error($token)) {
+            avvance_log('Notification status: failed to get fresh token: ' . $token->get_error_message(), 'error');
             return $token;
         }
 
-        avvance_log('Getting notification status for GUID: ' . $application_guid);
-        avvance_log("Notification-status request headers: merchantId={$this->merchant_id}, notificationId={$application_guid}, environment={$this->environment}");
+        avvance_log('Getting notification status for notificationId: ' . $notification_id);
 
-        $response = wp_remote_get($this->base_url . '/poslp/services/avvance-loan/v1/notification-status', [
-            'headers' => [
-                'Authorization' => 'Bearer ' . $token,
-                'Correlation-ID' => $this->generate_correlation_id(),
-                'Content-Type' => 'application/json',
-                'partner-ID' => self::PARTNER_ID,
-                'merchant-Id' => $this->merchant_id,
-                'notificationId' => $application_guid
-            ],
+        $request_url = $this->base_url . '/poslp/services/avvance-loan/v1/notification-status';
+        $correlation_id = $this->generate_correlation_id();
+
+        $headers = [
+            'Authorization' => 'Bearer ' . $token,
+            'Correlation-ID' => $correlation_id,
+            'Content-Type' => 'application/json',
+            'partner-ID' => self::PARTNER_ID,
+            'merchant-Id' => $this->merchant_id,
+            'notificationId' => $notification_id,
+            'routingKey' => $this->get_routing_key()
+        ];
+
+        avvance_log("Notification-status request: URL={$request_url}, correlationId={$correlation_id}, merchantId={$this->merchant_id}, notificationId={$notification_id}, routingKey=" . $this->get_routing_key() . ", environment={$this->environment}");
+
+        $response = wp_remote_get($request_url, [
+            'headers' => $headers,
             'timeout' => 15
         ]);
 

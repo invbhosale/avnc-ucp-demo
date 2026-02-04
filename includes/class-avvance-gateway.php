@@ -605,11 +605,11 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
             }
         }
 
-        // Check current status from API if we have application GUID
-        if ( $application_guid ) {
+        // Check current status from API using partner session ID
+        if ( $partner_session_id ) {
             avvance_log( 'Fetching current notification status from Avvance API...' );
 
-            $status_response = $api->get_notification_status( $application_guid );
+            $status_response = $api->get_notification_status( $partner_session_id );
 
             if ( ! is_wp_error( $status_response ) ) {
                 avvance_log( 'Notification status API response received' );

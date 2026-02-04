@@ -217,11 +217,12 @@ class Avvance_Widget_Handler {
         ]);
         
         $response = $api->get_price_breakdown($amount);
-        
+
         if (is_wp_error($response)) {
+            avvance_log('Price breakdown AJAX error: ' . $response->get_error_message(), 'error');
             wp_send_json_error(['message' => 'Unable to get price breakdown']);
         }
-        
+
         wp_send_json_success($response);
     }
     

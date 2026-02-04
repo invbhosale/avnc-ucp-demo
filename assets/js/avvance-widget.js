@@ -215,11 +215,19 @@
 
                 if (response.success) {
                     var paymentOptions = response.data;
-                    
+
                     if (Array.isArray(paymentOptions) && paymentOptions.length > 0) {
                         var firstOption = paymentOptions[0];
-                        var monthlyPayment = firstOption.paymentAmount;
-                        var formattedPayment = monthlyPayment.toFixed(2);
+                        var monthlyPayment = firstOption.monthlyPaymentAmount || firstOption.paymentAmount;
+
+                        if (monthlyPayment === undefined || monthlyPayment === null) {
+                            console.error('[Avvance Widget] Could not find payment amount in response:', firstOption);
+                            $widget.find('.avvance-price-message').html('Pay over time with <img src="' +
+                                avvanceWidget.logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline">');
+                            return;
+                        }
+
+                        var formattedPayment = parseFloat(monthlyPayment).toFixed(2);
 
                         var messageHtml = 'From $' + formattedPayment + '/mo with <img src="' + 
                             avvanceWidget.logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline">';
