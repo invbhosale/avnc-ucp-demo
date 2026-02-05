@@ -103,26 +103,43 @@
     text-decoration: none;
 }
 
+/* 0% APR badge */
+.avvance-zero-apr {
+    color: #0073aa;
+    font-weight: 700;
+}
+
+/* Pre-approved badge */
+.avvance-preapproved-badge {
+    color: #2e7d32;
+    font-weight: 700;
+}
+
+.avvance-preapproved-state {
+    color: #333;
+}
+
+/* See your details link */
+.avvance-see-details-link {
+    color: #0073aa;
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: 500;
+    transition: color 0.2s;
+    white-space: nowrap;
+}
+
+.avvance-see-details-link:hover {
+    color: #005a87;
+    text-decoration: none;
+}
+
 .avvance-preapproved-message {
     color: #0073aa;
     font-weight: 600;
     display: inline-flex;
     align-items: center;
     gap: 5px;
-}
-
-.avvance-preapproved-message::before {
-    content: "✓";
-    display: inline-block;
-    width: 18px;
-    height: 18px;
-    background: #0073aa;
-    color: white;
-    border-radius: 50%;
-    text-align: center;
-    line-height: 18px;
-    font-size: 12px;
-    font-weight: bold;
 }
 
 /* ========================================
@@ -323,10 +340,11 @@
     height: 100%;
     z-index: 999999;
     display: none;
+    overflow-y: auto;
 }
 
 .avvance-modal-overlay {
-    position: absolute;
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
@@ -334,17 +352,21 @@
     background: rgba(0, 0, 0, 0.6);
 }
 
-.avvance-modal-content {
+.avvance-modal-dialog {
     position: relative;
-    max-width: 500px;
-    margin: 50px auto;
-    background: white;
+    max-width: 600px;
+    margin: 40px auto;
+    background: #fff;
     border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    animation: slideDown 0.3s ease-out;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    border: 1px solid #66666A;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: avvanceSlideDown 0.3s ease-out;
 }
 
-@keyframes slideDown {
+@keyframes avvanceSlideDown {
     from {
         transform: translateY(-50px);
         opacity: 0;
@@ -355,95 +377,360 @@
     }
 }
 
+/* Modal Header */
+.avvance-modal-header {
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.avvance-modal-logo {
+    display: flex;
+    align-items: center;
+}
+
+.avvance-modal-logo-img {
+    height: 30px;
+    width: auto;
+}
+
 .avvance-modal-close {
-    position: absolute;
-    top: 15px;
-    right: 15px;
     background: none;
     border: none;
-    font-size: 28px;
-    color: #666;
+    font-size: 24px;
     cursor: pointer;
+    color: #4C4C50;
     padding: 0;
-    width: 30px;
-    height: 30px;
     line-height: 1;
-    transition: color 0.2s;
 }
 
 .avvance-modal-close:hover {
     color: #000;
 }
 
-.avvance-modal-header {
-    padding: 30px 30px 0;
+/* Modal Body */
+.avvance-modal-body {
+    padding: 0 40px 30px 40px;
     text-align: center;
 }
 
-.avvance-modal-logo {
-    height: 40px;
-    width: auto;
+.avvance-modal-heading {
+    color: #4C4C50;
+    font-size: 28px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin: 0 0 10px;
 }
 
-.avvance-modal-body {
-    padding: 30px;
+.avvance-modal-subtitle {
+    font-size: 18px;
+    font-style: italic;
+    color: #000;
+    margin: 0 0 30px;
 }
 
-.avvance-modal-body h2 {
-    margin: 0 0 15px;
-    font-size: 24px;
-    color: #333;
-}
-
-.avvance-modal-description {
-    color: #666;
-    font-size: 14px;
-    line-height: 1.6;
-    margin: 0 0 20px;
-}
-
-.avvance-modal-benefits {
-    margin: 20px 0;
-}
-
-.avvance-benefit {
+/* Calculator Input Group */
+.avvance-input-group {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 12px;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
 }
 
-.avvance-benefit svg {
-    flex-shrink: 0;
+.avvance-input-label {
+    font-weight: 500;
+    font-size: 18px;
+    color: #2E2E32;
 }
 
-.avvance-benefit span {
-    color: #333;
+.avvance-currency-input {
+    border: none;
+    border-bottom: 1px solid #7F7F84;
+    font-size: 18px;
+    padding: 5px;
+    width: 120px;
+    font-weight: 500;
+    color: #4C4C50;
+    background: transparent;
+    outline: none;
+    text-align: center;
+}
+
+.avvance-currency-input:focus {
+    border-bottom-color: #235AE4;
+}
+
+.avvance-calc-btn {
+    border: 1px solid #235AE4;
+    background: #fff;
+    color: #235AE4;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
     font-size: 14px;
+    transition: background 0.2s;
 }
 
-.avvance-qualify-button {
+.avvance-calc-btn:hover {
+    background: #EEF6FF;
+}
+
+/* Loan Cards */
+.avvance-loan-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.avvance-loan-card {
+    border: 1px solid #CCCCD2;
+    border-radius: 10px;
+    padding: 15px;
+    text-align: left;
+}
+
+.avvance-card-badge {
+    background-color: #EEF6FF;
+    color: #235AE4;
+    font-weight: 700;
+    font-size: 12px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    display: inline-block;
+    margin-bottom: 8px;
+}
+
+.avvance-card-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.avvance-monthly-price {
+    font-size: 20px;
+    font-weight: 700;
+    color: #001E79;
+}
+
+.avvance-monthly-price .avvance-price-suffix {
+    font-size: 14px;
+    font-weight: 400;
+    color: #4C4C50;
+}
+
+.avvance-apr-text {
+    font-size: 14px;
+    color: #235AE4;
+    font-weight: 600;
+}
+
+.avvance-card-details {
+    font-size: 12px;
+    color: #4C4C50;
+    margin-top: 4px;
+}
+
+/* Primary Button */
+.avvance-btn-primary {
+    background-color: #235AE4;
+    color: #fff;
     width: 100%;
     padding: 15px;
-    background: #0073aa;
-    color: white;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     font-size: 16px;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
     transition: background 0.2s;
 }
 
-.avvance-qualify-button:hover {
-    background: #005a87;
+.avvance-btn-primary:hover {
+    background-color: #1a47b8;
 }
 
-.avvance-modal-footer-text {
-    font-size: 12px;
-    color: #999;
-    text-align: center;
+/* Success Banner (Pre-approved modal) */
+.avvance-success-banner {
+    background-color: #EEF6FF;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.avvance-success-title {
+    color: #4C4C50;
+    font-weight: 700;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.avvance-success-check {
+    background: #02C78F;
+    color: #fff;
+    border-radius: 4px;
+    padding: 0 5px;
+    font-size: 18px;
+    line-height: 1.4;
+}
+
+.avvance-success-text {
+    font-size: 16px;
+    line-height: 1.5;
+    color: #000;
+    margin: 10px 0 0;
+}
+
+.avvance-success-expiry {
+    font-size: 14px;
+    color: #000;
     margin: 15px 0 0;
+}
+
+/* Slider Section */
+.avvance-slider-section {
+    background-color: #F5F5FA;
+    padding: 30px 40px;
+    border-top: 1px solid #E5E5EA;
+}
+
+.avvance-slider-title {
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    color: #2E2E32;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.avvance-slider-logo {
+    height: 20px;
+    width: auto;
+}
+
+.avvance-slider-container {
+    position: relative;
+    background: #fff;
+    border: 1px solid #CCCCD2;
+    border-radius: 10px;
+    padding: 20px;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+}
+
+.avvance-slide {
+    display: none;
+    width: 100%;
+    align-items: center;
+    gap: 15px;
+    animation: avvanceFadeIn 0.3s ease;
+}
+
+.avvance-slide.active {
+    display: flex;
+}
+
+@keyframes avvanceFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.avvance-step-number {
+    background-color: #EEF6FF;
+    color: #235AE4;
+    font-weight: 700;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+}
+
+.avvance-step-text {
+    font-size: 16px;
+    color: #4C4C50;
+    font-weight: 500;
+}
+
+/* Slider Navigation */
+.avvance-arrow-nav {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: #4C4C50;
+    font-size: 18px;
+    user-select: none;
+    transition: background 0.2s;
+}
+
+.avvance-arrow-nav:hover {
+    background: #f0f0f0;
+}
+
+.avvance-arrow-prev {
+    right: 50px;
+}
+
+.avvance-arrow-next {
+    right: 10px;
+}
+
+.avvance-slider-dots {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.avvance-dot {
+    width: 8px;
+    height: 8px;
+    background-color: #CCCCD2;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.avvance-dot.active {
+    background-color: #7F7F84;
+}
+
+/* Disclaimer */
+.avvance-disclaimer {
+    font-size: 11px;
+    color: #666;
+    margin-top: 20px;
+    line-height: 1.4;
+}
+
+.avvance-learn-more {
+    color: #235AE4;
+    text-decoration: none;
+}
+
+.avvance-learn-more:hover {
+    text-decoration: underline;
 }
 
 /* ========================================
@@ -484,13 +771,30 @@
         text-align: center;
     }
     
-    .avvance-modal-content {
+    .avvance-modal-dialog {
         margin: 20px;
         max-width: calc(100% - 40px);
     }
-    
+
     .avvance-modal-body {
+        padding: 0 20px 20px 20px;
+    }
+
+    .avvance-slider-section {
         padding: 20px;
+    }
+
+    .avvance-modal-heading {
+        font-size: 22px;
+    }
+
+    .avvance-input-group {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .avvance-arrow-prev {
+        right: 40px;
     }
     
     #avvance-checkout-widget-container {
