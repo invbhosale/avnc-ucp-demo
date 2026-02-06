@@ -401,14 +401,12 @@ class Avvance_Widget_Handler {
              data-max-amount="<?php echo esc_attr(self::$settings['max_amount']); ?>"
              style="display: none;">
             <div class="avvance-widget-content">
-                <div class="avvance-price-message">
-                    <span class="avvance-loading">Loading payment options...</span>
-                </div>
+                <div class="avvance-price-message"></div>
             </div>
         </div>
         <?php
     }
-    
+
     /**
      * Get lowest price from grouped product children
      */
@@ -605,14 +603,12 @@ class Avvance_Widget_Handler {
              data-min-amount="<?php echo esc_attr(self::$settings['min_amount']); ?>"
              data-max-amount="<?php echo esc_attr(self::$settings['max_amount']); ?>">
             <div class="avvance-widget-content">
-                <div class="avvance-price-message">
-                    <span class="avvance-loading">Loading payment options...</span>
-                </div>
+                <div class="avvance-price-message"></div>
             </div>
         </div>
         <?php
     }
-    
+
     /**
      * Render CTA link based on pre-approval status
      *
@@ -718,9 +714,7 @@ class Avvance_Widget_Handler {
                         <button type="button" class="avvance-calc-btn" id="avvance-calc-btn">Calculate monthly payments</button>
                     </div>
 
-                    <div class="avvance-loan-cards" id="avvance-modal-loan-cards">
-                        <div class="avvance-loading">Loading loan options...</div>
-                    </div>
+                    <div class="avvance-loan-cards" id="avvance-modal-loan-cards"></div>
 
                     <button type="button" class="avvance-btn-primary avvance-qualify-button" data-hashed-mid="<?php echo esc_attr($hashed_mid); ?>">
                         See if you qualify
@@ -825,9 +819,7 @@ class Avvance_Widget_Handler {
                         <button type="button" class="avvance-calc-btn" id="avvance-preapproved-calc-btn">Calculate monthly payments</button>
                     </div>
 
-                    <div class="avvance-loan-cards" id="avvance-preapproved-modal-loan-cards">
-                        <div class="avvance-loading">Loading loan options...</div>
-                    </div>
+                    <div class="avvance-loan-cards" id="avvance-preapproved-modal-loan-cards"></div>
 
                     <button type="button" class="avvance-btn-primary avvance-continue-shopping-btn">
                         Continue shopping

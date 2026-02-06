@@ -11,8 +11,6 @@
 (function($) {
     'use strict';
 
-    console.log('[Avvance Widget] Script loaded');
-
     var isCartPage = avvanceWidget.isCartPage || false;
     var isProductPage = avvanceWidget.isProductPage || false;
     var isCheckoutPage = avvanceWidget.isCheckoutPage || false;
@@ -143,7 +141,7 @@
             return;
         }
 
-        $container.html('<div class="avvance-loading">Loading loan options...</div>');
+        $container.empty();
 
         $.ajax({
             url: avvanceWidget.ajaxUrl,
@@ -223,11 +221,9 @@
      * Open pre-approval modal
      */
     function openModal() {
-        console.log('[Avvance Widget] Opening modal');
         var $modal = $('#avvance-preapproval-modal');
 
         if ($modal.length === 0) {
-            console.error('[Avvance Widget] ERROR: Modal element not found in DOM!');
             alert('Modal not found. Please refresh the page.');
             return;
         }
@@ -249,7 +245,6 @@
      * Close modal (any avvance modal)
      */
     function closeModal() {
-        console.log('[Avvance Widget] Closing modal');
         $('.avvance-modal').fadeOut(200);
         $('body').css('overflow', '');
     }
@@ -258,8 +253,6 @@
      * Start polling for pre-approval status updates
      */
     function startStatusPolling() {
-        console.log('[Avvance Widget] Starting status polling');
-
         if (statusCheckInterval) {
             clearInterval(statusCheckInterval);
         }
@@ -269,17 +262,14 @@
 
         statusCheckInterval = setInterval(function() {
             pollCount++;
-            console.log('[Avvance Widget] Poll #' + pollCount);
 
             if (preapprovalWindow && preapprovalWindow.closed) {
-                console.log('[Avvance Widget] Pre-approval window closed, stopping polling');
                 clearInterval(statusCheckInterval);
                 statusCheckInterval = null;
             }
 
             checkPreapprovalStatusWithCallback(function(data) {
                 if (data && isPreApprovedStatus(data.status) && data.max_amount) {
-                    console.log('[Avvance Widget] Pre-approval received! Status:', data.status, 'Amount:', data.max_amount);
                     updateCTAToPreapproved(data.max_amount);
 
                     clearInterval(statusCheckInterval);
@@ -287,13 +277,11 @@
 
                     if (preapprovalWindow && !preapprovalWindow.closed) {
                         preapprovalWindow.close();
-                        console.log('[Avvance Widget] Closed pre-approval window');
                     }
                 }
             });
 
             if (pollCount >= maxPolls) {
-                console.log('[Avvance Widget] Max polling attempts reached, stopping');
                 clearInterval(statusCheckInterval);
                 statusCheckInterval = null;
             }
@@ -318,8 +306,7 @@
                     }
                 }
             },
-            error: function(xhr, status, error) {
-                console.error('[Avvance Widget] Error checking pre-approval status', error);
+            error: function() {
             }
         });
     }
@@ -329,8 +316,6 @@
      * State 3: "You're pre-approved! As low as $XXX.XX/month with <logo> See your details"
      */
     function updateCTAToPreapproved(maxAmount) {
-        console.log('[Avvance Widget] Updating widget to preapproved with amount:', maxAmount);
-
         // Update each widget that has a cached monthly payment
         $('.avvance-product-widget, .avvance-cart-widget, .avvance-checkout-widget').each(function() {
             var $widget = $(this);
@@ -351,15 +336,36 @@
             );
         });
 
-        console.log('[Avvance Widget] Widgets updated to preapproved state');
+        // Update the preapproved details modal with the new max amount
+        var $detailsModal = $('#avvance-preapproved-details-modal');
+        if ($detailsModal.length && maxAmount) {
+            var formattedMax = parseFloat(maxAmount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+            // Update data attribute for loan card loading
+            $detailsModal.data('max-amount', maxAmount);
+            $detailsModal.attr('data-max-amount', maxAmount);
+
+            // Update the success banner text
+            $detailsModal.find('.avvance-success-title').html(
+                '<span class="avvance-success-check">&#10003;</span> Your spending power is $' + formattedMax + '!'
+            );
+
+            // Update the success text
+            var minAmount = avvanceWidget.minAmount || 300;
+            $detailsModal.find('.avvance-success-text').html(
+                'You\'ve been pre-approved for U.S. Bank Avvance for $' + formattedMax + '. ' +
+                'To use your spending power, your purchase must be between $' + minAmount + ' and $' + formattedMax + '.'
+            );
+
+            // Update the input field
+            $('#avvance-preapproved-modal-amount').val('$' + formattedMax);
+        }
     }
 
     /**
      * Check for pre-approval status via AJAX
      */
     function checkPreApprovalStatus($widget) {
-        console.log('[Avvance Widget] Checking pre-approval status...');
-
         $.ajax({
             url: avvanceWidget.ajaxUrl,
             type: 'POST',
@@ -368,17 +374,11 @@
                 nonce: avvanceWidget.nonce
             },
             success: function(response) {
-                console.log('[Avvance Widget] Pre-approval check response:', response);
-
                 if (response.success && response.data.has_preapproval) {
-                    console.log('[Avvance Widget] Pre-approval found!');
                     updateCTAToPreapproved(response.data.max_amount);
-                } else {
-                    console.log('[Avvance Widget] No pre-approval found');
                 }
             },
-            error: function(xhr, status, error) {
-                console.error('[Avvance Widget] Pre-approval check failed:', error);
+            error: function() {
             }
         });
     }
@@ -395,12 +395,9 @@
      * 3. Pre-approved (handled separately by updateCTAToPreapproved)
      */
     function loadPriceBreakdown($widget) {
-        console.log('[Avvance Widget] Loading price breakdown...');
-
         var amount = parseFloat($widget.data('amount'));
 
         if (!amount || amount < avvanceWidget.minAmount || amount > avvanceWidget.maxAmount) {
-            console.log('[Avvance Widget] Amount invalid or out of range:', amount);
             return;
         }
 
@@ -413,8 +410,6 @@
                 nonce: avvanceWidget.nonce
             },
             success: function(response) {
-                console.log('[Avvance Widget] Price breakdown response:', response);
-
                 if (response.success) {
                     var offers = parseOffers(response.data);
 
@@ -426,7 +421,6 @@
                         var bestOffer = getBestOffer(offers);
 
                         if (!bestOffer || !bestOffer.paymentAmount) {
-                            console.error('[Avvance Widget] Could not find valid offer in response');
                             $widget.find('.avvance-widget-content').html(
                                 '<div class="avvance-price-message">' +
                                 'Pay over time with <img src="' + avvanceWidget.logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline">' +
@@ -469,12 +463,10 @@
                         $widget.find('.avvance-widget-content').html(
                             '<div class="avvance-price-message">' + messageHtml + '</div>'
                         );
-                        console.log('[Avvance Widget] Price message updated (bestOffer: ' + bestOffer.offerType + ', hasZeroApr: ' + hasZeroApr + ')');
                     }
                 }
             },
-            error: function(xhr, status, error) {
-                console.error('[Avvance Widget] Price breakdown error:', error);
+            error: function() {
             }
         });
     }
@@ -483,14 +475,11 @@
      * Update widget with new amount
      */
     function updateWidget($widget, newAmount) {
-        console.log('[Avvance Widget] Updating widget with amount:', newAmount);
-        
         var minAmount = avvanceWidget.minAmount;
         var maxAmount = avvanceWidget.maxAmount;
-        
+
         // Check if amount is in valid range
         if (newAmount < minAmount || newAmount > maxAmount) {
-            console.log('[Avvance Widget] Amount out of range, hiding widget');
             $widget.fadeOut(300);
             return;
         }
@@ -512,10 +501,8 @@
      */
     function initWidgets() {
         var $widgets = $('.avvance-product-widget, .avvance-cart-widget, .avvance-checkout-widget, .avvance-category-widget');
-        console.log('[Avvance Widget] Found widgets:', $widgets.length);
 
         if ($widgets.length === 0 && isCartPage) {
-            console.log('[Avvance Widget] No widgets found on cart page, will inject via JS');
             setTimeout(injectWidgetForBlocks, 2000);
             return;
         }
@@ -523,9 +510,7 @@
         $widgets.each(function() {
             var $widget = $(this);
             var context = $widget.data('context');
-            
-            console.log('[Avvance Widget] Initializing widget:', context);
-            
+
             loadPriceBreakdown($widget);
             
             // Check pre-approval for cart and product widgets
@@ -539,40 +524,30 @@
      * Handle variable product variation changes
      */
     function initVariableProductSupport() {
-        console.log('[Avvance Widget] Initializing variable product support');
-        
         // Store original price
         var $widget = $('.avvance-product-widget');
         if ($widget.length && !$widget.data('original-price')) {
             var originalPrice = $widget.data('amount');
             $widget.data('original-price', originalPrice);
-            console.log('[Avvance Widget] Original price stored:', originalPrice);
         }
-        
+
         // Listen for variation found event
         $(document.body).on('found_variation', '.variations_form', function(event, variation) {
-            console.log('[Avvance Widget] ✅ Variation found:', variation);
-            
             var $productWidget = $('.avvance-product-widget');
-            
+
             if ($productWidget.length) {
                 var newPrice = variation.display_price;
-                console.log('[Avvance Widget] New variation price:', newPrice);
-                
                 updateWidget($productWidget, newPrice);
             }
         });
-        
+
         // Listen for variation reset
         $(document.body).on('reset_data', '.variations_form', function() {
-            console.log('[Avvance Widget] Variation reset');
-            
             var $productWidget = $('.avvance-product-widget');
-            
+
             if ($productWidget.length) {
                 var originalPrice = $productWidget.data('original-price') || $productWidget.data('amount');
-                console.log('[Avvance Widget] Resetting to original price:', originalPrice);
-                
+
                 if (originalPrice > 0) {
                     updateWidget($productWidget, originalPrice);
                 } else {
@@ -600,8 +575,6 @@
                 }
                 
                 var newAmount = basePrice * qty;
-                console.log('[Avvance Widget] Quantity changed to', qty, ', new amount:', newAmount);
-                
                 updateWidget($productWidget, newAmount);
             }
         });
@@ -611,33 +584,26 @@
      * Handle cart updates
      */
     function initCartSupport() {
-        console.log('[Avvance Widget] Initializing cart support');
-        
         // Cart totals updated
         $(document.body).on('updated_cart_totals', function() {
-            console.log('[Avvance Widget] Cart totals updated');
-            
             setTimeout(function() {
                 var $cartWidget = $('.avvance-cart-widget');
-                
+
                 if ($cartWidget.length) {
                     // Try to get new cart total from the page
                     var newTotal = getCartTotalFromPage();
-                    
+
                     if (newTotal) {
-                        console.log('[Avvance Widget] New cart total:', newTotal);
                         updateWidget($cartWidget, newTotal);
                     }
                 } else {
-                    console.log('[Avvance Widget] No cart widget found, reinitializing');
                     initWidgets();
                 }
             }, 500);
         });
-        
+
         // Shipping method updated
         $(document.body).on('updated_shipping_method', function() {
-            console.log('[Avvance Widget] Shipping method updated');
             $(document.body).trigger('updated_cart_totals');
         });
     }
@@ -662,7 +628,6 @@
                 var amount = parseFloat(text.replace(/[^0-9.]/g, ''));
                 
                 if (!isNaN(amount) && amount > 0) {
-                    console.log('[Avvance Widget] Found cart total:', amount, 'from selector:', selectors[i]);
                     return amount;
                 }
             }
@@ -675,13 +640,10 @@
      * Handle checkout page
      */
     function initCheckoutSupport() {
-        console.log('[Avvance Widget] Initializing checkout support');
-        
         // Payment method change
         $('form.checkout').on('change', 'input[name="payment_method"]', function() {
             var selectedMethod = $(this).val();
-            console.log('[Avvance Widget] Payment method changed to:', selectedMethod);
-            
+
             if (selectedMethod === 'avvance') {
                 $('#avvance-checkout-widget-container').slideDown(300);
             } else {
@@ -691,8 +653,6 @@
         
         // Checkout updated (after coupon, shipping change, etc.)
         $(document.body).on('updated_checkout', function() {
-            console.log('[Avvance Widget] Checkout updated');
-            
             // Recheck if Avvance is selected
             if ($('input[name="payment_method"]:checked').val() === 'avvance') {
                 $('#avvance-checkout-widget-container').slideDown(300);
@@ -709,33 +669,25 @@
      * Inject widget for WooCommerce Blocks cart
      */
     function injectWidgetForBlocks() {
-        console.log('[Avvance Widget] Attempting widget injection for Blocks cart');
-        
         // Try to find cart total
         var cartTotal = getCartTotalFromPage();
-        
+
         if (!cartTotal) {
-            console.log('[Avvance Widget] Could not find cart total');
             return;
         }
-        
+
         var minAmount = avvanceWidget.minAmount;
         var maxAmount = avvanceWidget.maxAmount;
-        
+
         if (cartTotal < minAmount || cartTotal > maxAmount) {
-            console.log('[Avvance Widget] Cart total out of range:', cartTotal);
             return;
         }
-        
-        console.log('[Avvance Widget] Cart total valid:', cartTotal);
         
         // Create widget HTML
         var sessionId = 'avv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
         var widgetHtml = '<div class="avvance-cart-widget avvance-cart-widget-injected" data-amount="' + cartTotal + '" data-session-id="' + sessionId + '" data-context="cart" style="margin: 20px 0; padding: 15px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 6px;">' +
             '<div class="avvance-widget-content">' +
-            '<div class="avvance-price-message">' +
-            '<span class="avvance-loading">Loading payment options...</span>' +
-            '</div>' +
+            '<div class="avvance-price-message"></div>' +
             '</div>' +
             '</div>';
         
@@ -749,21 +701,17 @@
         var injected = false;
         for (var i = 0; i < injectionSelectors.length; i++) {
             var $injectPoint = $(injectionSelectors[i]).last();
-            
+
             if ($injectPoint.length) {
-                console.log('[Avvance Widget] Injecting after:', injectionSelectors[i]);
                 $injectPoint.after(widgetHtml);
                 injected = true;
                 break;
             }
         }
-        
+
         if (!injected) {
-            console.log('[Avvance Widget] Could not find injection point');
             return;
         }
-        
-        console.log('[Avvance Widget] ✅ Widget injected');
         
         // Initialize the injected widget
         var $injectedWidget = $('.avvance-cart-widget-injected');
@@ -777,8 +725,6 @@
      * Initialize on DOM ready
      */
     $(document).ready(function() {
-        console.log('[Avvance Widget] DOM ready, initializing...');
-
         initWidgets();
 
         if (isProductPage) {
@@ -796,21 +742,22 @@
         // Handle "Check your spending power" link clicks - open pre-approval modal
         $(document).on('click', '.avvance-prequal-link', function(e) {
             e.preventDefault();
-            console.log('[Avvance Widget] Pre-qual link clicked');
             openModal();
         });
 
         // Handle "See your details" link clicks - open preapproved details modal
         $(document).on('click', '.avvance-see-details-link', function(e) {
             e.preventDefault();
-            console.log('[Avvance Widget] See your details link clicked');
             var $detailsModal = $('#avvance-preapproved-details-modal');
             if ($detailsModal.length) {
-                // Load loan cards for preapproved modal
-                var maxAmount = parseFloat($detailsModal.data('max-amount')) || 0;
+                // Get max amount - use attr() as fallback since data() might be cached
+                var maxAmount = parseFloat($detailsModal.attr('data-max-amount')) || parseFloat($detailsModal.data('max-amount')) || 0;
+
+                // Always try to load loan cards
                 if (maxAmount > 0) {
                     loadModalPriceBreakdown(maxAmount, $('#avvance-preapproved-modal-loan-cards'));
                 }
+
                 $detailsModal.fadeIn(200);
                 $('body').css('overflow', 'hidden');
             }
@@ -818,7 +765,6 @@
 
         // Handle modal close (all avvance modals)
         $(document).on('click', '.avvance-modal-close, .avvance-modal-overlay', function() {
-            console.log('[Avvance Widget] Modal close triggered');
             closeModal();
         });
 
@@ -831,7 +777,6 @@
         $(document).on('click', '#avvance-calc-btn', function(e) {
             e.preventDefault();
             var amount = parseCurrencyInput($('#avvance-modal-amount').val());
-            console.log('[Avvance Widget] Calculate clicked, amount:', amount);
             loadModalPriceBreakdown(amount, $('#avvance-modal-loan-cards'));
         });
 
@@ -839,7 +784,6 @@
         $(document).on('click', '#avvance-preapproved-calc-btn', function(e) {
             e.preventDefault();
             var amount = parseCurrencyInput($('#avvance-preapproved-modal-amount').val());
-            console.log('[Avvance Widget] Preapproved calculate clicked, amount:', amount);
             loadModalPriceBreakdown(amount, $('#avvance-preapproved-modal-loan-cards'));
         });
 
@@ -866,16 +810,12 @@
         // Handle "See if you qualify" button
         $(document).on('click', '.avvance-qualify-button', function(e) {
             e.preventDefault();
-            console.log('[Avvance Widget] Qualify button clicked');
 
             var $button = $(this);
             var $widget = $('.avvance-product-widget, .avvance-cart-widget, .avvance-checkout-widget').first();
             var sessionId = $widget.data('session-id');
 
-            console.log('[Avvance Widget] Session ID:', sessionId);
-
             if (!sessionId) {
-                console.error('[Avvance Widget] Missing session ID');
                 alert('Unable to start pre-approval. Please refresh the page and try again.');
                 return;
             }
@@ -893,7 +833,6 @@
                     session_id: sessionId
                 },
                 success: function(response) {
-                    console.log('[Avvance Widget] Pre-approval response:', response);
                     $button.removeClass('loading').prop('disabled', false);
 
                     if (response.success && response.data && response.data.url) {
@@ -909,21 +848,17 @@
 
                         if (preapprovalWindow) {
                             preapprovalWindow.focus();
-                            console.log('[Avvance Widget] Pre-approval window opened');
                             startStatusPolling();
                         } else {
-                            console.log('[Avvance Widget] WARNING: Pop-up blocked');
                             alert('Please allow pop-ups to open your pre-approval application.');
                             window.open(response.data.url, '_blank');
                         }
                     } else {
-                        console.error('[Avvance Widget] Invalid pre-approval response', response);
                         var errorMsg = (response.data && response.data.message) ? response.data.message : 'Unable to create pre-approval request. Please try again.';
                         alert(errorMsg);
                     }
                 },
-                error: function(xhr, status, error) {
-                    console.error('[Avvance Widget] Pre-approval AJAX failed', {xhr: xhr, status: status, error: error});
+                error: function() {
                     $button.removeClass('loading').prop('disabled', false);
                     alert('An error occurred. Please try again or contact support.');
                 }
@@ -932,11 +867,8 @@
 
         // Check for existing pre-approval on page load (after delay)
         setTimeout(function() {
-            console.log('[Avvance Widget] Checking for existing pre-approval');
             checkPreapprovalStatusWithCallback(function(data) {
-                console.log('[Avvance Widget] Pre-approval check result:', data);
                 if (data && isPreApprovedStatus(data.status) && data.max_amount) {
-                    console.log('[Avvance Widget] Updating to pre-approved status with amount:', data.max_amount);
                     updateCTAToPreapproved(data.max_amount);
                 }
             });
