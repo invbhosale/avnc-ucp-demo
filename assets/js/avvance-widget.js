@@ -745,6 +745,66 @@
             openModal();
         });
 
+        // Handle info icon clicks on category widgets - check pre-approval status and open appropriate modal
+        $(document).on('click', '.avvance-info-icon', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            var $icon = $(this);
+            var amount = parseFloat($icon.data('amount')) || 0;
+
+            // Check pre-approval status and open appropriate modal
+            $.ajax({
+                url: avvanceWidget.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'avvance_check_preapproval',
+                    nonce: avvanceWidget.nonce
+                },
+                success: function(response) {
+                    if (response.success && response.data.has_preapproval) {
+                        // User is pre-approved - open preapproved details modal
+                        var $detailsModal = $('#avvance-preapproved-details-modal');
+                        if ($detailsModal.length) {
+                            var maxAmount = parseFloat($detailsModal.attr('data-max-amount')) || parseFloat($detailsModal.data('max-amount')) || response.data.max_amount || 0;
+
+                            if (maxAmount > 0) {
+                                loadModalPriceBreakdown(maxAmount, $('#avvance-preapproved-modal-loan-cards'));
+                            }
+
+                            $detailsModal.fadeIn(200);
+                            $('body').css('overflow', 'hidden');
+                        }
+                    } else {
+                        // User is not pre-approved - open pre-approval modal
+                        var $modal = $('#avvance-preapproval-modal');
+                        if ($modal.length) {
+                            if (amount > 0) {
+                                $('#avvance-modal-amount').val(formatCurrency(amount));
+                                loadModalPriceBreakdown(amount, $('#avvance-modal-loan-cards'));
+                            }
+
+                            $modal.fadeIn(200);
+                            $('body').css('overflow', 'hidden');
+                        }
+                    }
+                },
+                error: function() {
+                    // On error, default to pre-approval modal
+                    var $modal = $('#avvance-preapproval-modal');
+                    if ($modal.length) {
+                        if (amount > 0) {
+                            $('#avvance-modal-amount').val(formatCurrency(amount));
+                            loadModalPriceBreakdown(amount, $('#avvance-modal-loan-cards'));
+                        }
+
+                        $modal.fadeIn(200);
+                        $('body').css('overflow', 'hidden');
+                    }
+                }
+            });
+        });
+
         // Handle "See your details" link clicks - open preapproved details modal
         $(document).on('click', '.avvance-see-details-link', function(e) {
             e.preventDefault();

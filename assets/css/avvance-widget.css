@@ -166,6 +166,34 @@
     color: #000;
 }
 
+.avvance-logo-info-wrapper {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 1px;
+    position: relative;
+}
+
+.avvance-info-icon {
+    text-decoration: none;
+    cursor: pointer;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    position: relative;
+    top: -4px;
+}
+
+.avvance-info-icon-img {
+    width: 14px;
+    height: 14px;
+    display: block;
+    transition: opacity 0.2s;
+}
+
+.avvance-info-icon:hover .avvance-info-icon-img {
+    opacity: 0.7;
+}
+
 /* ========================================
    PRODUCT PAGE WIDGET
    ======================================== */

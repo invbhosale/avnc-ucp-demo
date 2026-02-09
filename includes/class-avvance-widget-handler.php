@@ -295,34 +295,41 @@ class Avvance_Widget_Handler {
      */
     public static function render_category_widget() {
         global $product;
-        
+
         if (!$product || !$product->get_price()) {
             return;
         }
-        
+
         $price = $product->get_price();
-        
+
         // Check min/max
         if ($price < self::$settings['min_amount'] || $price > self::$settings['max_amount']) {
             return;
         }
-        
+
         $monthly = self::calculate_monthly_payment($price);
         $widget_id = 'avvance-category-widget-' . $product->get_id();
-        
+        $session_id = self::generate_session_id();
+
         ?>
-        <div id="<?php echo esc_attr($widget_id); ?>" 
+        <div id="<?php echo esc_attr($widget_id); ?>"
              class="avvance-category-widget avvance-widget-<?php echo esc_attr(self::$settings['theme']); ?>"
              data-amount="<?php echo esc_attr($price); ?>"
-             data-product-id="<?php echo esc_attr($product->get_id()); ?>">
+             data-product-id="<?php echo esc_attr($product->get_id()); ?>"
+             data-session-id="<?php echo esc_attr($session_id); ?>">
             <span class="avvance-message-small">
                 Or <strong>$<?php echo esc_html($monthly); ?>/mo</strong> with
-                <?php if (self::$settings['show_logo']): ?>
-                    <img src="<?php echo esc_url(AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg'); ?>" 
-                         alt="Avvance" class="avvance-logo-small">
-                <?php else: ?>
-                    <span class="avvance-brand">Avvance</span>
-                <?php endif; ?>
+                <span class="avvance-logo-info-wrapper">
+                    <?php if (self::$settings['show_logo']): ?>
+                        <img src="<?php echo esc_url(AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg'); ?>"
+                             alt="Avvance" class="avvance-logo-small">
+                    <?php else: ?>
+                        <span class="avvance-brand">Avvance</span>
+                    <?php endif; ?>
+                    <a href="#" class="avvance-info-icon" data-amount="<?php echo esc_attr($price); ?>" title="Learn more">
+                        <img src="<?php echo esc_url(AVVANCE_PLUGIN_URL . 'assets/images/toggletip-icon.svg'); ?>" alt="Info" class="avvance-info-icon-img">
+                    </a>
+                </span>
             </span>
         </div>
         <?php
@@ -653,11 +660,11 @@ class Avvance_Widget_Handler {
     }
     
     /**
-     * Ensure modal is rendered on cart/checkout pages (WooCommerce Blocks compatibility)
+     * Ensure modal is rendered on cart/checkout/shop/category pages
      */
     public static function ensure_modal_rendered() {
-        // Only render on cart or checkout pages
-        if (!is_cart() && !is_checkout()) {
+        // Render on cart, checkout, shop, and category pages
+        if (!is_cart() && !is_checkout() && !is_shop() && !is_product_category() && !is_product_tag()) {
             return;
         }
 
@@ -674,7 +681,7 @@ class Avvance_Widget_Handler {
             return;
         }
 
-        // Render the modal for Blocks cart/checkout pages
+        // Render the modal
         self::render_modal();
         $modal_rendered_in_footer = true;
         $avvance_modal_rendered = true;
