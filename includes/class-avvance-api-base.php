@@ -137,15 +137,6 @@ abstract class Avvance_API_Base {
     }
 
     /**
-     * Get routing key for environment
-     *
-     * @return string Routing key (az1 for production, uat3 for sandbox)
-     */
-    protected function get_routing_key() {
-        return ($this->environment === 'production') ? 'az1' : 'uat3';
-    }
-
-    /**
      * Generate correlation ID for request tracking
      *
      * @return string UUID for correlation

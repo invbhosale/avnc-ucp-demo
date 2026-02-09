@@ -59,8 +59,7 @@ class Avvance_Price_Breakdown_API extends Avvance_API_Base {
                 'Authorization' => 'Bearer ' . $token,
                 'Content-Type' => 'application/json',
                 'Correlation-ID' => $this->generate_correlation_id(),
-                'Partner-ID' => self::PARTNER_ID,
-                'routingKey' => $this->get_routing_key()
+                'Partner-ID' => self::PARTNER_ID
             ],
             'body' => wp_json_encode([
                 'merchantId' => $this->merchant_id,

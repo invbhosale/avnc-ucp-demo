@@ -133,11 +133,10 @@ class Avvance_API_Client extends Avvance_API_Base {
             'Content-Type' => 'application/json',
             'partner-ID' => self::PARTNER_ID,
             'merchant-Id' => $this->merchant_id,
-            'notificationId' => $notification_id,
-            'routingKey' => $this->get_routing_key()
+            'notificationId' => $notification_id
         ];
 
-        avvance_log("Notification-status request: URL={$request_url}, correlationId={$correlation_id}, merchantId={$this->merchant_id}, notificationId={$notification_id}, routingKey=" . $this->get_routing_key() . ", environment={$this->environment}");
+        avvance_log("Notification-status request: URL={$request_url}, correlationId={$correlation_id}, merchantId={$this->merchant_id}, notificationId={$notification_id}, environment={$this->environment}");
 
         $response = wp_remote_get($request_url, [
             'headers' => $headers,
