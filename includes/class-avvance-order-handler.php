@@ -66,7 +66,7 @@ class Avvance_Order_Handler {
 		// Check if expired.
 		if ( avvance_is_url_expired( $order_id ) ) {
 			echo '<div class="woocommerce-info">';
-			echo esc_html__( 'Your previous Avvance application has expired. Please complete checkout to create a new application.', 'avvance-for-woocommerce' );
+			echo esc_html__( 'Your previous U.S. Bank Avvance application has expired. Please complete checkout to create a new application.', 'avvance-for-woocommerce' );
 			echo '</div>';
 			return;
 		}
@@ -74,14 +74,14 @@ class Avvance_Order_Handler {
 		?>
 		<div class="woocommerce-info avvance-resume-banner">
 			<p>
-				<?php esc_html_e( 'You have a pending Avvance application for this order.', 'avvance-for-woocommerce' ); ?>
+				<?php esc_html_e( 'You have a pending U.S. Bank Avvance application for this order.', 'avvance-for-woocommerce' ); ?>
 			</p>
 			<p>
 				<a href="<?php echo esc_url( $url ); ?>" target="_blank" class="button">
-					<?php esc_html_e( 'Resume Avvance Application', 'avvance-for-woocommerce' ); ?>
+					<?php esc_html_e( 'Resume U.S. Bank Avvance Application', 'avvance-for-woocommerce' ); ?>
 				</a>
 				<button type="button" class="button" id="avvance-check-status-cart">
-					<?php esc_html_e( 'Check Application Status', 'avvance-for-woocommerce' ); ?>
+					<?php esc_html_e( 'Check U.S. Bank Avvance Application Status', 'avvance-for-woocommerce' ); ?>
 				</button>
 			</p>
 		</div>
@@ -105,12 +105,12 @@ class Avvance_Order_Handler {
 							if (response.data.redirect) {
 								window.location = response.data.redirect;
 							} else {
-								alert('<?php echo esc_js( __( 'Your application is still pending. Please complete it in the Avvance window.', 'avvance-for-woocommerce' ) ); ?>');
-								$btn.prop('disabled', false).text('<?php echo esc_js( __( 'Check Application Status', 'avvance-for-woocommerce' ) ); ?>');
+								alert('<?php echo esc_js( __( 'Your application is still pending. Please complete it in the U.S. Bank Avvance window.', 'avvance-for-woocommerce' ) ); ?>');
+								$btn.prop('disabled', false).text('<?php echo esc_js( __( 'Check U.S. Bank Avvance Application Status', 'avvance-for-woocommerce' ) ); ?>');
 							}
 						} else {
 							alert(response.data.message || '<?php echo esc_js( __( 'Unable to check status. Please try again.', 'avvance-for-woocommerce' ) ); ?>');
-							$btn.prop('disabled', false).text('<?php echo esc_js( __( 'Check Application Status', 'avvance-for-woocommerce' ) ); ?>');
+							$btn.prop('disabled', false).text('<?php echo esc_js( __( 'Check U.S. Bank Avvance Application Status', 'avvance-for-woocommerce' ) ); ?>');
 						}
 					}
 				});

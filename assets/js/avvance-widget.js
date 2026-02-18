@@ -229,7 +229,7 @@
         }
 
         // Get amount from first visible widget
-        var $widget = $('.avvance-product-widget, .avvance-cart-widget, .avvance-checkout-widget').first();
+        var $widget = $('.avvance-product-widget, .avvance-cart-widget, .avvance-checkout-widget, .avvance-category-widget').first();
         var amount = $widget.length ? parseFloat($widget.data('amount')) : 0;
 
         if (amount > 0) {
@@ -317,7 +317,7 @@
      */
     function updateCTAToPreapproved(maxAmount) {
         // Update each widget that has a cached monthly payment
-        $('.avvance-product-widget, .avvance-cart-widget, .avvance-checkout-widget').each(function() {
+        $('.avvance-product-widget, .avvance-cart-widget, .avvance-checkout-widget, .avvance-category-widget').each(function() {
             var $widget = $(this);
             var monthlyPayment = $widget.data('monthly-payment');
             var formattedPayment = monthlyPayment ? parseFloat(monthlyPayment).toFixed(2) : null;
@@ -872,7 +872,7 @@
             e.preventDefault();
 
             var $button = $(this);
-            var $widget = $('.avvance-product-widget, .avvance-cart-widget, .avvance-checkout-widget').first();
+            var $widget = $('.avvance-product-widget, .avvance-cart-widget, .avvance-checkout-widget, .avvance-category-widget').first();
             var sessionId = $widget.data('session-id');
 
             if (!sessionId) {

@@ -45,6 +45,8 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 		// Hooks.
 		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 		add_action( 'woocommerce_thankyou_' . $this->id, array( $this, 'thankyou_page' ) );
+		add_filter( 'woocommerce_endpoint_order-received_title', array( $this, 'customize_order_received_title' ), 10, 2 );
+		add_filter( 'woocommerce_thankyou_order_received_text', array( $this, 'customize_order_received_text' ), 10, 2 );
 		add_action( 'wp_ajax_avvance_check_order_status', array( $this, 'ajax_check_order_status' ) );
 		add_action( 'wp_ajax_nopriv_avvance_check_order_status', array( $this, 'ajax_check_order_status' ) );
 	}
@@ -362,7 +364,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			wc_add_notice(
 				sprintf(
 					/* translators: %1$s: minimum order amount, %2$s: maximum order amount */
-					__( 'Avvance financing is available for orders between $%1$s and $%2$s.', 'avvance-for-woocommerce' ),
+					__( 'U.S. Bank Avvance financing is available for orders between $%1$s and $%2$s.', 'avvance-for-woocommerce' ),
 					number_format( $min, 2 ),
 					number_format( $max, 2 )
 				),
@@ -379,7 +381,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 
 		if ( is_wp_error( $response ) ) {
 			avvance_log( 'Financing request failed for order #' . $order_id . ': ' . $response->get_error_message(), 'error' );
-			wc_add_notice( __( 'Unable to process Avvance payment. Please try again or use another payment method.', 'avvance-for-woocommerce' ), 'error' );
+			wc_add_notice( __( 'Unable to process U.S. Bank Avvance payment. Please try again or use another payment method.', 'avvance-for-woocommerce' ), 'error' );
 			return array( 'result' => 'failure' );
 		}
 
@@ -417,6 +419,40 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 	}
 
 	/**
+	 * Change "Order received" title to "Pay for order" for pending Avvance orders.
+	 *
+	 * @param string $title Original endpoint title.
+	 * @param string $id    Endpoint ID.
+	 * @return string
+	 */
+	public function customize_order_received_title( $title, $id ) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- reading order ID from URL on thank-you page.
+		$order_id = isset( $_GET['key'] ) ? wc_get_order_id_by_order_key( sanitize_text_field( wp_unslash( $_GET['key'] ) ) ) : 0;
+		$order    = wc_get_order( $order_id );
+
+		if ( $order && 'avvance' === $order->get_payment_method() && $order->needs_payment() ) {
+			return __( 'Pay for order', 'avvance-for-woocommerce' );
+		}
+
+		return $title;
+	}
+
+	/**
+	 * Remove "Thank you. Your order has been received." text for pending Avvance orders.
+	 *
+	 * @param string   $text  Original thank-you text.
+	 * @param WC_Order $order WooCommerce order object.
+	 * @return string
+	 */
+	public function customize_order_received_text( $text, $order ) {
+		if ( $order && 'avvance' === $order->get_payment_method() && $order->needs_payment() ) {
+			return '';
+		}
+
+		return $text;
+	}
+
+	/**
 	 * Thank you page (classic checkout only).
 	 *
 	 * @param int $order_id WooCommerce order ID.
@@ -437,26 +473,32 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 		// Check if URL is expired.
 		if ( avvance_is_url_expired( $order_id ) ) {
 			echo '<div class="woocommerce-info">';
-			echo esc_html__( 'Your Avvance application link has expired. Please contact us to complete your order.', 'avvance-for-woocommerce' );
+			echo esc_html__( 'Your U.S. Bank Avvance application link has expired. Please contact us to complete your order.', 'avvance-for-woocommerce' );
 			echo '</div>';
 			return;
 		}
 
 		?>
+		<script>
+		(function() {
+			var orderEl = document.querySelector('.woocommerce-order');
+			if (orderEl) { orderEl.classList.add('avvance-pay-for-order'); }
+		})();
+		</script>
 		<div class="avvance-thankyou">
-			<h2><?php esc_html_e( 'Complete Your Avvance Application', 'avvance-for-woocommerce' ); ?></h2>
-			<p><?php esc_html_e( 'Opening your Avvance application in a new window...', 'avvance-for-woocommerce' ); ?></p>
+			<h2><?php esc_html_e( 'Complete Your U.S. Bank Avvance Application', 'avvance-for-woocommerce' ); ?></h2>
+			<p><?php esc_html_e( 'Opening your U.S. Bank Avvance application in a new window...', 'avvance-for-woocommerce' ); ?></p>
 			<p id="avvance-status" style="font-weight: bold; color: #0073aa;">
-				<?php esc_html_e( 'Waiting for application completion...', 'avvance-for-woocommerce' ); ?>
+				<?php esc_html_e( 'Waiting for U.S. Bank Avvance application completion...', 'avvance-for-woocommerce' ); ?>
 			</p>
 			<div id="avvance-manual-link" style="display:none; margin-top: 20px;">
 				<p><?php esc_html_e( 'Pop-up blocked? Click below to open your application:', 'avvance-for-woocommerce' ); ?></p>
-				<a href="<?php echo esc_url( $url ); ?>" target="_blank" class="button"><?php esc_html_e( 'Open Avvance Application', 'avvance-for-woocommerce' ); ?></a>
+				<a href="<?php echo esc_url( $url ); ?>" target="_blank" class="button"><?php esc_html_e( 'Open U.S. Bank Avvance Application', 'avvance-for-woocommerce' ); ?></a>
 			</div>
 			<div id="avvance-manual-check" style="display:none; margin-top: 30px;">
-				<p><?php esc_html_e( 'Completed your application?', 'avvance-for-woocommerce' ); ?></p>
+				<p><?php esc_html_e( 'Completed your U.S. Bank Avvance application?', 'avvance-for-woocommerce' ); ?></p>
 				<button type="button" class="button" id="avvance-check-status-btn">
-					<?php esc_html_e( 'Check Application Status', 'avvance-for-woocommerce' ); ?></button>
+					<?php esc_html_e( 'Check U.S. Bank Avvance Application Status', 'avvance-for-woocommerce' ); ?></button>
 			</div>
 		</div>
 
@@ -472,7 +514,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			if (!avvanceWindow || avvanceWindow.closed || typeof avvanceWindow.closed === 'undefined') {
 				// Pop-up blocked.
 				$('#avvance-manual-link').show();
-				$('#avvance-status').text('<?php echo esc_js( __( 'Please open your Avvance application using the button below.', 'avvance-for-woocommerce' ) ); ?>');
+				$('#avvance-status').text('<?php echo esc_js( __( 'Please open your U.S. Bank Avvance application using the button below.', 'avvance-for-woocommerce' ) ); ?>');
 			} else {
 				// Focus the new window.
 				try {
@@ -538,12 +580,12 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 							location.reload();
 						} else {
 							alert(response.data.message || '<?php echo esc_js( __( 'Unable to check status. Please try again.', 'avvance-for-woocommerce' ) ); ?>');
-							$btn.prop('disabled', false).text('<?php echo esc_js( __( 'Check Application Status', 'avvance-for-woocommerce' ) ); ?>');
+							$btn.prop('disabled', false).text('<?php echo esc_js( __( 'Check U.S. Bank Avvance Application Status', 'avvance-for-woocommerce' ) ); ?>');
 						}
 					},
 					error: function() {
 						alert('<?php echo esc_js( __( 'Unable to check status. Please try again.', 'avvance-for-woocommerce' ) ); ?>');
-						$btn.prop('disabled', false).text('<?php echo esc_js( __( 'Check Application Status', 'avvance-for-woocommerce' ) ); ?>');
+						$btn.prop('disabled', false).text('<?php echo esc_js( __( 'Check U.S. Bank Avvance Application Status', 'avvance-for-woocommerce' ) ); ?>');
 					}
 				});
 			});
