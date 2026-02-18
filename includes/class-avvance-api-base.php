@@ -45,7 +45,7 @@ abstract class Avvance_API_Base {
 		$this->merchant_id   = $settings['merchant_id'] ?? '';
 		$this->environment   = $settings['environment'] ?? 'sandbox';
 
-		$this->base_url = ( $this->environment === 'production' )
+		$this->base_url = ( 'production' === $this->environment )
 			? 'https://alpha-api2.usbank.com'
 			: 'https://alpha-api.usbank.com';
 	}

@@ -149,7 +149,7 @@ class Avvance_Order_Handler {
 
 		$partner_session_id = $order->get_meta( '_avvance_partner_session_id' );
 		$application_guid   = $order->get_meta( '_avvance_application_guid' );
-		avvance_log( 'Manual status check: partner_session_id = ' . ( $partner_session_id ?: '(empty)' ) . ', application_guid = ' . ( $application_guid ?: '(empty)' ) . ', order_id = ' . $order_id );
+		avvance_log( 'Manual status check: partner_session_id = ' . ( $partner_session_id ? $partner_session_id : '(empty)' ) . ', application_guid = ' . ( $application_guid ? $application_guid : '(empty)' ) . ', order_id = ' . $order_id );
 
 		if ( ! $partner_session_id ) {
 			avvance_log( 'Manual status check failed: no partner session ID on order ' . $order_id, 'error' );

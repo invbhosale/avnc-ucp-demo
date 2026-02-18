@@ -50,7 +50,7 @@ class Avvance_Widget_Handler {
 	 */
 	private static function register_hooks() {
 		// Check if gateway is enabled.
-		if ( ! self::$gateway || self::$gateway->enabled !== 'yes' ) {
+		if ( ! self::$gateway || 'yes' !== self::$gateway->enabled ) {
 			avvance_log( 'Widget hooks not registered: Gateway not enabled' );
 			return;
 		}
@@ -67,11 +67,11 @@ class Avvance_Widget_Handler {
 		if ( self::$settings['product_enabled'] ) {
 			$position = self::$settings['product_position'];
 
-			if ( $position === 'after_price' || $position === 'both' ) {
+			if ( 'after_price' === $position || 'both' === $position ) {
 				add_action( 'woocommerce_single_product_summary', array( __CLASS__, 'render_product_widget' ), 15 );
 			}
 
-			if ( $position === 'after_add_cart' || $position === 'both' ) {
+			if ( 'after_add_cart' === $position || 'both' === $position ) {
 				add_action( 'woocommerce_after_add_to_cart_form', array( __CLASS__, 'render_product_widget_after_cart' ), 10 );
 			}
 		}
@@ -257,7 +257,7 @@ class Avvance_Widget_Handler {
 		$status = $preapproval['status'] ?? 'pending';
 
 		// Only PRE_APPROVED is considered approved (NOT_APPROVED is declined).
-		if ( $status !== 'PRE_APPROVED' ) {
+		if ( 'PRE_APPROVED' !== $status ) {
 			// For NOT_APPROVED or pending, show the default CTA.
 			wp_send_json_success(
 				array(
@@ -533,7 +533,7 @@ class Avvance_Widget_Handler {
 		<div id="avvance-checkout-widget-container" style="display: none; margin: 20px 0;">
 			<?php
 			// Only PRE_APPROVED status is considered approved (NOT_APPROVED is declined).
-			$is_preapproved   = $preapproval && $preapproval['status'] === 'PRE_APPROVED';
+			$is_preapproved   = $preapproval && 'PRE_APPROVED' === $preapproval['status'];
 			$has_valid_amount = $is_preapproved && isset( $preapproval['max_amount'] ) && floatval( $preapproval['max_amount'] ) > 0;
 			$is_expired       = false;
 
@@ -648,7 +648,7 @@ class Avvance_Widget_Handler {
 	 */
 	private static function render_cta_link( $preapproval, $session_id ) {
 		// Only PRE_APPROVED status is considered approved.
-		if ( $preapproval && $preapproval['status'] === 'PRE_APPROVED' ) {
+		if ( $preapproval && 'PRE_APPROVED' === $preapproval['status'] ) {
 			$has_valid_amount = isset( $preapproval['max_amount'] ) && floatval( $preapproval['max_amount'] ) > 0;
 
 			if ( $has_valid_amount ) {

@@ -338,7 +338,7 @@ class Avvance_Webhooks {
 					sprintf(
 						/* translators: %s: payment transaction ID */
 						__('Avvance payment authorized. Transaction ID: %s', 'avvance-for-woocommerce'),
-						$payment_transaction_id ?: 'N/A'
+						$payment_transaction_id ? $payment_transaction_id : 'N/A'
 					)
 				);
 
