@@ -26,7 +26,7 @@ class Avvance_Webhooks {
 	 * Initialize webhook handler
 	 */
 	public static function init() {
-		// Register WooCommerce API endpoint for webhooks
+		// Register WooCommerce API endpoint for webhooks.
 		add_action('woocommerce_api_avvance_webhook', array( __CLASS__, 'handle_webhook' ));
 	}
 
@@ -40,13 +40,13 @@ class Avvance_Webhooks {
 		$request_method = isset($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : '';
 		avvance_log('Request Method: ' . $request_method);
 
-		// Only accept POST requests
+		// Only accept POST requests.
 		if ( 'POST' !== $request_method ) {
 			avvance_log('ERROR: Invalid request method: ' . $request_method, 'error');
 			wp_send_json_error(array( 'message' => 'Method not allowed' ), 405);
 		}
 
-		// Validate Basic Auth credentials
+		// Validate Basic Auth credentials.
 		if ( ! self::validate_basic_auth() ) {
 			avvance_log('ERROR: Basic Auth validation failed', 'error');
 			status_header(401);
@@ -56,7 +56,7 @@ class Avvance_Webhooks {
 
 		avvance_log('Basic Auth validation passed');
 
-		// Get and parse the payload
+		// Get and parse the payload.
 		$raw_payload = file_get_contents('php://input');
 		avvance_log('Raw payload length: ' . strlen($raw_payload));
 
@@ -72,16 +72,16 @@ class Avvance_Webhooks {
 			wp_send_json_error(array( 'message' => 'Invalid JSON' ), 400);
 		}
 
-		// TEMPORARY: Log raw webhook JSON for debugging (REMOVE BEFORE PRODUCTION)
+		// TEMPORARY: Log raw webhook JSON for debugging (REMOVE BEFORE PRODUCTION).
 		avvance_log('=== RAW WEBHOOK JSON ===');
 		avvance_log($raw_payload);
 		avvance_log('=== END RAW WEBHOOK JSON ===');
 
-		// Log webhook type (without sensitive data)
+		// Log webhook type (without sensitive data).
 		$event_type = $payload['eventType'] ?? 'unknown';
 		avvance_log('Webhook event type: ' . $event_type);
 
-		// Route to appropriate handler based on event type
+		// Route to appropriate handler based on event type.
 		$result = self::route_webhook($payload);
 
 		if ( is_wp_error($result) ) {
@@ -105,14 +105,14 @@ class Avvance_Webhooks {
 			return false;
 		}
 
-		// Get credentials and clean them (remove whitespace, HTML entities, non-printable chars)
+		// Get credentials and clean them (remove whitespace, HTML entities, non-printable chars).
 		$expected_username = trim($gateway->get_option('webhook_username'));
 		$expected_password = $gateway->get_option('webhook_password');
 
-		// Clean the password - remove HTML entities, extra whitespace, non-printable chars
+		// Clean the password - remove HTML entities, extra whitespace, non-printable chars.
 		$expected_password = html_entity_decode($expected_password, ENT_QUOTES, 'UTF-8');
-		$expected_password = preg_replace('/\s+/', '', $expected_password); // Remove all whitespace
-		$expected_password = preg_replace('/[^\x20-\x7E]/', '', $expected_password); // Keep only printable ASCII
+		$expected_password = preg_replace('/\s+/', '', $expected_password); // Remove all whitespace.
+		$expected_password = preg_replace('/[^\x20-\x7E]/', '', $expected_password); // Keep only printable ASCII.
 
 		if ( empty($expected_username) || empty($expected_password) ) {
 			avvance_log('ERROR: Webhook credentials not configured', 'error');
@@ -121,13 +121,13 @@ class Avvance_Webhooks {
 
 		avvance_log('Expected password length after cleaning: ' . strlen($expected_password));
 
-		// Get credentials from request
+		// Get credentials from request.
 		$auth_header       = '';
 		$provided_username = '';
 		$provided_password = '';
 
-		// Try different methods to get Authorization header
-		// Note: Auth headers contain Base64 credentials, wp_unslash only (no sanitize_text_field)
+		// Try different methods to get Authorization header.
+		// Note: Auth headers contain Base64 credentials, wp_unslash only (no sanitize_text_field).
 		if ( isset($_SERVER['HTTP_AUTHORIZATION']) ) {
 			$auth_header = wp_unslash($_SERVER['HTTP_AUTHORIZATION']); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		} elseif ( isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION']) ) {
@@ -139,12 +139,12 @@ class Avvance_Webhooks {
 			}
 		}
 
-		// Check PHP_AUTH_USER and PHP_AUTH_PW (set by some servers)
+		// Check PHP_AUTH_USER and PHP_AUTH_PW (set by some servers).
 		if ( isset($_SERVER['PHP_AUTH_USER']) && isset($_SERVER['PHP_AUTH_PW']) ) {
 			$provided_username = sanitize_text_field(wp_unslash($_SERVER['PHP_AUTH_USER']));
 			$provided_password = wp_unslash($_SERVER['PHP_AUTH_PW']); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- password must not be sanitized
 		} elseif ( ! empty($auth_header) ) {
-			// Parse Basic Auth header
+			// Parse Basic Auth header.
 			if ( 0 !== strpos($auth_header, 'Basic ') ) {
 				avvance_log('ERROR: Invalid Authorization header format', 'error');
 				return false;
@@ -164,7 +164,7 @@ class Avvance_Webhooks {
 			return false;
 		}
 
-		// Clean provided credentials the same way
+		// Clean provided credentials the same way.
 		$provided_username = trim($provided_username);
 		$provided_password = html_entity_decode($provided_password, ENT_QUOTES, 'UTF-8');
 		$provided_password = preg_replace('/\s+/', '', $provided_password);
@@ -172,25 +172,25 @@ class Avvance_Webhooks {
 
 		avvance_log('Provided password length after cleaning: ' . strlen($provided_password));
 
-		// Constant-time comparison to prevent timing attacks
+		// Constant-time comparison to prevent timing attacks.
 		$username_valid = hash_equals($expected_username, $provided_username);
 		$password_valid = hash_equals($expected_password, $provided_password);
 
-		// Fallback: if exact match fails, check if one contains the other (handles corruption)
+		// Fallback: if exact match fails, check if one contains the other (handles corruption).
 		if ( ! $password_valid ) {
-			// Check if the 32-char provided password matches the start of expected
+			// Check if the 32-char provided password matches the start of expected.
 			if ( strlen($provided_password) === 32 && strlen($expected_password) > 32 ) {
 				$password_valid = ( substr($expected_password, 0, 32) === $provided_password );
 				if ( $password_valid ) {
 					avvance_log('Password matched using prefix comparison (32 chars)');
 				}
 			}
-			// Or check if expected is contained in provided
+			// Or check if expected is contained in provided.
 			if ( ! $password_valid && strpos($provided_password, $expected_password) !== false ) {
 				$password_valid = true;
 				avvance_log('Password matched using contains comparison');
 			}
-			// Or check if provided is contained in expected
+			// Or check if provided is contained in expected.
 			if ( ! $password_valid && strpos($expected_password, $provided_password) !== false ) {
 				$password_valid = true;
 				avvance_log('Password matched using contains comparison (reverse)');
@@ -220,13 +220,13 @@ class Avvance_Webhooks {
 
 		avvance_log('Routing webhook - Event Type: ' . $event_type);
 
-		// Check if this is a pre-approval webhook
+		// Check if this is a pre-approval webhook.
 		if ( self::is_preapproval_webhook($payload) ) {
 			avvance_log('Detected pre-approval webhook');
 			return self::process_preapproval_webhook($payload);
 		}
 
-		// Otherwise, treat as loan status webhook
+		// Otherwise, treat as loan status webhook.
 		avvance_log('Processing as loan status webhook');
 		return self::process_loan_status_webhook($payload);
 	}
@@ -240,12 +240,12 @@ class Avvance_Webhooks {
 	private static function is_preapproval_webhook( $payload ) {
 		$event_details = $payload['eventDetails'] ?? array();
 
-		// Pre-approval webhooks have preApprovalRequestId
+		// Pre-approval webhooks have preApprovalRequestId.
 		if ( isset($event_details['preApprovalRequestId']) ) {
 			return true;
 		}
 
-		// Or leadstatus field
+		// Or leadstatus field.
 		if ( isset($event_details['leadstatus']) ) {
 			return true;
 		}
@@ -262,7 +262,7 @@ class Avvance_Webhooks {
 	private static function process_preapproval_webhook( $payload ) {
 		avvance_log('=== PROCESSING PRE-APPROVAL WEBHOOK ===');
 
-		// Delegate to PreApproval Handler
+		// Delegate to PreApproval Handler.
 		if ( class_exists('Avvance_PreApproval_Handler') ) {
 			return Avvance_PreApproval_Handler::process_preapproval_webhook($payload);
 		}
@@ -290,7 +290,7 @@ class Avvance_Webhooks {
 
 		$event_details = $payload['eventDetails'] ?? array();
 
-		// Get loan status
+		// Get loan status.
 		$loan_status = $event_details['loanStatus']['status'] ?? '';
 
 		if ( empty($loan_status) ) {
@@ -300,7 +300,7 @@ class Avvance_Webhooks {
 
 		avvance_log('Loan Status: ' . $loan_status);
 
-		// Find the order by partnerSessionId or applicationGUID
+		// Find the order by partnerSessionId or applicationGUID.
 		$order = self::find_order_from_webhook($event_details);
 
 		if ( ! $order ) {
@@ -311,20 +311,20 @@ class Avvance_Webhooks {
 		$order_id = $order->get_id();
 		avvance_log('Found order #' . $order_id);
 
-		// Store the webhook status
+		// Store the webhook status.
 		$order->update_meta_data('_avvance_last_webhook_status', $loan_status);
 		$order->update_meta_data('_avvance_last_webhook_time', current_time('mysql'));
 
-		// Process based on status
+		// Process based on status.
 		switch ( $loan_status ) {
 			case 'INVOICE_PAYMENT_TRANSACTION_AUTHORIZED':
 				avvance_log('Processing AUTHORIZED status for order #' . $order_id);
 
-				// Get payment transaction ID
+				// Get payment transaction ID.
 				$payment_transaction_id = $event_details['paymentTransactionId'] ?? '';
 				$approval_code          = $event_details['approvalCode'] ?? '';
 
-				// Store transaction details
+				// Store transaction details.
 				if ( $payment_transaction_id ) {
 					$order->update_meta_data('_avvance_payment_transaction_id', $payment_transaction_id);
 				}
@@ -332,7 +332,7 @@ class Avvance_Webhooks {
 					$order->update_meta_data('_avvance_approval_code', $approval_code);
 				}
 
-				// Mark as paid
+				// Mark as paid.
 				$order->payment_complete($payment_transaction_id);
 				$order->add_order_note(
 					sprintf(
@@ -348,10 +348,10 @@ class Avvance_Webhooks {
 			case 'INVOICE_PAYMENT_TRANSACTION_SETTLED':
 				avvance_log('Processing SETTLED status for order #' . $order_id);
 
-				// Update note for settlement
+				// Update note for settlement.
 				$order->add_order_note(__('Avvance payment settled.', 'avvance-for-woocommerce'));
 
-				// If not already paid (edge case), mark as paid now
+				// If not already paid (edge case), mark as paid now.
 				if ( ! $order->is_paid() ) {
 					$payment_transaction_id = $event_details['paymentTransactionId'] ?? '';
 					$order->payment_complete($payment_transaction_id);
@@ -419,7 +419,7 @@ class Avvance_Webhooks {
 	 * @return WC_Order|null
 	 */
 	private static function find_order_from_webhook( $event_details ) {
-		// Try to find by applicationGUID
+		// Try to find by applicationGUID.
 		$application_guid = $event_details['applicationGUID'] ?? '';
 		if ( $application_guid ) {
 			avvance_log('Searching for order by applicationGUID: ' . $application_guid);
@@ -437,7 +437,7 @@ class Avvance_Webhooks {
 			}
 		}
 
-		// Try to find by partnerSessionId
+		// Try to find by partnerSessionId.
 		$partner_session_id = $event_details['partnerSessionId'] ?? '';
 		if ( $partner_session_id ) {
 			avvance_log('Searching for order by partnerSessionId: ' . $partner_session_id);
@@ -455,7 +455,7 @@ class Avvance_Webhooks {
 			}
 		}
 
-		// Try to find by invoiceId (which is the order ID)
+		// Try to find by invoiceId (which is the order ID).
 		$invoice_id = $event_details['invoiceId'] ?? '';
 		if ( $invoice_id ) {
 			avvance_log('Searching for order by invoiceId: ' . $invoice_id);
@@ -466,7 +466,7 @@ class Avvance_Webhooks {
 			}
 		}
 
-		// Try merchantTransactionId (which is the order key)
+		// Try merchantTransactionId (which is the order key).
 		$merchant_transaction_id = $event_details['merchantTransactionId'] ?? '';
 		if ( $merchant_transaction_id ) {
 			avvance_log('Searching for order by merchantTransactionId (order_key): ' . $merchant_transaction_id);

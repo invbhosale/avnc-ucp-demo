@@ -120,7 +120,7 @@ abstract class Avvance_API_Base {
 			return new WP_Error( 'auth_failed', 'Failed to obtain access token' );
 		}
 
-		// Cache token with TTL from response minus 60 seconds buffer
+		// Cache token with TTL from response minus 60 seconds buffer.
 		$ttl = max( 60, intval( $body['expiresIn'] ?? 600 ) - 60 );
 		set_transient( $cache_key, $body['accessToken'], $ttl );
 

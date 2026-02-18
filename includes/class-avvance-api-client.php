@@ -30,7 +30,7 @@ class Avvance_API_Client extends Avvance_API_Base {
 			return $token;
 		}
 
-		// Generate unique partner session ID
+		// Generate unique partner session ID.
 		$partner_session_id = wp_generate_uuid4();
 
 		$payload = array(
@@ -113,7 +113,7 @@ class Avvance_API_Client extends Avvance_API_Base {
 
 		avvance_log( 'Financing request successful. Application GUID: ' . ( $body['applicationGUID'] ?? 'N/A' ) );
 
-		// Add partnerSessionId to response
+		// Add partnerSessionId to response.
 		$body['partnerSessionId'] = $partner_session_id;
 
 		return $body;
@@ -126,7 +126,7 @@ class Avvance_API_Client extends Avvance_API_Base {
 	 * @return array|WP_Error API response or error
 	 */
 	public function get_notification_status( $notification_id ) {
-		// FORCE fresh token for notification-status (don't use cache)
+		// FORCE fresh token for notification-status (don't use cache).
 		$token = $this->get_fresh_access_token();
 
 		if ( is_wp_error( $token ) ) {
@@ -166,13 +166,13 @@ class Avvance_API_Client extends Avvance_API_Base {
 		$code = wp_remote_retrieve_response_code( $response );
 		$body = wp_remote_retrieve_body( $response );
 
-		// Log the actual response for debugging
+		// Log the actual response for debugging.
 		avvance_log( "Notification status response code: {$code}, body: {$body}" );
 
 		if ( 200 !== $code ) {
 			avvance_log( 'Notification status request failed with code ' . $code, 'error' );
 
-			// If 401, clear the token cache and log details
+			// If 401, clear the token cache and log details.
 			if ( 401 === $code ) {
 				$this->clear_token_cache();
 				avvance_log( 'Token cache cleared due to 401 on notification-status', 'error' );
@@ -226,7 +226,7 @@ class Avvance_API_Client extends Avvance_API_Base {
 		$code = wp_remote_retrieve_response_code( $response );
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 
-		// Log the raw response details
+		// Log the raw response details.
 		avvance_log( 'API Response | Status Code: ' . $code . ' | Body: ' . wp_json_encode( $body ) );
 
 		if ( 201 !== $code && 200 !== $code ) {

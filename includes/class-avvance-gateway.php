@@ -16,25 +16,25 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 		$this->has_fields         = true;
 		$this->supports           = array( 'products', 'refunds' );
 
-		// Load settings
+		// Load settings.
 		$this->init_form_fields();
 		$this->init_settings();
 
-		// Get settings
+		// Get settings.
 		$this->enabled = $this->get_option( 'enabled' );
 
-		// Clean title for orders and admin (what gets saved to order meta)
+		// Clean title for orders and admin (what gets saved to order meta).
 		$this->title = 'U.S. Bank Avvance';
 
-		// Description shown on checkout
+		// Description shown on checkout.
 		$this->description = "To view payment options that you may qualify for, select 'Pay with U.S. Bank Avvance' to leave this site and enter the U.S. Bank Avvance loan application in a new window. Qualification for payment options are subject to application approval.\n\nImportant: After completing your application, please return to this window to see your order confirmation. Keep this window open during your application.";
 
-		// Filter to show marketing message on checkout page only
+		// Filter to show marketing message on checkout page only.
 		add_filter( 'woocommerce_gateway_title', array( $this, 'customize_checkout_title' ), 10, 2 );
-				// Set icon
+				// Set icon.
 				$this->icon = AVVANCE_PLUGIN_URL . 'assets/images/avvance-icon.svg';
 
-		// Hooks
+		// Hooks.
 		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 		add_action( 'woocommerce_thankyou_' . $this->id, array( $this, 'thankyou_page' ) );
 		add_action( 'wp_ajax_avvance_check_order_status', array( $this, 'ajax_check_order_status' ) );
@@ -45,7 +45,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 	 * Initialize form fields
 	 */
 	public function init_form_fields() {
-		// Generate webhook credentials if they don't exist
+		// Generate webhook credentials if they don't exist.
 		if ( ! $this->get_option( 'webhook_username' ) ) {
 			$credentials = avvance_generate_webhook_credentials();
 			$this->update_option( 'webhook_username', $credentials['username'] );
@@ -99,16 +99,16 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 				'placeholder' => 'e.g., aa613b14',
 			),
 
-			// ==========================================
-			// WIDGET DISPLAY SETTINGS SECTION
-			// ==========================================
+			// ==========================================.
+			// WIDGET DISPLAY SETTINGS SECTION.
+			// ==========================================.
 			'widget_settings_title'   => array(
 				'title'       => __( 'Widget Display Settings', 'avvance-for-woocommerce' ),
 				'type'        => 'title',
 				'description' => __( 'Control where Avvance payment messaging appears on your store.', 'avvance-for-woocommerce' ),
 			),
 
-			// Category page widget
+			// Category page widget.
 			'category_widget_enabled' => array(
 				'title'       => __( 'Category Page Widget', 'avvance-for-woocommerce' ),
 				'label'       => __( 'Show payment messaging on shop/category pages', 'avvance-for-woocommerce' ),
@@ -118,7 +118,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 				'desc_tip'    => true,
 			),
 
-			// Product page widget
+			// Product page widget.
 			'product_widget_enabled'  => array(
 				'title'       => __( 'Product Page Widget', 'avvance-for-woocommerce' ),
 				'label'       => __( 'Show payment messaging on product pages', 'avvance-for-woocommerce' ),
@@ -128,7 +128,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 				'desc_tip'    => true,
 			),
 
-			// Product widget position
+			// Product widget position.
 			'product_widget_position' => array(
 				'title'       => __( 'Product Widget Position', 'avvance-for-woocommerce' ),
 				'type'        => 'select',
@@ -143,7 +143,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 				'desc_tip'    => true,
 			),
 
-			// Cart page widget
+			// Cart page widget.
 			'cart_widget_enabled'     => array(
 				'title'       => __( 'Cart Page Widget', 'avvance-for-woocommerce' ),
 				'label'       => __( 'Show payment messaging on cart page', 'avvance-for-woocommerce' ),
@@ -153,7 +153,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 				'desc_tip'    => true,
 			),
 
-			// Checkout widget
+			// Checkout widget.
 			'checkout_widget_enabled' => array(
 				'title'       => __( 'Checkout Widget', 'avvance-for-woocommerce' ),
 				'label'       => __( 'Show payment details on checkout page', 'avvance-for-woocommerce' ),
@@ -163,16 +163,16 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 				'desc_tip'    => true,
 			),
 
-			// ==========================================
-			// WIDGET APPEARANCE SETTINGS
-			// ==========================================
+			// ==========================================.
+			// WIDGET APPEARANCE SETTINGS.
+			// ==========================================.
 			'widget_appearance_title' => array(
 				'title'       => __( 'Widget Appearance', 'avvance-for-woocommerce' ),
 				'type'        => 'title',
 				'description' => __( 'Customize the look and feel of Avvance widgets.', 'avvance-for-woocommerce' ),
 			),
 
-			// Theme/Color
+			// Theme/Color.
 			'widget_theme'            => array(
 				'title'       => __( 'Widget Theme', 'avvance-for-woocommerce' ),
 				'type'        => 'select',
@@ -186,7 +186,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 				'desc_tip'    => true,
 			),
 
-			// Show Logo
+			// Show Logo.
 			'widget_show_logo'        => array(
 				'title'       => __( 'Show Avvance Logo', 'avvance-for-woocommerce' ),
 				'label'       => __( 'Display the Avvance logo in widget messaging', 'avvance-for-woocommerce' ),
@@ -196,9 +196,9 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 				'desc_tip'    => true,
 			),
 
-			// ==========================================
-			// ELIGIBILITY SETTINGS
-			// ==========================================
+			// ==========================================.
+			// ELIGIBILITY SETTINGS.
+			// ==========================================.
 			'eligibility_title'       => array(
 				'title'       => __( 'Eligibility Settings', 'avvance-for-woocommerce' ),
 				'type'        => 'title',
@@ -271,7 +271,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 	 * Payment fields (show disclosure)
 	 */
 	public function payment_fields() {
-		// Show disclosure description
+		// Show disclosure description.
 		if ( $this->description ) {
 			echo '<div class="avvance-description">';
 			echo wp_kses_post( wpautop( wp_kses_post( $this->description ) ) );
@@ -284,12 +284,12 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 	 * Shows marketing message on checkout, clean title everywhere else (orders, admin, emails)
 	 */
 	public function customize_checkout_title( $title, $gateway_id ) {
-		// Only modify our gateway's title
+		// Only modify our gateway's title.
 		if ( $gateway_id !== $this->id ) {
 			return $title;
 		}
 
-		// Show marketing message only on checkout page (frontend)
+		// Show marketing message only on checkout page (frontend).
 		if ( is_checkout() && ! is_wc_endpoint_url( 'order-received' ) ) {
 			return 'Pay over time with <img src="' . esc_url( AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg' ) . '" alt="Avvance" style="height: 24px; vertical-align: middle; margin: 0 8px;"> <a href="https://www.usbank.com/avvance-installment-loans.html" target="_blank" rel="noopener noreferrer" style="font-size: 0.9em;">Learn more</a>';
 		}
@@ -306,19 +306,19 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			return false;
 		}
 
-		// Check if credentials are configured
+		// Check if credentials are configured.
 		if ( empty( $this->get_option( 'client_key' ) ) ||
 			empty( $this->get_option( 'client_secret' ) ) ||
 			empty( $this->get_option( 'merchant_id' ) ) ) {
 			return false;
 		}
 
-		// Check currency (USD only)
+		// Check currency (USD only).
 		if ( 'USD' !== get_woocommerce_currency() ) {
 			return false;
 		}
 
-		// Check cart total using configured min/max amounts
+		// Check cart total using configured min/max amounts.
 		if ( WC()->cart ) {
 			$total = WC()->cart->get_total( '' );
 			$min   = floatval( $this->get_option( 'min_order_amount', 300 ) );
@@ -338,7 +338,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 	public function process_payment( $order_id ) {
 		$order = wc_get_order( $order_id );
 
-		// Validate order amount using configured min/max
+		// Validate order amount using configured min/max.
 		$total = $order->get_total();
 		$min   = floatval( $this->get_option( 'min_order_amount', 300 ) );
 		$max   = floatval( $this->get_option( 'max_order_amount', 25000 ) );
@@ -356,10 +356,10 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			return array( 'result' => 'failure' );
 		}
 
-		// Get API client
+		// Get API client.
 		$api = new Avvance_API_Client( $this->get_api_settings() );
 
-		// Create financing request
+		// Create financing request.
 		$response = $api->create_financing_request( $order );
 
 		if ( is_wp_error( $response ) ) {
@@ -368,7 +368,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			return array( 'result' => 'failure' );
 		}
 
-		// Store response data on order
+		// Store response data on order.
 		$order->update_meta_data( '_avvance_application_guid', $response['applicationGUID'] );
 		$order->update_meta_data( '_avvance_partner_session_id', $response['partnerSessionId'] );
 		$order->update_meta_data( '_avvance_consumer_url', $response['consumerOnboardingURL'] );
@@ -379,14 +379,14 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 		);
 		$order->save();
 
-		// Store order ID in session for cart resume banner
+		// Store order ID in session for cart resume banner.
 		if ( WC()->session ) {
 			WC()->session->set( 'avvance_pending_order_id', $order_id );
 		}
 
 		avvance_log( 'Order #' . $order_id . ' ready for Avvance. URL: ' . $response['consumerOnboardingURL'] );
 
-		// Check if this is a Blocks checkout (will redirect full page)
+		// Check if this is a Blocks checkout (will redirect full page).
 		if ( $this->is_blocks_checkout() ) {
 			return array(
 				'result'   => 'success',
@@ -394,7 +394,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			);
 		}
 
-		// Classic checkout - redirect to thank you page (will open new window there)
+		// Classic checkout - redirect to thank you page (will open new window there).
 		return array(
 			'result'   => 'success',
 			'redirect' => $this->get_return_url( $order ),
@@ -407,7 +407,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 	public function thankyou_page( $order_id ) {
 		$order = wc_get_order( $order_id );
 
-		// Only show for pending orders
+		// Only show for pending orders.
 		if ( ! $order || ! $order->needs_payment() ) {
 			return;
 		}
@@ -417,7 +417,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			return;
 		}
 
-		// Check if URL is expired
+		// Check if URL is expired.
 		if ( avvance_is_url_expired( $order_id ) ) {
 			echo '<div class="woocommerce-info">';
 			echo esc_html__( 'Your Avvance application link has expired. Please contact us to complete your order.', 'avvance-for-woocommerce' );
@@ -449,26 +449,26 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			var pollCount = 0;
 			var maxPolls = 120; // 10 minutes at 5-second intervals
 
-			// Try to open window
+			// Try to open window.
 			var avvanceWindow = window.open('<?php echo esc_js( $url ); ?>', '_blank', 'toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=600,height=700');
 
 			if (!avvanceWindow || avvanceWindow.closed || typeof avvanceWindow.closed === 'undefined') {
-				// Pop-up blocked
+				// Pop-up blocked.
 				$('#avvance-manual-link').show();
 				$('#avvance-status').text('<?php echo esc_js( __( 'Please open your Avvance application using the button below.', 'avvance-for-woocommerce' ) ); ?>');
 			} else {
-				// Focus the new window
+				// Focus the new window.
 				try {
 					avvanceWindow.focus();
 				} catch(e) {}
 			}
 
-			// Show manual check button after 2 minutes
+			// Show manual check button after 2 minutes.
 			setTimeout(function() {
 				$('#avvance-manual-check').show();
 			}, 120000);
 
-			// Poll order status
+			// Poll order status.
 			var statusInterval = setInterval(function() {
 				pollCount++;
 
@@ -496,14 +496,14 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 					}
 				});
 
-				// Stop polling after max attempts
+				// Stop polling after max attempts.
 				if (pollCount >= maxPolls) {
 					clearInterval(statusInterval);
 					$('#avvance-status').text('<?php echo esc_js( __( 'Still waiting? Use the button below to check your status.', 'avvance-for-woocommerce' ) ); ?>');
 				}
 			}, 5000);
 
-			// Manual check button
+			// Manual check button.
 			$('#avvance-check-status-btn').on('click', function() {
 				var $btn = $(this);
 				$btn.prop('disabled', true).text('<?php echo esc_js( __( 'Checking...', 'avvance-for-woocommerce' ) ); ?>');
@@ -594,18 +594,18 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 
 		avvance_log( 'Last Webhook Status (from order meta): ' . ( $last_status ? $last_status : 'NOT SET' ) );
 
-		// Get all order meta for debugging (redact sensitive values)
+		// Get all order meta for debugging (redact sensitive values).
 		$all_meta = $order->get_meta_data();
 		avvance_log( 'All Avvance-related order meta:' );
 		foreach ( $all_meta as $meta ) {
 			if ( false !== strpos( $meta->key, '_avvance' ) ) {
-				// Redact potentially sensitive values, only log key and type
+				// Redact potentially sensitive values, only log key and type.
 				$value_preview = is_string( $meta->value ) ? substr( $meta->value, 0, 20 ) . '...' : gettype( $meta->value );
 				avvance_log( "  {$meta->key}: [{$value_preview}]" );
 			}
 		}
 
-		// Check current status from API using partner session ID
+		// Check current status from API using partner session ID.
 		if ( $partner_session_id ) {
 			avvance_log( 'Fetching current notification status from Avvance API...' );
 
@@ -613,7 +613,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 
 			if ( ! is_wp_error( $status_response ) ) {
 				avvance_log( 'Notification status API response received' );
-				// Note: Full API response not logged to prevent PII exposure (GDPR/CCPA compliance)
+				// Note: Full API response not logged to prevent PII exposure (GDPR/CCPA compliance).
 
 				$current_status = $status_response['eventDetails']['loanStatus']['status'] ?? null;
 
@@ -654,7 +654,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 
 		avvance_log( 'Final status to use for decision: ' . ( $last_status ? $last_status : 'NONE' ) );
 
-		// Determine if void or refund
+		// Determine if void or refund.
 		if ( 'INVOICE_PAYMENT_TRANSACTION_SETTLED' === $last_status ) {
 			avvance_log( 'Decision: REFUND (transaction is settled)' );
 			avvance_log( 'Calling refund API with amount: ' . ( $amount ? $amount : $order->get_total() ) );
@@ -694,7 +694,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 		}
 
 		avvance_log( "{$action} API call successful" );
-		// Note: API response not logged to prevent PII exposure (GDPR/CCPA compliance)
+		// Note: API response not logged to prevent PII exposure (GDPR/CCPA compliance).
 
 		$order->add_order_note(
 			sprintf(

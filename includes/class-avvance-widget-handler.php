@@ -49,21 +49,21 @@ class Avvance_Widget_Handler {
 	 * Register all WordPress/WooCommerce hooks
 	 */
 	private static function register_hooks() {
-		// Check if gateway is enabled
+		// Check if gateway is enabled.
 		if ( ! self::$gateway || self::$gateway->enabled !== 'yes' ) {
 			avvance_log( 'Widget hooks not registered: Gateway not enabled' );
 			return;
 		}
 
-		// Enqueue scripts
+		// Enqueue scripts.
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'enqueue_widget_scripts' ) );
 
-		// Category/shop page widget
+		// Category/shop page widget.
 		if ( self::$settings['category_enabled'] ) {
 			add_action( 'woocommerce_after_shop_loop_item', array( __CLASS__, 'render_category_widget' ), 10 );
 		}
 
-		// Product page widget (based on position setting)
+		// Product page widget (based on position setting).
 		if ( self::$settings['product_enabled'] ) {
 			$position = self::$settings['product_position'];
 
@@ -76,22 +76,22 @@ class Avvance_Widget_Handler {
 			}
 		}
 
-		// Cart page widget (multiple hooks for compatibility)
+		// Cart page widget (multiple hooks for compatibility).
 		if ( self::$settings['cart_enabled'] ) {
 			add_action( 'woocommerce_before_cart_collaterals', array( __CLASS__, 'render_cart_widget' ), 10 );
 			add_action( 'woocommerce_after_cart_table', array( __CLASS__, 'render_cart_widget_fallback' ), 10 );
 			add_action( 'woocommerce_cart_collaterals', array( __CLASS__, 'render_cart_widget_fallback2' ), 5 );
 		}
 
-		// Checkout page widget
+		// Checkout page widget.
 		if ( self::$settings['checkout_enabled'] ) {
 			add_action( 'woocommerce_review_order_before_payment', array( __CLASS__, 'render_checkout_widget' ), 10 );
 		}
 
-		// Ensure modal is rendered on cart/checkout pages (for WooCommerce Blocks compatibility)
+		// Ensure modal is rendered on cart/checkout pages (for WooCommerce Blocks compatibility).
 		add_action( 'wp_footer', array( __CLASS__, 'ensure_modal_rendered' ), 10 );
 
-		// AJAX endpoints
+		// AJAX endpoints.
 		add_action( 'wp_ajax_avvance_get_price_breakdown', array( __CLASS__, 'ajax_get_price_breakdown' ) );
 		add_action( 'wp_ajax_nopriv_avvance_get_price_breakdown', array( __CLASS__, 'ajax_get_price_breakdown' ) );
 
@@ -149,8 +149,8 @@ class Avvance_Widget_Handler {
 	 * Calculate monthly payment (simple calculation - replace with API call if needed)
 	 */
 	private static function calculate_monthly_payment( $amount ) {
-		// Simple 6-month calculation
-		// TODO: Replace with actual Avvance API call if available
+		// Simple 6-month calculation.
+		// TODO: Replace with actual Avvance API call if available.
 		$months  = 6;
 		$monthly = ceil( ( $amount * 100 ) / $months ) / 100;
 		return number_format( $monthly, 2 );
@@ -160,7 +160,7 @@ class Avvance_Widget_Handler {
 	 * Enqueue widget scripts and styles
 	 */
 	public static function enqueue_widget_scripts() {
-		// Only on relevant pages
+		// Only on relevant pages.
 		if ( ! is_product() && ! is_cart() && ! is_checkout() && ! is_shop() && ! is_product_category() && ! is_product_tag() ) {
 			return;
 		}
@@ -256,9 +256,9 @@ class Avvance_Widget_Handler {
 
 		$status = $preapproval['status'] ?? 'pending';
 
-		// Only PRE_APPROVED is considered approved (NOT_APPROVED is declined)
+		// Only PRE_APPROVED is considered approved (NOT_APPROVED is declined).
 		if ( $status !== 'PRE_APPROVED' ) {
-			// For NOT_APPROVED or pending, show the default CTA
+			// For NOT_APPROVED or pending, show the default CTA.
 			wp_send_json_success(
 				array(
 					'has_preapproval' => false,
@@ -268,7 +268,7 @@ class Avvance_Widget_Handler {
 			);
 		}
 
-		// PRE_APPROVED - check for valid max amount
+		// PRE_APPROVED - check for valid max amount.
 		$has_valid_amount = isset( $preapproval['max_amount'] ) && floatval( $preapproval['max_amount'] ) > 0;
 
 		if ( ! $has_valid_amount ) {
@@ -281,7 +281,7 @@ class Avvance_Widget_Handler {
 			);
 		}
 
-		// Check if expired
+		// Check if expired.
 		if ( ! empty( $preapproval['expiry_date'] ) ) {
 			$expiry = strtotime( $preapproval['expiry_date'] );
 			if ( $expiry && $expiry < time() ) {
@@ -320,7 +320,7 @@ class Avvance_Widget_Handler {
 
 		$price = $product->get_price();
 
-		// Check min/max
+		// Check min/max.
 		if ( $price < self::$settings['min_amount'] || $price > self::$settings['max_amount'] ) {
 			return;
 		}
@@ -365,7 +365,7 @@ class Avvance_Widget_Handler {
 
 		$price = $product->get_price();
 
-		// For variable products, get the base price or range
+		// For variable products, get the base price or range.
 		if ( $product->is_type( 'variable' ) ) {
 			$prices = $product->get_variation_prices( true );
 			if ( ! empty( $prices['price'] ) ) {
@@ -373,13 +373,13 @@ class Avvance_Widget_Handler {
 			}
 		}
 
-		// For grouped products, get lowest child price
+		// For grouped products, get lowest child price.
 		if ( $product->is_type( 'grouped' ) ) {
 			$price = self::get_grouped_product_lowest_price( $product );
 		}
 
 		if ( ! $price || $price < self::$settings['min_amount'] || $price > self::$settings['max_amount'] ) {
-			// Render placeholder for variable products (JS will update)
+			// Render placeholder for variable products (JS will update).
 			if ( $product->is_type( 'variable' ) ) {
 				self::render_product_widget_placeholder( $product );
 			}
@@ -400,7 +400,7 @@ class Avvance_Widget_Handler {
 			)
 		);
 
-		// Render modal (only once per page)
+		// Render modal (only once per page).
 		static $modal_rendered = false;
 		if ( ! $modal_rendered ) {
 			self::render_modal();
@@ -412,7 +412,7 @@ class Avvance_Widget_Handler {
 	 * Render widget after add to cart button
 	 */
 	public static function render_product_widget_after_cart() {
-		// Same as render_product_widget but in different position
+		// Same as render_product_widget but in different position.
 		self::render_product_widget();
 	}
 
@@ -532,7 +532,7 @@ class Avvance_Widget_Handler {
 		?>
 		<div id="avvance-checkout-widget-container" style="display: none; margin: 20px 0;">
 			<?php
-			// Only PRE_APPROVED status is considered approved (NOT_APPROVED is declined)
+			// Only PRE_APPROVED status is considered approved (NOT_APPROVED is declined).
 			$is_preapproved   = $preapproval && $preapproval['status'] === 'PRE_APPROVED';
 			$has_valid_amount = $is_preapproved && isset( $preapproval['max_amount'] ) && floatval( $preapproval['max_amount'] ) > 0;
 			$is_expired       = false;
@@ -558,7 +558,7 @@ class Avvance_Widget_Handler {
 		
 		<script>
 		jQuery(function($) {
-			// Show/hide widget based on payment method selection
+			// Show/hide widget based on payment method selection.
 			function updateAvvanceCheckoutWidget() {
 				if ($('input[name="payment_method"]:checked').val() === 'avvance') {
 					$('#avvance-checkout-widget-container').slideDown(300);
@@ -567,13 +567,13 @@ class Avvance_Widget_Handler {
 				}
 			}
 			
-			// On payment method change
+			// On payment method change.
 			$('form.checkout').on('change', 'input[name="payment_method"]', updateAvvanceCheckoutWidget);
 			
-			// On page load
+			// On page load.
 			updateAvvanceCheckoutWidget();
 			
-			// After AJAX checkout update
+			// After AJAX checkout update.
 			$(document.body).on('updated_checkout', updateAvvanceCheckoutWidget);
 		});
 		</script>
@@ -647,7 +647,7 @@ class Avvance_Widget_Handler {
 	 * NOT_APPROVED or pending shows the default "Check your spending power" link.
 	 */
 	private static function render_cta_link( $preapproval, $session_id ) {
-		// Only PRE_APPROVED status is considered approved
+		// Only PRE_APPROVED status is considered approved.
 		if ( $preapproval && $preapproval['status'] === 'PRE_APPROVED' ) {
 			$has_valid_amount = isset( $preapproval['max_amount'] ) && floatval( $preapproval['max_amount'] ) > 0;
 
@@ -672,8 +672,8 @@ class Avvance_Widget_Handler {
 			}
 		}
 
-		// Default: show "Check your spending power" link
-		// This covers: no preapproval, NOT_APPROVED, pending, expired, or no valid amount
+		// Default: show "Check your spending power" link.
+		// This covers: no preapproval, NOT_APPROVED, pending, expired, or no valid amount.
 		?>
 		<a href="#"
 			class="avvance-prequal-link"
@@ -687,25 +687,25 @@ class Avvance_Widget_Handler {
 	 * Ensure modal is rendered on cart/checkout/shop/category pages
 	 */
 	public static function ensure_modal_rendered() {
-		// Render on cart, checkout, shop, and category pages
+		// Render on cart, checkout, shop, and category pages.
 		if ( ! is_cart() && ! is_checkout() && ! is_shop() && ! is_product_category() && ! is_product_tag() ) {
 			return;
 		}
 
-		// Check if modal was already rendered by other hooks
+		// Check if modal was already rendered by other hooks.
 		static $modal_rendered_in_footer = false;
 		if ( $modal_rendered_in_footer ) {
 			return;
 		}
 
-		// Check if modal element already exists (rendered by product/cart widget hooks)
-		// We use a global flag since static vars in different methods are separate
+		// Check if modal element already exists (rendered by product/cart widget hooks).
+		// We use a global flag since static vars in different methods are separate.
 		global $avvance_modal_rendered;
 		if ( ! empty( $avvance_modal_rendered ) ) {
 			return;
 		}
 
-		// Render the modal
+		// Render the modal.
 		self::render_modal();
 		$modal_rendered_in_footer = true;
 		$avvance_modal_rendered   = true;
@@ -718,7 +718,7 @@ class Avvance_Widget_Handler {
 	 * Loan cards are populated dynamically by JS from the price breakdown API.
 	 */
 	private static function render_modal() {
-		// Mark modal as rendered globally
+		// Mark modal as rendered globally.
 		global $avvance_modal_rendered;
 		$avvance_modal_rendered = true;
 		$gateway                = avvance_get_gateway();
@@ -791,7 +791,7 @@ class Avvance_Widget_Handler {
 		</div>
 
 		<?php
-		// Preapproved details modal (shown when "See your details" is clicked)
+		// Preapproved details modal (shown when "See your details" is clicked).
 		self::render_preapproved_modal();
 	}
 

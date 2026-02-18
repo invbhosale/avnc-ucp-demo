@@ -92,7 +92,7 @@ function avvance_is_url_expired( $order_id ) {
 		return true;
 	}
 
-	// 30 days = 2592000 seconds
+	// 30 days = 2592000 seconds.
 	return ( time() - $created ) > 2592000;
 }
 

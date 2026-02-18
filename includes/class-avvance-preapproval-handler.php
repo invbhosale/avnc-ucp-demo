@@ -18,11 +18,11 @@ class Avvance_PreApproval_Handler {
 	const COOKIE_EXPIRY = 30 * DAY_IN_SECONDS; // 30 days to match Avvance expiry
 
 	public static function init() {
-		// AJAX endpoint for creating pre-approval
+		// AJAX endpoint for creating pre-approval.
 		add_action( 'wp_ajax_avvance_create_preapproval', array( __CLASS__, 'ajax_create_preapproval' ) );
 		add_action( 'wp_ajax_nopriv_avvance_create_preapproval', array( __CLASS__, 'ajax_create_preapproval' ) );
 
-		// AJAX endpoint for checking pre-approval status
+		// AJAX endpoint for checking pre-approval status.
 		add_action( 'wp_ajax_avvance_check_preapproval_status', array( __CLASS__, 'ajax_check_preapproval_status' ) );
 		add_action( 'wp_ajax_nopriv_avvance_check_preapproval_status', array( __CLASS__, 'ajax_check_preapproval_status' ) );
 	}
@@ -31,15 +31,15 @@ class Avvance_PreApproval_Handler {
 	 * Get or create browser fingerprint for tracking
 	 */
 	private static function get_browser_fingerprint() {
-		// Check if cookie exists
+		// Check if cookie exists.
 		if ( isset( $_COOKIE[ self::COOKIE_NAME ] ) ) {
 			return sanitize_text_field( wp_unslash( $_COOKIE[ self::COOKIE_NAME ] ) );
 		}
 
-		// Create new fingerprint
+		// Create new fingerprint.
 		$fingerprint = 'avv_fp_' . wp_generate_uuid4();
 
-		// Set cookie
+		// Set cookie.
 		setcookie(
 			self::COOKIE_NAME,
 			$fingerprint,
@@ -47,7 +47,7 @@ class Avvance_PreApproval_Handler {
 			COOKIEPATH,
 			COOKIE_DOMAIN,
 			is_ssl(),
-			true // httponly
+			true // Httponly.
 		);
 
 		return $fingerprint;
@@ -59,7 +59,7 @@ class Avvance_PreApproval_Handler {
 	public static function ajax_create_preapproval() {
 		avvance_log( '=== CREATE PRE-APPROVAL REQUEST ===' );
 
-		// Verify nonce
+		// Verify nonce.
 		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'avvance_preapproval' ) ) {
 			avvance_log( 'ERROR: Nonce verification failed', 'error' );
 			wp_send_json_error( array( 'message' => 'Security check failed' ) );
@@ -72,7 +72,7 @@ class Avvance_PreApproval_Handler {
 			wp_send_json_error( array( 'message' => 'Invalid session ID' ) );
 		}
 
-		// Get browser fingerprint
+		// Get browser fingerprint.
 		$browser_fingerprint = self::get_browser_fingerprint();
 		avvance_log( 'Browser fingerprint: ' . $browser_fingerprint );
 
@@ -109,7 +109,7 @@ class Avvance_PreApproval_Handler {
 			wp_send_json_error( array( 'message' => 'Unable to create pre-approval request' ) );
 		}
 
-		// Store pre-approval in database with browser fingerprint
+		// Store pre-approval in database with browser fingerprint.
 		$preapproval_data = array(
 			'request_id'          => $response['preApprovalRequestID'],
 			'session_id'          => $session_id,
@@ -133,22 +133,22 @@ class Avvance_PreApproval_Handler {
 	 * AJAX: Check pre-approval status
 	 */
 	public static function ajax_check_preapproval_status() {
-		// Verify nonce
+		// Verify nonce.
 		if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['nonce'] ) ), 'avvance_preapproval' ) ) {
-			wp_send_json_success( array( 'status' => 'none' ) ); // Fail silently for security
+			wp_send_json_success( array( 'status' => 'none' ) ); // Fail silently for security.
 		}
 
-		// Get browser fingerprint
+		// Get browser fingerprint.
 		$browser_fingerprint = self::get_browser_fingerprint();
 
-		// Get latest pre-approval for this browser from database
+		// Get latest pre-approval for this browser from database.
 		$preapproval = self::get_latest_preapproval_by_fingerprint( $browser_fingerprint );
 
 		if ( ! $preapproval ) {
 			wp_send_json_success( array( 'status' => 'none' ) );
 		}
 
-		// Check if expired
+		// Check if expired.
 		if ( ! empty( $preapproval['expiry_date'] ) ) {
 			$expiry = strtotime( $preapproval['expiry_date'] );
 			if ( $expiry && $expiry < time() ) {
@@ -156,7 +156,7 @@ class Avvance_PreApproval_Handler {
 			}
 		}
 
-		// Return status
+		// Return status.
 		wp_send_json_success(
 			array(
 				'status'        => $preapproval['status'] ?? 'pending',
@@ -177,7 +177,7 @@ class Avvance_PreApproval_Handler {
 	public static function process_preapproval_webhook( $payload ) {
 		$event_details = $payload['eventDetails'];
 
-		// Extract fields
+		// Extract fields.
 		$request_id  = $event_details['preApprovalRequestId'] ?? '';
 		$lead_id     = $event_details['leadid'] ?? '';
 		$lead_status = $event_details['leadstatus'] ?? '';
@@ -187,7 +187,7 @@ class Avvance_PreApproval_Handler {
 			return new WP_Error( 'missing_request_id', 'Missing preApprovalRequestId in webhook' );
 		}
 
-		// Validate lead status - only PRE_APPROVED and NOT_APPROVED are valid
+		// Validate lead status - only PRE_APPROVED and NOT_APPROVED are valid.
 		$valid_statuses = array( 'PRE_APPROVED', 'NOT_APPROVED' );
 		if ( ! in_array( $lead_status, $valid_statuses ) ) {
 			avvance_log( 'Unknown lead status received: ' . $lead_status . ' (expected PRE_APPROVED or NOT_APPROVED)', 'warning' );
@@ -195,7 +195,7 @@ class Avvance_PreApproval_Handler {
 
 		avvance_log( 'Processing pre-approval webhook - Request ID: ' . $request_id . ', Lead ID: ' . $lead_id . ', Status: ' . $lead_status );
 
-		// Find the pre-approval record in database
+		// Find the pre-approval record in database.
 		global $wpdb;
 		$table_name = esc_sql( $wpdb->prefix . 'avvance_preapprovals' );
 
@@ -217,7 +217,7 @@ class Avvance_PreApproval_Handler {
 
 		avvance_log( 'Pre-approval record found for request ID: ' . $request_id );
 
-		// Extract max pre-approved amount from metadata (only present for PRE_APPROVED)
+		// Extract max pre-approved amount from metadata (only present for PRE_APPROVED).
 		$max_amount = null;
 		if ( 'PRE_APPROVED' === $lead_status && isset( $event_details['metadata'] ) && is_array( $event_details['metadata'] ) ) {
 			foreach ( $event_details['metadata'] as $meta ) {
@@ -229,25 +229,25 @@ class Avvance_PreApproval_Handler {
 			}
 		}
 
-		// For NOT_APPROVED, explicitly set max_amount to null
+		// For NOT_APPROVED, explicitly set max_amount to null.
 		if ( 'NOT_APPROVED' === $lead_status ) {
 			$max_amount = null;
 			avvance_log( 'Customer NOT_APPROVED - no max amount available' );
 		}
 
-		// Parse expiry date with better error handling
+		// Parse expiry date with better error handling.
 		$expiry_date = null;
 		if ( isset( $event_details['leadExpiryDate'] ) ) {
 			$raw_date = $event_details['leadExpiryDate'];
 
 			try {
-				// Handle ISO 8601 format with timezone: 2026-01-30T22:38:50.000+0000
+				// Handle ISO 8601 format with timezone: 2026-01-30T22:38:50.000+0000.
 				$date_obj    = new DateTime( $raw_date );
 				$expiry_date = $date_obj->format( 'Y-m-d H:i:s' );
 				avvance_log( 'Parsed expiry date: ' . $expiry_date );
 			} catch ( Exception $e ) {
 				avvance_log( 'Failed to parse expiry date: ' . $e->getMessage(), 'warning' );
-				// Fallback: try strtotime
+				// Fallback: try strtotime.
 				$timestamp = strtotime( $raw_date );
 				if ( $timestamp ) {
 					$expiry_date = gmdate( 'Y-m-d H:i:s', $timestamp );
@@ -255,9 +255,9 @@ class Avvance_PreApproval_Handler {
 			}
 		}
 
-		// Update database record
-		// Note: PII fields are stored encrypted/hashed where possible
-		// webhook_payload is sanitized to remove PII for GDPR/CCPA compliance
+		// Update database record.
+		// Note: PII fields are stored encrypted/hashed where possible.
+		// webhook_payload is sanitized to remove PII for GDPR/CCPA compliance.
 		$update_data = array(
 			'status'          => $lead_status,
 			'max_amount'      => $max_amount,
@@ -300,7 +300,7 @@ class Avvance_PreApproval_Handler {
 	 * @return array Sanitized payload without PII
 	 */
 	private static function sanitize_payload_for_storage( $payload ) {
-		// List of PII fields to redact
+		// List of PII fields to redact.
 		$pii_fields = array(
 			'customerName',
 			'customerEmail',
@@ -318,11 +318,11 @@ class Avvance_PreApproval_Handler {
 
 		$sanitized = array();
 		foreach ( $payload as $key => $value ) {
-			// Check if this is a PII field
+			// Check if this is a PII field.
 			if ( in_array( $key, $pii_fields, true ) ) {
 				$sanitized[ $key ] = '[REDACTED]';
 			} elseif ( is_array( $value ) ) {
-				// Recursively sanitize nested arrays
+				// Recursively sanitize nested arrays.
 				$sanitized[ $key ] = self::sanitize_payload_for_storage( $value );
 			} else {
 				$sanitized[ $key ] = $value;
@@ -359,7 +359,7 @@ class Avvance_PreApproval_Handler {
 		global $wpdb;
 		$table_name = $wpdb->prefix . 'avvance_preapprovals';
 
-		// Ensure table exists (uses version check to avoid repeated dbDelta calls)
+		// Ensure table exists (uses version check to avoid repeated dbDelta calls).
 		self::maybe_create_table();
 
 		$insert_data = array(
@@ -370,8 +370,6 @@ class Avvance_PreApproval_Handler {
 			'created_at'          => current_time( 'mysql' ),
 			'updated_at'          => current_time( 'mysql' ),
 		);
-
-		// avvance_log('Inserting pre-approval into database - Request ID: ' . $data['request_id']);
 
 		$result = $wpdb->insert( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
 			$table_name,
@@ -412,7 +410,7 @@ class Avvance_PreApproval_Handler {
 		$table_name      = $wpdb->prefix . 'avvance_preapprovals';
 		$charset_collate = $wpdb->get_charset_collate();
 
-		// Note: dbDelta requires specific formatting - no IF NOT EXISTS, specific spacing
+		// Note: dbDelta requires specific formatting - no IF NOT EXISTS, specific spacing.
 		$sql = "CREATE TABLE {$table_name} (
             id bigint(20) NOT NULL AUTO_INCREMENT,
             request_id varchar(255) NOT NULL,
@@ -440,6 +438,5 @@ class Avvance_PreApproval_Handler {
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
 
-		// avvance_log('Pre-approval table created/verified');
 	}
 }

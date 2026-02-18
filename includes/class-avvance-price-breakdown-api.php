@@ -35,10 +35,10 @@ class Avvance_Price_Breakdown_API extends Avvance_API_Base {
 	public function get_price_breakdown( $amount, $bypass_cache = false ) {
 		$amount = floatval( $amount );
 
-		// Generate cache key based on merchant and amount
+		// Generate cache key based on merchant and amount.
 		$cache_key = 'avvance_price_' . md5( $this->merchant_id . '_' . $amount );
 
-		// Check cache first (unless bypass requested)
+		// Check cache first (unless bypass requested).
 		if ( ! $bypass_cache ) {
 			$cached = get_transient( $cache_key );
 			if ( false !== $cached ) {
@@ -82,7 +82,7 @@ class Avvance_Price_Breakdown_API extends Avvance_API_Base {
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
 
 		avvance_log( 'Price breakdown API response code: ' . $code );
-		// Note: Response body not logged to prevent PII exposure (GDPR/CCPA compliance)
+		// Note: Response body not logged to prevent PII exposure (GDPR/CCPA compliance).
 
 		if ( 200 !== $code && 201 !== $code ) {
 			$error_msg = isset( $body['error']['message'] ) ? $body['error']['message'] : 'Price breakdown request failed';
@@ -95,7 +95,7 @@ class Avvance_Price_Breakdown_API extends Avvance_API_Base {
 			return new WP_Error( 'invalid_response', 'Invalid price breakdown response' );
 		}
 
-		// Cache successful response
+		// Cache successful response.
 		set_transient( $cache_key, $body, self::CACHE_TTL );
 		avvance_log( 'Price breakdown request successful (cached for ' . self::CACHE_TTL . 's)' );
 

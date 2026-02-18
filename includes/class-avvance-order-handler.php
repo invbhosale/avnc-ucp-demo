@@ -15,21 +15,21 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Avvance_Order_Handler {
 
 	public static function init() {
-		// Cart resume banner
+		// Cart resume banner.
 		add_action( 'woocommerce_before_cart', array( __CLASS__, 'cart_resume_banner' ) );
 		add_action( 'woocommerce_before_checkout_form', array( __CLASS__, 'cart_resume_banner' ) );
 
-		// Manual status check AJAX
+		// Manual status check AJAX.
 		add_action( 'wp_ajax_avvance_manual_status_check', array( __CLASS__, 'ajax_manual_status_check' ) );
 		add_action( 'wp_ajax_nopriv_avvance_manual_status_check', array( __CLASS__, 'ajax_manual_status_check' ) );
 
-		// Cleanup expired URLs (daily)
+		// Cleanup expired URLs (daily).
 		add_action( 'avvance_daily_cleanup', array( __CLASS__, 'cleanup_expired_urls' ) );
 		if ( ! wp_next_scheduled( 'avvance_daily_cleanup' ) ) {
 			wp_schedule_event( time(), 'daily', 'avvance_daily_cleanup' );
 		}
 
-		// Admin order meta box
+		// Admin order meta box.
 		add_action( 'add_meta_boxes', array( __CLASS__, 'add_order_meta_box' ) );
 	}
 
@@ -57,7 +57,7 @@ class Avvance_Order_Handler {
 			return;
 		}
 
-		// Check if expired
+		// Check if expired.
 		if ( avvance_is_url_expired( $order_id ) ) {
 			echo '<div class="woocommerce-info">';
 			echo esc_html__( 'Your previous Avvance application has expired. Please complete checkout to create a new application.', 'avvance-for-woocommerce' );
@@ -134,13 +134,13 @@ class Avvance_Order_Handler {
 			wp_send_json_error( array( 'message' => __( 'Order not found', 'avvance-for-woocommerce' ) ) );
 		}
 
-		// If already paid, redirect to order received
+		// If already paid, redirect to order received.
 		if ( $order->is_paid() ) {
 			avvance_log( 'Manual status check: order ' . $order_id . ' already paid, redirecting' );
 			wp_send_json_success( array( 'redirect' => $order->get_checkout_order_received_url() ) );
 		}
 
-		// Call notification status API
+		// Call notification status API.
 		$gateway = avvance_get_gateway();
 		if ( ! $gateway ) {
 			avvance_log( 'Manual status check failed: gateway not available', 'error' );
@@ -177,22 +177,22 @@ class Avvance_Order_Handler {
 
 		avvance_log( 'Manual status check API response: ' . wp_json_encode( $response ) );
 
-		// Process the status manually (same logic as webhook)
+		// Process the status manually (same logic as webhook).
 		$status = $response['eventDetails']['loanStatus']['status'] ?? '';
 
 		if ( 'INVOICE_PAYMENT_TRANSACTION_AUTHORIZED' === $status ) {
-			// Mark order as paid
+			// Mark order as paid.
 			$payment_transaction_id = $response['eventDetails']['paymentTransactionId'] ?? '';
 			$order->payment_complete( $payment_transaction_id );
 			$order->add_order_note( __( 'Payment completed via manual status check', 'avvance-for-woocommerce' ) );
 
 			wp_send_json_success( array( 'redirect' => $order->get_checkout_order_received_url() ) );
 		} elseif ( in_array( $status, array( 'APPLICATION_DENIED_REQUEST_ALTERNATE_PAYMENT', 'SYSTEM_ERROR_REQUEST_ALTERNATE_PAYMENT' ), true ) ) {
-			// Declined
+			// Declined.
 			$order->update_status( 'cancelled', __( 'Application declined (manual check)', 'avvance-for-woocommerce' ) );
 			wp_send_json_error( array( 'message' => __( 'Your application was declined. Please use another payment method.', 'avvance-for-woocommerce' ) ) );
 		} else {
-			// Still pending
+			// Still pending.
 			/* translators: %s: Avvance application status message */
 			$order->add_order_note( sprintf( __( 'Manual status check: %s', 'avvance-for-woocommerce' ), avvance_get_status_message( $status ) ) );
 			wp_send_json_success(

@@ -21,13 +21,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-// Plugin constants
+// Plugin constants.
 define( 'AVVANCE_VERSION', '1.2.0' );
 define( 'AVVANCE_PLUGIN_FILE', __FILE__ );
 define( 'AVVANCE_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'AVVANCE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 
-// Declare HPOS compatibility
+// Declare HPOS compatibility.
 add_action(
 	'before_woocommerce_init',
 	function () {
@@ -57,19 +57,19 @@ final class Avvance_For_WooCommerce {
 	}
 
 	public function init() {
-		// Check if WooCommerce is active
+		// Check if WooCommerce is active.
 		if ( ! class_exists( 'WooCommerce' ) ) {
 			add_action( 'admin_notices', array( $this, 'woocommerce_missing_notice' ) );
 			return;
 		}
 
-		// Include required files
+		// Include required files.
 		$this->includes();
 
-		// Initialize components
+		// Initialize components.
 		$this->init_hooks();
 
-		// Register Blocks integration
+		// Register Blocks integration.
 		$this->register_blocks();
 	}
 
@@ -87,22 +87,22 @@ final class Avvance_For_WooCommerce {
 	}
 
 	private function init_hooks() {
-		// Register payment gateway
+		// Register payment gateway.
 		add_filter( 'woocommerce_payment_gateways', array( $this, 'add_gateway' ) );
 
-		// Initialize webhook handler
+		// Initialize webhook handler.
 		Avvance_Webhooks::init();
 
-		// Initialize order handler
+		// Initialize order handler.
 		Avvance_Order_Handler::init();
 
-		// Initialize widget handler
+		// Initialize widget handler.
 		Avvance_Widget_Handler::init();
 
-		// Initialize pre-approval handler (registers AJAX endpoints, DB table creation handled on activation)
+		// Initialize pre-approval handler (registers AJAX endpoints, DB table creation handled on activation).
 		Avvance_PreApproval_Handler::init();
 
-		// Enqueue scripts
+		// Enqueue scripts.
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
 	}
 
@@ -167,9 +167,9 @@ final class Avvance_For_WooCommerce {
 	}
 }
 
-// Initialize plugin
+// Initialize plugin.
 Avvance_For_WooCommerce::instance();
-// ADD THIS ACTIVATION HOOK:
+// ADD THIS ACTIVATION HOOK:.
 register_activation_hook(
 	AVVANCE_PLUGIN_FILE,
 	function () {
