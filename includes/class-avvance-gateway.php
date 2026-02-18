@@ -1,14 +1,22 @@
 <?php
 /**
  * Avvance Payment Gateway
+ *
+ * @package Avvance_For_WooCommerce
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * WooCommerce Avvance payment gateway.
+ */
 class WC_Gateway_Avvance extends WC_Payment_Gateway {
 
+	/**
+	 * Constructor.
+	 */
 	public function __construct() {
 		$this->id                 = 'avvance';
 		$this->method_title       = __( 'U.S. Bank Avvance', 'avvance-for-woocommerce' );
@@ -280,8 +288,12 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 	}
 
 	/**
-	 * Customize the gateway title for checkout page display
-	 * Shows marketing message on checkout, clean title everywhere else (orders, admin, emails)
+	 * Customize the gateway title for checkout page display.
+	 * Shows marketing message on checkout, clean title everywhere else (orders, admin, emails).
+	 *
+	 * @param string $title      Gateway title.
+	 * @param string $gateway_id Gateway ID.
+	 * @return string
 	 */
 	public function customize_checkout_title( $title, $gateway_id ) {
 		// Only modify our gateway's title.
@@ -333,7 +345,10 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 	}
 
 	/**
-	 * Process payment
+	 * Process payment.
+	 *
+	 * @param int $order_id WooCommerce order ID.
+	 * @return array
 	 */
 	public function process_payment( $order_id ) {
 		$order = wc_get_order( $order_id );
@@ -402,7 +417,9 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 	}
 
 	/**
-	 * Thank you page (classic checkout only)
+	 * Thank you page (classic checkout only).
+	 *
+	 * @param int $order_id WooCommerce order ID.
 	 */
 	public function thankyou_page( $order_id ) {
 		$order = wc_get_order( $order_id );
@@ -559,7 +576,12 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 	}
 
 	/**
-	 * Process refund
+	 * Process refund.
+	 *
+	 * @param int        $order_id WooCommerce order ID.
+	 * @param float|null $amount   Refund amount.
+	 * @param string     $reason   Refund reason.
+	 * @return bool|WP_Error
 	 */
 	public function process_refund( $order_id, $amount = null, $reason = '' ) {
 		avvance_log( '=== REFUND PROCESS STARTED ===' );

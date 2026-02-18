@@ -12,8 +12,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * Manages order lifecycle, cart resume, and cleanup.
+ */
 class Avvance_Order_Handler {
 
+	/**
+	 * Initialize order handler hooks.
+	 */
 	public static function init() {
 		// Cart resume banner.
 		add_action( 'woocommerce_before_cart', array( __CLASS__, 'cart_resume_banner' ) );
@@ -255,7 +261,9 @@ class Avvance_Order_Handler {
 	}
 
 	/**
-	 * Render order meta box
+	 * Render order meta box.
+	 *
+	 * @param WP_Post|WC_Order $post_or_order Post or order object.
 	 */
 	public static function render_order_meta_box( $post_or_order ) {
 		$order = $post_or_order instanceof WP_Post ? wc_get_order( $post_or_order->ID ) : $post_or_order;

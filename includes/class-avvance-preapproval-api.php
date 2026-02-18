@@ -13,13 +13,16 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * Handles pre-approval API requests.
+ */
 class Avvance_PreApproval_API extends Avvance_API_Base {
 
 	/**
 	 * Create pre-approval request
 	 *
-	 * @param string $session_id Session ID from Avvance widget
-	 * @param string $hashed_mid Hashed merchant ID
+	 * @param string $session_id Session ID from Avvance widget.
+	 * @param string $hashed_mid Hashed merchant ID.
 	 * @return array|WP_Error API response or error
 	 */
 	public function create_preapproval( $session_id, $hashed_mid ) {

@@ -1,6 +1,8 @@
 <?php
 /**
  * Avvance Blocks Integration
+ *
+ * @package Avvance_For_WooCommerce
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -9,11 +11,28 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 use Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType;
 
+/**
+ * Avvance WooCommerce Blocks payment method integration.
+ */
 class Avvance_Blocks_Integration extends AbstractPaymentMethodType {
 
+	/**
+	 * Payment method name.
+	 *
+	 * @var string
+	 */
 	protected $name = 'avvance';
+
+	/**
+	 * Gateway instance.
+	 *
+	 * @var WC_Gateway_Avvance|null
+	 */
 	private $gateway;
 
+	/**
+	 * Initialize the payment method.
+	 */
 	public function initialize() {
 		$this->settings = get_option( 'woocommerce_avvance_settings', array() );
 
@@ -21,10 +40,20 @@ class Avvance_Blocks_Integration extends AbstractPaymentMethodType {
 		$this->gateway = isset( $gateways['avvance'] ) ? $gateways['avvance'] : null;
 	}
 
+	/**
+	 * Check if the payment method is active.
+	 *
+	 * @return bool
+	 */
 	public function is_active() {
 		return $this->gateway && $this->gateway->is_available();
 	}
 
+	/**
+	 * Get payment method script handles.
+	 *
+	 * @return array
+	 */
 	public function get_payment_method_script_handles() {
 		$script_path = AVVANCE_PLUGIN_PATH . 'blocks/build/index.js';
 		$script_url  = AVVANCE_PLUGIN_URL . 'blocks/build/index.js';
@@ -60,6 +89,11 @@ class Avvance_Blocks_Integration extends AbstractPaymentMethodType {
 		return array( 'avvance-blocks' );
 	}
 
+	/**
+	 * Get payment method data for the Blocks checkout.
+	 *
+	 * @return array
+	 */
 	public function get_payment_method_data() {
 		return array(
 			'title'       => $this->gateway->title,

@@ -13,6 +13,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * Gets monthly payment information for widget display.
+ */
 class Avvance_Price_Breakdown_API extends Avvance_API_Base {
 
 	/**
@@ -28,8 +31,8 @@ class Avvance_Price_Breakdown_API extends Avvance_API_Base {
 	 * Results are cached for 1 hour per merchant/amount combination
 	 * to reduce API calls for repeated product page views.
 	 *
-	 * @param float $amount The intended spending amount
-	 * @param bool  $bypass_cache Force fresh API call (default: false)
+	 * @param float $amount       The intended spending amount.
+	 * @param bool  $bypass_cache Force fresh API call (default: false).
 	 * @return array|WP_Error API response or error
 	 */
 	public function get_price_breakdown( $amount, $bypass_cache = false ) {
@@ -105,7 +108,7 @@ class Avvance_Price_Breakdown_API extends Avvance_API_Base {
 	/**
 	 * Clear cached price breakdown for a specific amount
 	 *
-	 * @param float $amount The amount to clear cache for
+	 * @param float $amount The amount to clear cache for.
 	 */
 	public function clear_cache( $amount ) {
 		$cache_key = 'avvance_price_' . md5( $this->merchant_id . '_' . floatval( $amount ) );

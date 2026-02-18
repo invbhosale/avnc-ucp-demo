@@ -16,12 +16,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * Avvance API client for financing operations.
+ */
 class Avvance_API_Client extends Avvance_API_Base {
 
 	/**
 	 * Create financing request
 	 *
-	 * @param WC_Order $order WooCommerce order object
+	 * @param WC_Order $order WooCommerce order object.
 	 * @return array|WP_Error API response or error
 	 */
 	public function create_financing_request( $order ) {
@@ -122,7 +125,7 @@ class Avvance_API_Client extends Avvance_API_Base {
 	/**
 	 * Get notification status
 	 *
-	 * @param string $notification_id Partner session ID used as the notification identifier
+	 * @param string $notification_id Partner session ID used as the notification identifier.
 	 * @return array|WP_Error API response or error
 	 */
 	public function get_notification_status( $notification_id ) {
@@ -188,8 +191,8 @@ class Avvance_API_Client extends Avvance_API_Base {
 	/**
 	 * Void transaction
 	 *
-	 * @param string $partner_session_id Partner session ID
-	 * @return array|WP_Error API response or error
+	 * @param string $partner_session_id Partner session ID.
+	 * @return array|WP_Error API response or error.
 	 */
 	public function void_transaction( $partner_session_id ) {
 		$token = $this->get_access_token();
@@ -242,8 +245,8 @@ class Avvance_API_Client extends Avvance_API_Base {
 	/**
 	 * Refund transaction
 	 *
-	 * @param string $partner_session_id Partner session ID
-	 * @param float  $amount Refund amount
+	 * @param string $partner_session_id Partner session ID.
+	 * @param float  $amount Refund amount.
 	 * @return array|WP_Error API response or error
 	 */
 	public function refund_transaction( $partner_session_id, $amount ) {

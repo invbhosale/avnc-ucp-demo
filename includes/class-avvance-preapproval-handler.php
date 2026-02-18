@@ -1,22 +1,25 @@
 <?php
 /**
- * Avvance Pre-Approval Handler - FIXED VERSION (Date Handling)
+ * Avvance Pre-Approval Handler
  *
- * FIXES:
- * 1. Better date parsing for leadExpiryDate
- * 2. More detailed logging for debugging
- * 3. Handles timezone issues
+ * @package Avvance_For_WooCommerce
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * Handles pre-approval requests and webhook processing.
+ */
 class Avvance_PreApproval_Handler {
 
 	const COOKIE_NAME   = 'avvance_browser_id';
 	const COOKIE_EXPIRY = 30 * DAY_IN_SECONDS; // 30 days to match Avvance expiry
 
+	/**
+	 * Initialize pre-approval handler hooks.
+	 */
 	public static function init() {
 		// AJAX endpoint for creating pre-approval.
 		add_action( 'wp_ajax_avvance_create_preapproval', array( __CLASS__, 'ajax_create_preapproval' ) );
@@ -168,11 +171,14 @@ class Avvance_PreApproval_Handler {
 	}
 
 	/**
-	 * Process pre-approval webhook (called from main webhook handler)
+	 * Process pre-approval webhook (called from main webhook handler).
 	 *
 	 * LEAD STATUS VALUES (only 2 possible values):
-	 * - PRE_APPROVED: Customer is pre-approved, includes maxPreApprovedAmount in metadata
-	 * - NOT_APPROVED: Customer is declined, NO metadata included
+	 * - PRE_APPROVED: Customer is pre-approved, includes maxPreApprovedAmount in metadata.
+	 * - NOT_APPROVED: Customer is declined, NO metadata included.
+	 *
+	 * @param array $payload Webhook payload.
+	 * @return true|WP_Error
 	 */
 	public static function process_preapproval_webhook( $payload ) {
 		$event_details = $payload['eventDetails'];
@@ -296,8 +302,8 @@ class Avvance_PreApproval_Handler {
 	 * Sanitize webhook payload for storage (GDPR/CCPA compliance)
 	 * Removes PII fields while preserving non-sensitive data for debugging
 	 *
-	 * @param array $payload The webhook event details
-	 * @return array Sanitized payload without PII
+	 * @param array $payload The webhook event details.
+	 * @return array Sanitized payload without PII.
 	 */
 	private static function sanitize_payload_for_storage( $payload ) {
 		// List of PII fields to redact.
@@ -333,7 +339,10 @@ class Avvance_PreApproval_Handler {
 	}
 
 	/**
-	 * Get latest pre-approval for browser fingerprint
+	 * Get latest pre-approval for browser fingerprint.
+	 *
+	 * @param string $fingerprint Browser fingerprint cookie value.
+	 * @return array|null
 	 */
 	private static function get_latest_preapproval_by_fingerprint( $fingerprint ) {
 		global $wpdb;
@@ -353,7 +362,9 @@ class Avvance_PreApproval_Handler {
 	}
 
 	/**
-	 * Save pre-approval to database
+	 * Save pre-approval to database.
+	 *
+	 * @param array $data Pre-approval data to save.
 	 */
 	private static function save_preapproval_to_db( $data ) {
 		global $wpdb;

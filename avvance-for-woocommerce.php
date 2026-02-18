@@ -15,6 +15,8 @@
  * Domain Path: /languages
  * WC requires at least: 5.6.0
  * WC tested up to: 9.4.0
+ *
+ * @package Avvance_For_WooCommerce
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -43,8 +45,18 @@ add_action(
  */
 final class Avvance_For_WooCommerce {
 
+	/**
+	 * Singleton instance.
+	 *
+	 * @var Avvance_For_WooCommerce|null
+	 */
 	private static $instance = null;
 
+	/**
+	 * Get singleton instance.
+	 *
+	 * @return Avvance_For_WooCommerce
+	 */
 	public static function instance() {
 		if ( is_null( self::$instance ) ) {
 			self::$instance = new self();
@@ -52,10 +64,16 @@ final class Avvance_For_WooCommerce {
 		return self::$instance;
 	}
 
+	/**
+	 * Constructor.
+	 */
 	private function __construct() {
 		add_action( 'plugins_loaded', array( $this, 'init' ) );
 	}
 
+	/**
+	 * Initialize the plugin.
+	 */
 	public function init() {
 		// Check if WooCommerce is active.
 		if ( ! class_exists( 'WooCommerce' ) ) {
@@ -73,6 +91,9 @@ final class Avvance_For_WooCommerce {
 		$this->register_blocks();
 	}
 
+	/**
+	 * Include required files.
+	 */
 	private function includes() {
 		require_once AVVANCE_PLUGIN_PATH . 'includes/avvance-functions.php';
 		require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-api-base.php';
@@ -86,6 +107,9 @@ final class Avvance_For_WooCommerce {
 		require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-price-breakdown-api.php';
 	}
 
+	/**
+	 * Initialize hooks and components.
+	 */
 	private function init_hooks() {
 		// Register payment gateway.
 		add_filter( 'woocommerce_payment_gateways', array( $this, 'add_gateway' ) );
@@ -106,11 +130,20 @@ final class Avvance_For_WooCommerce {
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
 	}
 
+	/**
+	 * Add Avvance gateway to WooCommerce.
+	 *
+	 * @param array $methods Payment gateway methods.
+	 * @return array
+	 */
 	public function add_gateway( $methods ) {
 		$methods[] = 'WC_Gateway_Avvance';
 		return $methods;
 	}
 
+	/**
+	 * Enqueue checkout scripts and styles.
+	 */
 	public function enqueue_scripts() {
 		if ( is_checkout() || is_cart() ) {
 			wp_enqueue_style(
@@ -139,6 +172,9 @@ final class Avvance_For_WooCommerce {
 		}
 	}
 
+	/**
+	 * Register WooCommerce Blocks integration.
+	 */
 	private function register_blocks() {
 		if ( ! class_exists( 'Automattic\WooCommerce\Blocks\Payments\Integrations\AbstractPaymentMethodType' ) ) {
 			return;
@@ -159,6 +195,9 @@ final class Avvance_For_WooCommerce {
 		);
 	}
 
+	/**
+	 * Display notice when WooCommerce is not active.
+	 */
 	public function woocommerce_missing_notice() {
 		echo '<div class="notice notice-error"><p>';
 		echo '<strong>' . esc_html__( 'Avvance for WooCommerce', 'avvance-for-woocommerce' ) . '</strong> ';

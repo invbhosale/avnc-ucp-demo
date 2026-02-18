@@ -15,6 +15,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * Abstract base class for Avvance API clients.
+ */
 abstract class Avvance_API_Base {
 
 	const PARTNER_ID = 'CONVERGE';
@@ -37,7 +40,7 @@ abstract class Avvance_API_Base {
 	/**
 	 * Constructor
 	 *
-	 * @param array $settings API settings containing client_key, client_secret, merchant_id, environment
+	 * @param array $settings API settings containing client_key, client_secret, merchant_id, environment.
 	 */
 	public function __construct( $settings ) {
 		$this->client_key    = $settings['client_key'] ?? '';
@@ -87,7 +90,7 @@ abstract class Avvance_API_Base {
 	/**
 	 * Fetch new token from API and cache it
 	 *
-	 * @param string $cache_key Transient cache key
+	 * @param string $cache_key Transient cache key.
 	 * @return string|WP_Error Access token or error
 	 */
 	private function fetch_new_token( $cache_key ) {

@@ -1,6 +1,8 @@
 <?php
 /**
  * Helper functions
+ *
+ * @package Avvance_For_WooCommerce
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
@@ -20,7 +22,10 @@ function avvance_get_gateway() {
 }
 
 /**
- * Log debug message
+ * Log debug message.
+ *
+ * @param string $message Log message.
+ * @param string $level   Log level (info, error, warning).
  */
 function avvance_log( $message, $level = 'info' ) {
 	$gateway = avvance_get_gateway();
@@ -56,7 +61,10 @@ function avvance_generate_webhook_credentials() {
 }
 
 /**
- * Check if order is Avvance order
+ * Check if order is Avvance order.
+ *
+ * @param WC_Order|int $order Order object or order ID.
+ * @return bool
  */
 function avvance_is_avvance_order( $order ) {
 	if ( is_numeric( $order ) ) {
@@ -67,7 +75,10 @@ function avvance_is_avvance_order( $order ) {
 }
 
 /**
- * Get order's Avvance application URL
+ * Get order's Avvance application URL.
+ *
+ * @param int $order_id WooCommerce order ID.
+ * @return string|null
  */
 function avvance_get_order_url( $order_id ) {
 	$order = wc_get_order( $order_id );
@@ -79,7 +90,10 @@ function avvance_get_order_url( $order_id ) {
 }
 
 /**
- * Check if Avvance URL is expired (30 days)
+ * Check if Avvance URL is expired (30 days).
+ *
+ * @param int $order_id WooCommerce order ID.
+ * @return bool
  */
 function avvance_is_url_expired( $order_id ) {
 	$order = wc_get_order( $order_id );
@@ -97,7 +111,10 @@ function avvance_is_url_expired( $order_id ) {
 }
 
 /**
- * Get friendly status message for merchant
+ * Get friendly status message for merchant.
+ *
+ * @param string $status Avvance loan status code.
+ * @return string
  */
 function avvance_get_status_message( $status ) {
 	$messages = array(

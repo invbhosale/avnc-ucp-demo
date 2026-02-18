@@ -20,6 +20,9 @@ if ( ! defined('ABSPATH') ) {
 	exit;
 }
 
+/**
+ * Handles incoming webhooks from Avvance.
+ */
 class Avvance_Webhooks {
 
 	/**
@@ -211,7 +214,7 @@ class Avvance_Webhooks {
 	/**
 	 * Route webhook to appropriate handler
 	 *
-	 * @param array $payload Webhook payload
+	 * @param array $payload Webhook payload.
 	 * @return true|WP_Error
 	 */
 	private static function route_webhook( $payload ) {
@@ -234,7 +237,7 @@ class Avvance_Webhooks {
 	/**
 	 * Check if webhook is for pre-approval
 	 *
-	 * @param array $payload
+	 * @param array $payload Webhook payload.
 	 * @return bool
 	 */
 	private static function is_preapproval_webhook( $payload ) {
@@ -256,7 +259,7 @@ class Avvance_Webhooks {
 	/**
 	 * Process pre-approval webhook
 	 *
-	 * @param array $payload
+	 * @param array $payload Webhook payload.
 	 * @return true|WP_Error
 	 */
 	private static function process_preapproval_webhook( $payload ) {
@@ -282,7 +285,7 @@ class Avvance_Webhooks {
 	 * - INVOICE_PAYMENT_TRANSACTION_SETTLED
 	 * - SYSTEM_ERROR_REQUEST_ALTERNATE_PAYMENT
 	 *
-	 * @param array $payload
+	 * @param array $payload Webhook payload.
 	 * @return true|WP_Error
 	 */
 	private static function process_loan_status_webhook( $payload ) {
@@ -415,7 +418,7 @@ class Avvance_Webhooks {
 	/**
 	 * Find order from webhook event details
 	 *
-	 * @param array $event_details
+	 * @param array $event_details Webhook event details.
 	 * @return WC_Order|null
 	 */
 	private static function find_order_from_webhook( $event_details ) {

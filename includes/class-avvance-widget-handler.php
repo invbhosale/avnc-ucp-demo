@@ -1,23 +1,36 @@
 <?php
 /**
- * Avvance Widget Handler - COMPLETE WITH CRITICAL FEATURES
+ * Avvance Widget Handler
  *
- * NEW FEATURES:
- * 1. Category/shop page widgets
- * 2. Checkout page widget
- * 3. Enhanced admin settings support
- * 4. Multiple widget positions
+ * @package Avvance_For_WooCommerce
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/**
+ * Handles Avvance widget rendering across store pages.
+ */
 class Avvance_Widget_Handler {
 
+	/**
+	 * Widget settings.
+	 *
+	 * @var array
+	 */
 	private static $settings = array();
-	private static $gateway  = null;
 
+	/**
+	 * Gateway instance.
+	 *
+	 * @var WC_Gateway_Avvance|null
+	 */
+	private static $gateway = null;
+
+	/**
+	 * Initialize widget handler.
+	 */
 	public static function init() {
 		self::$gateway = avvance_get_gateway();
 		self::load_settings();
@@ -146,7 +159,10 @@ class Avvance_Widget_Handler {
 	}
 
 	/**
-	 * Calculate monthly payment (simple calculation - replace with API call if needed)
+	 * Calculate monthly payment (simple calculation).
+	 *
+	 * @param float $amount Product or cart amount.
+	 * @return string Formatted monthly payment.
 	 */
 	private static function calculate_monthly_payment( $amount ) {
 		// Simple 6-month calculation.
@@ -417,7 +433,9 @@ class Avvance_Widget_Handler {
 	}
 
 	/**
-	 * Render placeholder for variable products (will be updated by JS)
+	 * Render placeholder for variable products (will be updated by JS).
+	 *
+	 * @param WC_Product $product WooCommerce product.
 	 */
 	private static function render_product_widget_placeholder( $product ) {
 		$session_id = self::generate_session_id();
@@ -439,7 +457,10 @@ class Avvance_Widget_Handler {
 	}
 
 	/**
-	 * Get lowest price from grouped product children
+	 * Get lowest price from grouped product children.
+	 *
+	 * @param WC_Product $product WooCommerce grouped product.
+	 * @return float
 	 */
 	private static function get_grouped_product_lowest_price( $product ) {
 		$children = array_filter( array_map( 'wc_get_product', $product->get_children() ) );
@@ -467,6 +488,9 @@ class Avvance_Widget_Handler {
 		$rendered = true;
 	}
 
+	/**
+	 * Render cart widget fallback (after cart table).
+	 */
 	public static function render_cart_widget_fallback() {
 		static $rendered = false;
 		if ( $rendered ) {
@@ -477,6 +501,9 @@ class Avvance_Widget_Handler {
 		$rendered = true;
 	}
 
+	/**
+	 * Render cart widget fallback (cart collaterals).
+	 */
 	public static function render_cart_widget_fallback2() {
 		static $rendered = false;
 		if ( $rendered ) {
@@ -487,6 +514,9 @@ class Avvance_Widget_Handler {
 		$rendered = true;
 	}
 
+	/**
+	 * Internal cart widget rendering logic.
+	 */
 	private static function render_cart_widget_internal() {
 		if ( ! WC()->cart || WC()->cart->is_empty() ) {
 			return;
@@ -587,7 +617,10 @@ class Avvance_Widget_Handler {
 	}
 
 	/**
-	 * Render standard checkout message (no pre-approval)
+	 * Render standard checkout message (no pre-approval).
+	 *
+	 * @param float  $total      Cart total.
+	 * @param string $session_id Tracking session ID.
 	 */
 	private static function render_checkout_standard_message( $total, $session_id ) {
 		$monthly = self::calculate_monthly_payment( $total );
@@ -612,7 +645,13 @@ class Avvance_Widget_Handler {
 	}
 
 	/**
-	 * Render the widget
+	 * Render the widget.
+	 *
+	 * @param float      $amount      Product or cart amount.
+	 * @param array|null $preapproval Pre-approval data.
+	 * @param string     $session_id  Tracking session ID.
+	 * @param string     $context     Widget context (product, cart, checkout).
+	 * @param array      $extra_data  Additional data attributes.
 	 */
 	private static function render_widget( $amount, $preapproval, $session_id, $context, $extra_data = array() ) {
 		$container_class = 'avvance-' . $context . '-widget';
@@ -641,10 +680,13 @@ class Avvance_Widget_Handler {
 	}
 
 	/**
-	 * Render CTA link based on pre-approval status
+	 * Render CTA link based on pre-approval status.
 	 *
 	 * Only PRE_APPROVED status shows the preapproved message.
 	 * NOT_APPROVED or pending shows the default "Check your spending power" link.
+	 *
+	 * @param array|null $preapproval Pre-approval data.
+	 * @param string     $session_id  Tracking session ID.
 	 */
 	private static function render_cta_link( $preapproval, $session_id ) {
 		// Only PRE_APPROVED status is considered approved.
