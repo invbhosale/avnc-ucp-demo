@@ -61,14 +61,16 @@ function avvance_cleanup_transients() {
     global $wpdb;
 
     // Delete all Avvance token transients
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- uninstall cleanup, caching not needed
     $wpdb->query(
         "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_avvance_token_%' OR option_name LIKE '_transient_timeout_avvance_token_%'"
-    ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+    );
 
     // Delete price breakdown cache transients
+    // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- uninstall cleanup, caching not needed
     $wpdb->query(
         "DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_avvance_price_%' OR option_name LIKE '_transient_timeout_avvance_price_%'"
-    ); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+    );
 }
 
 // Run cleanup
