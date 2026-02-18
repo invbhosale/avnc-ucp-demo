@@ -191,7 +191,7 @@ class Avvance_PreApproval_Handler {
 
         // Find the pre-approval record in database
         global $wpdb;
-        $table_name = $wpdb->prefix . 'avvance_preapprovals';
+        $table_name = esc_sql( $wpdb->prefix . 'avvance_preapprovals' );
 
         avvance_log('Searching for pre-approval in database...');
 
@@ -200,7 +200,7 @@ class Avvance_PreApproval_Handler {
             $wpdb->prepare(
                 // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is safe, prefixed with $wpdb->prefix
                 "SELECT * FROM {$table_name} WHERE request_id = %s",
-                $request_id
+                sanitize_text_field( $request_id )
             )
         );
 
@@ -331,14 +331,14 @@ class Avvance_PreApproval_Handler {
      */
     private static function get_latest_preapproval_by_fingerprint($fingerprint) {
         global $wpdb;
-        $table_name = $wpdb->prefix . 'avvance_preapprovals';
-        
+        $table_name = esc_sql( $wpdb->prefix . 'avvance_preapprovals' );
+
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
         $record = $wpdb->get_row(
             $wpdb->prepare(
                 // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is safe, prefixed with $wpdb->prefix
                 "SELECT * FROM {$table_name} WHERE browser_fingerprint = %s ORDER BY created_at DESC LIMIT 1",
-                $fingerprint
+                sanitize_text_field( $fingerprint )
             ),
             ARRAY_A
         );

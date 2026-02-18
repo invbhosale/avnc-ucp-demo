@@ -426,7 +426,9 @@ class Avvance_Webhooks {
 
             $orders = wc_get_orders([
                 'limit' => 1,
+                // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- required for order lookup by Avvance GUID
                 'meta_key' => '_avvance_application_guid',
+                // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
                 'meta_value' => $application_guid,
             ]);
 
@@ -442,7 +444,9 @@ class Avvance_Webhooks {
 
             $orders = wc_get_orders([
                 'limit' => 1,
+                // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- required for order lookup by session ID
                 'meta_key' => '_avvance_partner_session_id',
+                // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
                 'meta_value' => $partner_session_id,
             ]);
 
