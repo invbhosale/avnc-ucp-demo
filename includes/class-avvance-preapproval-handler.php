@@ -195,10 +195,14 @@ class Avvance_PreApproval_Handler {
 
         avvance_log('Searching for pre-approval in database...');
 
-        $record = $wpdb->get_row($wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is safe
-            "SELECT * FROM {$table_name} WHERE request_id = %s",
-            $request_id
-        ));
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+        $record = $wpdb->get_row(
+            $wpdb->prepare(
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is safe, prefixed with $wpdb->prefix
+                "SELECT * FROM {$table_name} WHERE request_id = %s",
+                $request_id
+            )
+        );
 
         if (!$record) {
             avvance_log('Pre-approval record not found for request ID: ' . $request_id, 'warning');
@@ -329,13 +333,15 @@ class Avvance_PreApproval_Handler {
         global $wpdb;
         $table_name = $wpdb->prefix . 'avvance_preapprovals';
         
-        $record = $wpdb->get_row($wpdb->prepare( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-            "SELECT * FROM {$table_name}
-             WHERE browser_fingerprint = %s
-             ORDER BY created_at DESC
-             LIMIT 1",
-            $fingerprint
-        ), ARRAY_A);
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+        $record = $wpdb->get_row(
+            $wpdb->prepare(
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is safe, prefixed with $wpdb->prefix
+                "SELECT * FROM {$table_name} WHERE browser_fingerprint = %s ORDER BY created_at DESC LIMIT 1",
+                $fingerprint
+            ),
+            ARRAY_A
+        );
         
         return $record;
     }
