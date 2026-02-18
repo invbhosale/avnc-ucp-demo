@@ -40,7 +40,7 @@ class Avvance_PreApproval_API extends Avvance_API_Base {
 			'channel-id'     => 'owa',
 			'Correlation-ID' => $correlation_id,
 			'application-id' => 'woo',
-			'clientdata'     => json_encode( array( 'ChannelID' => 'owa' ) ),
+			'clientdata'     => wp_json_encode( array( 'ChannelID' => 'owa' ) ),
 			'Session-ID'     => $session_id,
 		);
 

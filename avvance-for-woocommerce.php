@@ -1,4 +1,4 @@
-<?php
+<?php // phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- main plugin file
 /**
  * Plugin Name: Avvance for WooCommerce
  * Plugin URI: https://www.usbank.com/avvance

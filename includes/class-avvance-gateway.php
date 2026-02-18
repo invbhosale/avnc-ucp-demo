@@ -1,4 +1,4 @@
-<?php
+<?php // phpcs:ignore WordPress.Files.FileName.InvalidClassFileName -- class name follows WooCommerce convention
 /**
  * Avvance Payment Gateway
  *

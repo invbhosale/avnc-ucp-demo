@@ -22,19 +22,39 @@ abstract class Avvance_API_Base {
 
 	const PARTNER_ID = 'CONVERGE';
 
-	/** @var string API client key */
+	/**
+	 * API client key.
+	 *
+	 * @var string
+	 */
 	protected $client_key;
 
-	/** @var string API client secret */
+	/**
+	 * API client secret.
+	 *
+	 * @var string
+	 */
 	protected $client_secret;
 
-	/** @var string Merchant ID */
+	/**
+	 * Merchant ID.
+	 *
+	 * @var string
+	 */
 	protected $merchant_id;
 
-	/** @var string API base URL */
+	/**
+	 * API base URL.
+	 *
+	 * @var string
+	 */
 	protected $base_url;
 
-	/** @var string Environment (production or sandbox) */
+	/**
+	 * Environment (production or sandbox).
+	 *
+	 * @var string
+	 */
 	protected $environment;
 
 	/**
@@ -96,6 +116,7 @@ abstract class Avvance_API_Base {
 	private function fetch_new_token( $cache_key ) {
 		avvance_log( 'Requesting new access token' );
 
+		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- required for HTTP Basic Auth
 		$auth = base64_encode( $this->client_key . ':' . $this->client_secret );
 
 		$response = wp_remote_post(

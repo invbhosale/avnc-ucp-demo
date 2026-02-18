@@ -195,7 +195,7 @@ class Avvance_PreApproval_Handler {
 
 		// Validate lead status - only PRE_APPROVED and NOT_APPROVED are valid.
 		$valid_statuses = array( 'PRE_APPROVED', 'NOT_APPROVED' );
-		if ( ! in_array( $lead_status, $valid_statuses ) ) {
+		if ( ! in_array( $lead_status, $valid_statuses, true ) ) {
 			avvance_log( 'Unknown lead status received: ' . $lead_status . ' (expected PRE_APPROVED or NOT_APPROVED)', 'warning' );
 		}
 
@@ -448,6 +448,5 @@ class Avvance_PreApproval_Handler {
 
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 		dbDelta( $sql );
-
 	}
 }
