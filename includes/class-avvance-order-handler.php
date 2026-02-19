@@ -193,10 +193,21 @@ class Avvance_Order_Handler {
 			$order->add_order_note( __( 'Payment completed via manual status check', 'avvance-for-woocommerce' ) );
 
 			wp_send_json_success( array( 'redirect' => $order->get_checkout_order_received_url() ) );
-		} elseif ( in_array( $status, array( 'APPLICATION_DENIED_REQUEST_ALTERNATE_PAYMENT', 'SYSTEM_ERROR_REQUEST_ALTERNATE_PAYMENT' ), true ) ) {
-			// Declined.
-			$order->update_status( 'cancelled', __( 'Application declined (manual check)', 'avvance-for-woocommerce' ) );
-			wp_send_json_error( array( 'message' => __( 'Your application was declined. Please use another payment method.', 'avvance-for-woocommerce' ) ) );
+		} elseif ( in_array( $status, array( 'APPLICATION_DENIED_REQUEST_ALTERNATE_PAYMENT', 'APPLICATION_PARTIALLY_APPROVED', 'SYSTEM_ERROR_REQUEST_ALTERNATE_PAYMENT' ), true ) ) {
+			// Declined/error — keep order pending so consumer can retry (e.g., spouse applying).
+			$order->add_order_note(
+				sprintf(
+					/* translators: %s: Avvance application status */
+					__( 'Manual status check: %s. Order kept pending for retry.', 'avvance-for-woocommerce' ),
+					avvance_get_status_message( $status )
+				)
+			);
+			wp_send_json_success(
+				array(
+					'redirect' => $order->get_checkout_payment_url(),
+					'message'  => __( 'Your application was not approved. You can try again.', 'avvance-for-woocommerce' ),
+				)
+			);
 		} else {
 			// Still pending.
 			/* translators: %s: Avvance application status message */

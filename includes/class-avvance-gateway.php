@@ -303,9 +303,9 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			return $title;
 		}
 
-		// Show marketing message only on checkout page (frontend).
+		// Show marketing message on checkout and order-pay pages (frontend), not order-received.
 		if ( is_checkout() && ! is_wc_endpoint_url( 'order-received' ) ) {
-			return 'Pay over time with <img src="' . esc_url( AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg' ) . '" alt="Avvance" style="height: 24px; vertical-align: middle; margin: 0 8px;"> <a href="https://www.usbank.com/avvance-installment-loans.html" target="_blank" rel="noopener noreferrer" style="font-size: 0.9em;">Learn more</a>';
+			return 'Pay over time with U.S. Bank Avvance <a href="https://www.usbank.com/avvance-installment-loans.html" target="_blank" rel="noopener noreferrer" style="font-size: 0.9em;">Learn more</a>';
 		}
 
 		// Return clean title for orders, admin, emails, thank you page, etc.
@@ -332,11 +332,27 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			return false;
 		}
 
+		// Check order total on the order-pay page (cart may be empty).
+		$min = floatval( $this->get_option( 'min_order_amount', 300 ) );
+		$max = floatval( $this->get_option( 'max_order_amount', 25000 ) );
+
+		if ( is_wc_endpoint_url( 'order-pay' ) ) {
+			global $wp;
+			$order_id = isset( $wp->query_vars['order-pay'] ) ? absint( $wp->query_vars['order-pay'] ) : 0;
+			$order    = wc_get_order( $order_id );
+
+			if ( $order ) {
+				$total = $order->get_total();
+				if ( $total < $min || $total > $max ) {
+					return false;
+				}
+				return true;
+			}
+		}
+
 		// Check cart total using configured min/max amounts.
 		if ( WC()->cart ) {
 			$total = WC()->cart->get_total( '' );
-			$min   = floatval( $this->get_option( 'min_order_amount', 300 ) );
-			$max   = floatval( $this->get_option( 'max_order_amount', 25000 ) );
 
 			if ( $total < $min || $total > $max ) {
 				return false;
@@ -546,10 +562,25 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 								location.reload();
 							} else if (response.data.status === 'cancelled') {
 								clearInterval(statusInterval);
-								$('#avvance-status').html('<?php echo esc_js( __( 'Application declined. Please choose another payment method.', 'avvance-for-woocommerce' ) ); ?>');
+								$('#avvance-status').html('<?php echo esc_js( __( 'Application declined. Redirecting so you can try again...', 'avvance-for-woocommerce' ) ); ?>');
 								setTimeout(function() {
-									window.location = '<?php echo esc_js( wc_get_cart_url() ); ?>';
+									window.location = <?php echo wp_json_encode( $order->get_checkout_payment_url() ); ?>;
 								}, 3000);
+							}
+
+							// Check for Avvance declined/error while order is still pending.
+							var avvanceStatus = response.data.avvance_status || '';
+							var declinedStatuses = [
+								'APPLICATION_DENIED_REQUEST_ALTERNATE_PAYMENT',
+								'APPLICATION_PARTIALLY_APPROVED',
+								'SYSTEM_ERROR_REQUEST_ALTERNATE_PAYMENT'
+							];
+							if (response.data.status === 'pending' && declinedStatuses.indexOf(avvanceStatus) !== -1) {
+								clearInterval(statusInterval);
+								$('#avvance-status').html('<?php echo esc_js( __( 'Your U.S. Bank Avvance application was not approved. Redirecting so you can try again...', 'avvance-for-woocommerce' ) ); ?>');
+								setTimeout(function() {
+									window.location = <?php echo wp_json_encode( $order->get_checkout_payment_url() ); ?>;
+								}, 4000);
 							}
 						}
 					}
@@ -614,7 +645,15 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			$status = 'cancelled';
 		}
 
-		wp_send_json_success( array( 'status' => $status ) );
+		// Include Avvance webhook status so JS can detect declined/error while order is still pending.
+		$avvance_status = $order->get_meta( '_avvance_last_webhook_status' );
+
+		wp_send_json_success(
+			array(
+				'status'         => $status,
+				'avvance_status' => $avvance_status ? $avvance_status : '',
+			)
+		);
 	}
 
 	/**
@@ -790,6 +829,11 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 	 * Check if this is a Blocks checkout
 	 */
 	private function is_blocks_checkout() {
+		// Order-pay page always uses classic form, even when checkout page has blocks.
+		if ( is_wc_endpoint_url( 'order-pay' ) ) {
+			return false;
+		}
+
         // phpcs:ignore WordPress.Security.NonceVerification.Missing -- WooCommerce handles nonce verification for checkout
 		return isset( $_POST['wc-avvance-payment-token'] ) ||
 				( function_exists( 'has_block' ) && has_block( 'woocommerce/checkout' ) );

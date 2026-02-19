@@ -364,19 +364,20 @@ class Avvance_Webhooks {
 				break;
 
 			case 'APPLICATION_DENIED_REQUEST_ALTERNATE_PAYMENT':
+			case 'APPLICATION_PARTIALLY_APPROVED':
 			case 'SYSTEM_ERROR_REQUEST_ALTERNATE_PAYMENT':
-				avvance_log( 'Processing DENIED/ERROR status for order #' . $order_id );
+				avvance_log( 'Processing DENIED/PARTIAL/ERROR status for order #' . $order_id );
 
-				$order->update_status(
-					'cancelled',
+				// Keep order as pending so consumer can retry (e.g., spouse applying).
+				$order->add_order_note(
 					sprintf(
 						/* translators: %s: loan status */
-						__( 'Avvance application declined or error: %s', 'avvance-for-woocommerce' ),
+						__( 'Avvance application declined or error: %s. Order kept pending for retry.', 'avvance-for-woocommerce' ),
 						$loan_status
 					)
 				);
 
-				avvance_log( 'Order #' . $order_id . ' cancelled' );
+				avvance_log( 'Order #' . $order_id . ' kept pending for retry (status: ' . $loan_status . ')' );
 				break;
 
 			case 'APPLICATION_STARTED':
