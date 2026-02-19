@@ -122,6 +122,7 @@ function avvance_get_status_message( $status ) {
 		'APPLICATION_APPROVED'                         => __( 'Application approved - awaiting customer', 'avvance-for-woocommerce' ),
 		'APPLICATION_PENDING_REQUIRE_CUSTOMER_ACTION'  => __( 'Customer action required', 'avvance-for-woocommerce' ),
 		'APPLICATION_DENIED_REQUEST_ALTERNATE_PAYMENT' => __( 'Application declined', 'avvance-for-woocommerce' ),
+		'APPLICATION_PARTIALLY_APPROVED'               => __( 'Application partially approved', 'avvance-for-woocommerce' ),
 		'SYSTEM_ERROR_REQUEST_ALTERNATE_PAYMENT'       => __( 'System error - use alternate payment', 'avvance-for-woocommerce' ),
 		'INVOICE_PAYMENT_TRANSACTION_AUTHORIZED'       => __( 'Payment authorized', 'avvance-for-woocommerce' ),
 		'INVOICE_PAYMENT_TRANSACTION_SETTLED'          => __( 'Payment settled', 'avvance-for-woocommerce' ),
