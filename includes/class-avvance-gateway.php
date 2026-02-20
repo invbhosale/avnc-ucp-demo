@@ -101,6 +101,13 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 				'description' => __( 'Your Elavon Merchant ID (MID)', 'avvance-for-woocommerce' ),
 				'desc_tip'    => true,
 			),
+			'partner_id'              => array(
+				'title'       => __( 'Partner ID', 'avvance-for-woocommerce' ),
+				'type'        => 'text',
+				'description' => __( 'Your Avvance Partner ID (provided by Avvance). Used to identify your integration in API requests.', 'avvance-for-woocommerce' ),
+				'desc_tip'    => true,
+				'placeholder' => 'e.g., CONVERGE',
+			),
 			'hashed_merchant_id'      => array(
 				'title'       => __( 'Hashed Merchant ID', 'avvance-for-woocommerce' ),
 				'type'        => 'text',
@@ -821,6 +828,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			'client_key'    => $this->get_option( 'client_key' ),
 			'client_secret' => $this->get_option( 'client_secret' ),
 			'merchant_id'   => $this->get_option( 'merchant_id' ),
+			'partner_id'    => $this->get_option( 'partner_id' ),
 			'environment'   => $this->get_option( 'environment' ),
 		);
 	}

@@ -236,6 +236,7 @@ class Avvance_Widget_Handler {
 				'client_key'    => $gateway->get_option( 'client_key' ),
 				'client_secret' => $gateway->get_option( 'client_secret' ),
 				'merchant_id'   => $gateway->get_option( 'merchant_id' ),
+				'partner_id'    => $gateway->get_option( 'partner_id' ),
 				'environment'   => $gateway->get_option( 'environment' ),
 			)
 		);
