@@ -20,8 +20,6 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 abstract class Avvance_API_Base {
 
-	const PARTNER_ID = 'CONVERGE';
-
 	/**
 	 * API client key.
 	 *
@@ -42,6 +40,13 @@ abstract class Avvance_API_Base {
 	 * @var string
 	 */
 	protected $merchant_id;
+
+	/**
+	 * Partner ID.
+	 *
+	 * @var string
+	 */
+	protected $partner_id;
 
 	/**
 	 * API base URL.
@@ -66,6 +71,7 @@ abstract class Avvance_API_Base {
 		$this->client_key    = $settings['client_key'] ?? '';
 		$this->client_secret = $settings['client_secret'] ?? '';
 		$this->merchant_id   = $settings['merchant_id'] ?? '';
+		$this->partner_id    = $settings['partner_id'] ?? '';
 		$this->environment   = $settings['environment'] ?? 'sandbox';
 
 		$this->base_url = ( 'production' === $this->environment )

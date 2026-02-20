@@ -93,7 +93,7 @@ class Avvance_API_Client extends Avvance_API_Base {
 					'Authorization'  => 'Bearer ' . $token,
 					'Content-Type'   => 'application/json',
 					'Correlation-ID' => $this->generate_correlation_id(),
-					'partner-ID'     => self::PARTNER_ID,
+					'partner-ID'     => $this->partner_id,
 				),
 				'body'    => wp_json_encode( $payload ),
 				'timeout' => 30,
@@ -146,7 +146,7 @@ class Avvance_API_Client extends Avvance_API_Base {
 			'Authorization'  => 'Bearer ' . $token,
 			'Correlation-ID' => $correlation_id,
 			'Content-Type'   => 'application/json',
-			'partner-ID'     => self::PARTNER_ID,
+			'partner-ID'     => $this->partner_id,
 			'merchant-Id'    => $this->merchant_id,
 			'notificationId' => $notification_id,
 		);
@@ -209,7 +209,7 @@ class Avvance_API_Client extends Avvance_API_Base {
 					'Authorization'  => 'Bearer ' . $token,
 					'Content-Type'   => 'application/json',
 					'Correlation-ID' => $this->generate_correlation_id(),
-					'partner-ID'     => self::PARTNER_ID,
+					'partner-ID'     => $this->partner_id,
 				),
 				'body'    => wp_json_encode(
 					array(
@@ -264,7 +264,7 @@ class Avvance_API_Client extends Avvance_API_Base {
 					'Authorization'  => 'Bearer ' . $token,
 					'Content-Type'   => 'application/json',
 					'Correlation-ID' => $this->generate_correlation_id(),
-					'partner-ID'     => self::PARTNER_ID,
+					'partner-ID'     => $this->partner_id,
 				),
 				'body'    => wp_json_encode(
 					array(
