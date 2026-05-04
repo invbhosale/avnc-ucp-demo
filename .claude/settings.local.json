@@ -3,7 +3,22 @@
     "allow": [
       "Bash(git init:*)",
       "Bash(git checkout:*)",
-      "Bash(dir /s \"c:\\\\Users\\\\vaibh\\\\Downloads\\\\From demo store\\\\avvance-woocommerce\")"
+      "Bash(dir /s \"c:\\\\Users\\\\vaibh\\\\Downloads\\\\From demo store\\\\avvance-woocommerce\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git rm:*)",
+      "Bash(composer global show:*)",
+      "Bash(php:*)",
+      "Bash(/c/xampp/php/php.exe:*)",
+      "Bash(/c/XAMPP/php/php.exe:*)",
+      "Bash(python3 -c \" import sys, json lines = [] for line in sys.stdin: try: obj = json.loads\\(line.strip\\(\\)\\) if obj.get\\(''type''\\) == ''human'' and ''message'' in obj: msg = obj[''message''] if isinstance\\(msg, dict\\) and ''content'' in msg: for c in msg[''content'']: if isinstance\\(c, dict\\) and c.get\\(''type''\\) == ''text'': lines.append\\(c[''text'']\\) elif isinstance\\(msg, str\\): lines.append\\(msg\\) except: pass for l in lines[-15:]: print\\(''---''\\) print\\(l[:500]\\) \")",
+      "Bash(vendor/bin/phpcs:*)",
+      "Bash(ls:*)",
+      "Bash(git status:*)",
+      "Bash(git merge:*)",
+      "Bash(echo:*)",
+      "Bash(xxd:*)",
+      "Bash(perl -pi -e:*)"
     ]
   }
 }
