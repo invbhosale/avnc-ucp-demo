@@ -51,16 +51,6 @@ function avvance_log( $message, $level = 'info' ) {
 }
 
 /**
- * Generate webhook credentials
- */
-function avvance_generate_webhook_credentials() {
-	return array(
-		'username' => 'avvance_' . substr( md5( wp_generate_uuid4() ), 0, 16 ),
-		'password' => wp_generate_password( 32, true, true ),
-	);
-}
-
-/**
  * Check if order is Avvance order.
  *
  * @param WC_Order|int $order Order object or order ID.

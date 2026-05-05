@@ -6,11 +6,9 @@
  * - Loan status updates (payment authorized, settled, declined)
  * - Pre-approval status updates
  *
- * Authentication: US Bank Avvance uses HTTP Basic Auth for webhook authentication.
- * They do NOT send HMAC signatures. Verified 2026-01-27 by inspecting actual webhook
- * headers - no signature headers (X-Avvance-Signature, X-Webhook-Signature, etc.) are sent.
- * Basic Auth credentials are configured in WooCommerce payment settings and registered
- * with Avvance's enterprise platform.
+ * Authentication: Validates incoming requests via a bearer token stored in the
+ * `webhook_auth_token` plugin setting. The token is pasted from the Avvance Merchant
+ * Portal. Accepts Authorization: Bearer <token> or X-Avvance-Token header.
  *
  * @package Avvance_For_WooCommerce
  * @since 1.0.0
@@ -49,15 +47,20 @@ class Avvance_Webhooks {
 			wp_send_json_error( array( 'message' => 'Method not allowed' ), 405 );
 		}
 
-		// Validate Basic Auth credentials.
-		if ( ! self::validate_basic_auth() ) {
-			avvance_log( 'ERROR: Basic Auth validation failed', 'error' );
+		// Validate bearer token authentication.
+		if ( ! self::validate_webhook_token() ) {
+			avvance_log( 'ERROR: Webhook token validation failed', 'error' );
 			status_header( 401 );
-			header( 'WWW-Authenticate: Basic realm="Avvance Webhook"' );
 			wp_send_json_error( array( 'message' => 'Unauthorized' ), 401 );
 		}
 
-		avvance_log( 'Basic Auth validation passed' );
+		avvance_log( 'Webhook token validation passed' );
+
+		// Record that the webhook endpoint has been confirmed active.
+		if ( get_option( 'avvance_webhook_status' ) !== 'active' ) {
+			update_option( 'avvance_webhook_status', 'active' );
+			avvance_log( 'Webhook endpoint confirmed active - first webhook received' );
+		}
 
 		// Get and parse the payload.
 		$raw_payload = file_get_contents( 'php://input' );
@@ -97,114 +100,73 @@ class Avvance_Webhooks {
 	}
 
 	/**
-	 * Validate Basic Auth credentials
+	 * Validate webhook bearer token authentication.
 	 *
-	 * @return bool True if valid, false otherwise
+	 * Checks Authorization: Bearer <token> header first,
+	 * then falls back to X-Avvance-Token custom header.
+	 *
+	 * @return bool True if token is valid, false otherwise.
 	 */
-	private static function validate_basic_auth() {
+	private static function validate_webhook_token() {
 		$gateway = avvance_get_gateway();
 		if ( ! $gateway ) {
-			avvance_log( 'ERROR: Gateway not available for auth validation', 'error' );
+			avvance_log( 'Webhook auth: gateway not available', 'error' );
 			return false;
 		}
 
-		// Get credentials and clean them (remove whitespace, HTML entities, non-printable chars).
-		$expected_username = trim( $gateway->get_option( 'webhook_username' ) );
-		$expected_password = $gateway->get_option( 'webhook_password' );
-
-		// Clean the password - remove HTML entities, extra whitespace, non-printable chars.
-		$expected_password = html_entity_decode( $expected_password, ENT_QUOTES, 'UTF-8' );
-		$expected_password = preg_replace( '/\s+/', '', $expected_password ); // Remove all whitespace.
-		$expected_password = preg_replace( '/[^\x20-\x7E]/', '', $expected_password ); // Keep only printable ASCII.
-
-		if ( empty( $expected_username ) || empty( $expected_password ) ) {
-			avvance_log( 'ERROR: Webhook credentials not configured', 'error' );
+		$expected_token = trim( $gateway->get_option( 'webhook_auth_token' ) );
+		if ( empty( $expected_token ) ) {
+			avvance_log( 'Webhook auth: webhook_auth_token not configured in plugin settings', 'error' );
 			return false;
 		}
 
-		avvance_log( 'Expected password length after cleaning: ' . strlen( $expected_password ) );
+		$provided_token = '';
 
-		// Get credentials from request.
-		$auth_header       = '';
-		$provided_username = '';
-		$provided_password = '';
-
-		// Try different methods to get Authorization header.
-		// Note: Auth headers contain Base64 credentials, wp_unslash only (no sanitize_text_field).
+		// Attempt A: Authorization: Bearer <token> via $_SERVER.
+		$auth_header = '';
 		if ( isset( $_SERVER['HTTP_AUTHORIZATION'] ) ) {
 			$auth_header = wp_unslash( $_SERVER['HTTP_AUTHORIZATION'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
 		} elseif ( isset( $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ) ) {
 			$auth_header = wp_unslash( $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-		} elseif ( function_exists( 'getallheaders' ) ) {
-			$headers = getallheaders();
-			if ( isset( $headers['Authorization'] ) ) {
-				$auth_header = $headers['Authorization'];
+		}
+
+		if ( ! empty( $auth_header ) && str_starts_with( trim( $auth_header ), 'Bearer ' ) ) {
+			$provided_token = trim( substr( trim( $auth_header ), 7 ) );
+			avvance_log( 'Webhook auth: using Authorization Bearer header' );
+		}
+
+		// Attempt B: X-Avvance-Token custom header via $_SERVER.
+		if ( empty( $provided_token ) && ! empty( $_SERVER['HTTP_X_AVVANCE_TOKEN'] ) ) {
+			$provided_token = trim( sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_AVVANCE_TOKEN'] ) ) );
+			avvance_log( 'Webhook auth: using X-Avvance-Token header' );
+		}
+
+		// Attempt C: getallheaders() case-insensitive fallback.
+		if ( empty( $provided_token ) && function_exists( 'getallheaders' ) ) {
+			foreach ( getallheaders() as $key => $value ) {
+				$key_lower = strtolower( $key );
+				if ( 'authorization' === $key_lower && str_starts_with( trim( $value ), 'Bearer ' ) ) {
+					$provided_token = trim( substr( trim( $value ), 7 ) );
+					avvance_log( 'Webhook auth: using Authorization header via getallheaders()' );
+					break;
+				}
+				if ( 'x-avvance-token' === $key_lower && ! empty( $value ) ) {
+					$provided_token = trim( $value );
+					avvance_log( 'Webhook auth: using X-Avvance-Token via getallheaders()' );
+					break;
+				}
 			}
 		}
 
-		// Check PHP_AUTH_USER and PHP_AUTH_PW (set by some servers).
-		if ( isset( $_SERVER['PHP_AUTH_USER'] ) && isset( $_SERVER['PHP_AUTH_PW'] ) ) {
-			$provided_username = sanitize_text_field( wp_unslash( $_SERVER['PHP_AUTH_USER'] ) );
-			$provided_password = wp_unslash( $_SERVER['PHP_AUTH_PW'] ); // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- password must not be sanitized
-		} elseif ( ! empty( $auth_header ) ) {
-			// Parse Basic Auth header.
-			if ( 0 !== strpos( $auth_header, 'Basic ' ) ) {
-				avvance_log( 'ERROR: Invalid Authorization header format', 'error' );
-				return false;
-			}
-
-			$encoded_credentials = substr( $auth_header, 6 );
-			// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode -- required for HTTP Basic Auth
-			$decoded_credentials = base64_decode( $encoded_credentials );
-
-			if ( false === $decoded_credentials || false === strpos( $decoded_credentials, ':' ) ) {
-				avvance_log( 'ERROR: Failed to decode credentials', 'error' );
-				return false;
-			}
-
-			list( $provided_username, $provided_password ) = explode( ':', $decoded_credentials, 2 );
-		} else {
-			avvance_log( 'ERROR: No Authorization header found', 'error' );
+		if ( empty( $provided_token ) ) {
+			avvance_log( 'Webhook auth: no Authorization Bearer or X-Avvance-Token header found', 'error' );
 			return false;
 		}
 
-		// Clean provided credentials the same way.
-		$provided_username = trim( $provided_username );
-		$provided_password = html_entity_decode( $provided_password, ENT_QUOTES, 'UTF-8' );
-		$provided_password = preg_replace( '/\s+/', '', $provided_password );
-		$provided_password = preg_replace( '/[^\x20-\x7E]/', '', $provided_password );
-
-		avvance_log( 'Provided password length after cleaning: ' . strlen( $provided_password ) );
-
-		// Constant-time comparison to prevent timing attacks.
-		$username_valid = hash_equals( $expected_username, $provided_username );
-		$password_valid = hash_equals( $expected_password, $provided_password );
-
-		// Fallback: if exact match fails, check if one contains the other (handles corruption).
-		if ( ! $password_valid ) {
-			// Check if the 32-char provided password matches the start of expected.
-			if ( strlen( $provided_password ) === 32 && strlen( $expected_password ) > 32 ) {
-				$password_valid = ( substr( $expected_password, 0, 32 ) === $provided_password );
-				if ( $password_valid ) {
-					avvance_log( 'Password matched using prefix comparison (32 chars)' );
-				}
-			}
-			// Or check if expected is contained in provided.
-			if ( ! $password_valid && strpos( $provided_password, $expected_password ) !== false ) {
-				$password_valid = true;
-				avvance_log( 'Password matched using contains comparison' );
-			}
-			// Or check if provided is contained in expected.
-			if ( ! $password_valid && strpos( $expected_password, $provided_password ) !== false ) {
-				$password_valid = true;
-				avvance_log( 'Password matched using contains comparison (reverse)' );
-			}
-		}
-
-		if ( ! $username_valid || ! $password_valid ) {
-			avvance_log( 'ERROR: Invalid webhook credentials', 'error' );
-			avvance_log( 'Expected password (first 10 chars): ' . substr( $expected_password, 0, 10 ) . '...' );
-			avvance_log( 'Provided password (first 10 chars): ' . substr( $provided_password, 0, 10 ) . '...' );
+		if ( ! hash_equals( $expected_token, $provided_token ) ) {
+			avvance_log( 'Webhook auth: token mismatch', 'error' );
+			avvance_log( 'Provided token length: ' . strlen( $provided_token ) );
+			avvance_log( 'Expected token length: ' . strlen( $expected_token ) );
 			return false;
 		}
 
@@ -324,29 +286,87 @@ class Avvance_Webhooks {
 			case 'INVOICE_PAYMENT_TRANSACTION_AUTHORIZED':
 				avvance_log( 'Processing AUTHORIZED status for order #' . $order_id );
 
-				// Get payment transaction ID.
+				$partner_session_id = $order->get_meta( '_avvance_partner_session_id' );
+
+				if ( empty( $partner_session_id ) ) {
+					avvance_log( 'AUTHORIZED webhook: missing partnerSessionId on order #' . $order_id, 'error' );
+					$order->add_order_note(
+						__( 'Avvance payment authorization received but partnerSessionId missing. Pending reconciliation.', 'avvance-for-woocommerce' )
+					);
+					$order->save();
+					break;
+				}
+
+				$gateway         = avvance_get_gateway();
+				$loan_status_api = new Avvance_Loan_Status_API(
+					array(
+						'client_key'    => $gateway->get_option( 'client_key' ),
+						'client_secret' => $gateway->get_option( 'client_secret' ),
+						'merchant_id'   => $gateway->get_option( 'merchant_id' ),
+						'partner_id'    => $gateway->get_option( 'partner_id' ),
+						'environment'   => $gateway->get_option( 'environment' ),
+					)
+				);
+
+				$confirmed_status = $loan_status_api->get_loan_status( $partner_session_id );
+
+				if ( is_wp_error( $confirmed_status ) ) {
+					avvance_log(
+						'AUTHORIZED webhook: loan-status confirmation failed: ' . $confirmed_status->get_error_message(),
+						'warning'
+					);
+					$order->add_order_note(
+						__( 'Avvance payment authorization received but could not be confirmed via loan-status API. Pending reconciliation.', 'avvance-for-woocommerce' )
+					);
+					$order->save();
+					// Return 200 to Avvance — cron will reconcile.
+					break;
+				}
+
+				if ( 'AUTHORIZED' !== $confirmed_status ) {
+					avvance_log(
+						'AUTHORIZED webhook: loan-status mismatch. Webhook claimed AUTHORIZED but API returned: ' . $confirmed_status,
+						'error'
+					);
+					$order->add_order_note(
+						sprintf(
+							/* translators: %s: actual loan status from API */
+							__( 'Avvance webhook claimed AUTHORIZED but loan-status returned: %s. Order not marked paid.', 'avvance-for-woocommerce' ),
+							$confirmed_status
+						)
+					);
+					$order->save();
+					break;
+				}
+
+				// Confirmed AUTHORIZED — safe to mark paid.
 				$payment_transaction_id = $event_details['paymentTransactionId'] ?? '';
 				$approval_code          = $event_details['approvalCode'] ?? '';
 
-				// Store transaction details.
 				if ( $payment_transaction_id ) {
 					$order->update_meta_data( '_avvance_payment_transaction_id', $payment_transaction_id );
 				}
 				if ( $approval_code ) {
 					$order->update_meta_data( '_avvance_approval_code', $approval_code );
 				}
+				if ( isset( $event_details['loanSummary'] ) ) {
+					$order->update_meta_data( '_avvance_loan_summary', $event_details['loanSummary'] );
+				}
 
-				// Mark as paid.
 				$order->payment_complete( $payment_transaction_id );
 				$order->add_order_note(
 					sprintf(
 						/* translators: %s: payment transaction ID */
-						__( 'Avvance payment authorized. Transaction ID: %s', 'avvance-for-woocommerce' ),
+						__( 'Avvance payment authorized and confirmed via loan-status API. Transaction ID: %s', 'avvance-for-woocommerce' ),
 						$payment_transaction_id ? $payment_transaction_id : 'N/A'
 					)
 				);
 
-				avvance_log( 'Order #' . $order_id . ' marked as paid' );
+				if ( WC()->session ) {
+					WC()->session->__unset( 'avvance_pending_order_id' );
+				}
+
+				avvance_log( 'Order #' . $order_id . ' marked as paid - loan-status confirmed AUTHORIZED' );
 				break;
 
 			case 'INVOICE_PAYMENT_TRANSACTION_SETTLED':
@@ -396,8 +416,14 @@ class Avvance_Webhooks {
 				break;
 
 			case 'APPLICATION_LINK_EXPIRED':
-				avvance_log( 'Processing LINK_EXPIRED for order #' . $order_id );
-				$order->add_order_note( __( 'Avvance application link expired.', 'avvance-for-woocommerce' ) );
+				avvance_log( 'Processing APPLICATION_LINK_EXPIRED for order #' . $order_id );
+				if ( ! $order->is_paid() ) {
+					$order->update_status(
+						'cancelled',
+						__( 'Avvance application link expired (webhook notification received).', 'avvance-for-woocommerce' )
+					);
+				}
+				avvance_log( 'Order #' . $order_id . ' cancelled due to expired application link' );
 				break;
 
 			default:

@@ -146,78 +146,94 @@ class Avvance_Order_Handler {
 			wp_send_json_success( array( 'redirect' => $order->get_checkout_order_received_url() ) );
 		}
 
-		// Call notification status API.
+		$partner_session_id = $order->get_meta( '_avvance_partner_session_id' );
+
+		if ( empty( $partner_session_id ) ) {
+			avvance_log( 'Manual status check: missing partnerSessionId on order #' . $order_id, 'error' );
+			wp_send_json_error( array( 'message' => __( 'Application ID not found.', 'avvance-for-woocommerce' ) ) );
+		}
+
 		$gateway = avvance_get_gateway();
 		if ( ! $gateway ) {
-			avvance_log( 'Manual status check failed: gateway not available', 'error' );
-			wp_send_json_error( array( 'message' => __( 'Gateway not available', 'avvance-for-woocommerce' ) ) );
+			wp_send_json_error( array( 'message' => __( 'Payment gateway not available.', 'avvance-for-woocommerce' ) ) );
 		}
 
-		$partner_session_id = $order->get_meta( '_avvance_partner_session_id' );
-		$application_guid   = $order->get_meta( '_avvance_application_guid' );
-		avvance_log( 'Manual status check: partner_session_id = ' . ( $partner_session_id ? $partner_session_id : '(empty)' ) . ', application_guid = ' . ( $application_guid ? $application_guid : '(empty)' ) . ', order_id = ' . $order_id );
-
-		if ( ! $partner_session_id ) {
-			avvance_log( 'Manual status check failed: no partner session ID on order ' . $order_id, 'error' );
-			wp_send_json_error( array( 'message' => __( 'Application ID not found', 'avvance-for-woocommerce' ) ) );
-		}
-
-		$environment = $gateway->get_option( 'environment' );
-		avvance_log( 'Manual status check: creating API client with environment=' . $environment . ', merchant_id=' . $gateway->get_option( 'merchant_id' ) );
-
-		$api = new Avvance_API_Client(
+		$api = new Avvance_Loan_Status_API(
 			array(
 				'client_key'    => $gateway->get_option( 'client_key' ),
 				'client_secret' => $gateway->get_option( 'client_secret' ),
 				'merchant_id'   => $gateway->get_option( 'merchant_id' ),
-				'environment'   => $environment,
+				'partner_id'    => $gateway->get_option( 'partner_id' ),
+				'environment'   => $gateway->get_option( 'environment' ),
 			)
 		);
 
-		$response = $api->get_notification_status( $partner_session_id );
+		avvance_log( 'Manual status check: calling loan-status for order #' . $order_id );
 
-		if ( is_wp_error( $response ) ) {
-			avvance_log( 'Manual status check API error: ' . $response->get_error_code() . ' - ' . $response->get_error_message(), 'error' );
+		$status = $api->get_loan_status( $partner_session_id );
+
+		if ( is_wp_error( $status ) ) {
+			if ( 'loan_not_authorized' === $status->get_error_code() ) {
+				avvance_log( 'Manual status check: loan not yet authorized for order #' . $order_id );
+				wp_send_json_success(
+					array(
+						'pending' => true,
+						'status'  => 'not_yet_authorized',
+						'message' => __( 'Your application is still being processed.', 'avvance-for-woocommerce' ),
+					)
+				);
+			}
+			avvance_log( 'Manual status check API error: ' . $status->get_error_message(), 'error' );
 			wp_send_json_error( array( 'message' => __( 'Unable to check status. Please try again.', 'avvance-for-woocommerce' ) ) );
 		}
 
-		avvance_log( 'Manual status check API response: ' . wp_json_encode( $response ) );
+		avvance_log( 'Manual status check: loan status is ' . $status . ' for order #' . $order_id );
 
-		// Process the status manually (same logic as webhook).
-		$status = $response['eventDetails']['loanStatus']['status'] ?? '';
+		switch ( $status ) {
+			case 'AUTHORIZED':
+			case 'SETTLED':
+				$order->payment_complete();
+				$order->add_order_note(
+					sprintf(
+						/* translators: %s: loan status string */
+						__( 'Payment confirmed via manual status check. Loan status: %s', 'avvance-for-woocommerce' ),
+						$status
+					)
+				);
+				wp_send_json_success( array( 'redirect' => $order->get_checkout_order_received_url() ) );
+				break;
 
-		if ( 'INVOICE_PAYMENT_TRANSACTION_AUTHORIZED' === $status ) {
-			// Mark order as paid.
-			$payment_transaction_id = $response['eventDetails']['paymentTransactionId'] ?? '';
-			$order->payment_complete( $payment_transaction_id );
-			$order->add_order_note( __( 'Payment completed via manual status check', 'avvance-for-woocommerce' ) );
+			case 'VOIDED':
+				$order->update_status(
+					'cancelled',
+					__( 'Loan voided - confirmed via manual status check.', 'avvance-for-woocommerce' )
+				);
+				wp_send_json_error(
+					array( 'message' => __( 'Your financing application was voided. Please return to cart and select a different payment method.', 'avvance-for-woocommerce' ) )
+				);
+				break;
 
-			wp_send_json_success( array( 'redirect' => $order->get_checkout_order_received_url() ) );
-		} elseif ( in_array( $status, array( 'APPLICATION_DENIED_REQUEST_ALTERNATE_PAYMENT', 'APPLICATION_PARTIALLY_APPROVED', 'SYSTEM_ERROR_REQUEST_ALTERNATE_PAYMENT' ), true ) ) {
-			// Declined/error — keep order pending so consumer can retry (e.g., spouse applying).
-			$order->add_order_note(
-				sprintf(
-					/* translators: %s: Avvance application status */
-					__( 'Manual status check: %s. Order kept pending for retry.', 'avvance-for-woocommerce' ),
-					avvance_get_status_message( $status )
-				)
-			);
-			wp_send_json_success(
-				array(
-					'redirect' => $order->get_checkout_payment_url(),
-					'message'  => __( 'Your application was not approved. You can try again.', 'avvance-for-woocommerce' ),
-				)
-			);
-		} else {
-			// Still pending.
-			/* translators: %s: Avvance application status message */
-			$order->add_order_note( sprintf( __( 'Manual status check: %s', 'avvance-for-woocommerce' ), avvance_get_status_message( $status ) ) );
-			wp_send_json_success(
-				array(
-					'pending' => true,
-					'status'  => $status,
-				)
-			);
+			case 'REFUNDED':
+			case 'REFUND_IN_PROGRESS':
+				wp_send_json_success( array( 'redirect' => $order->get_checkout_order_received_url() ) );
+				break;
+
+			default:
+				$order->add_order_note(
+					sprintf(
+						/* translators: %s: loan status string */
+						__( 'Manual status check: loan status is %s - still pending.', 'avvance-for-woocommerce' ),
+						$status
+					)
+				);
+				wp_send_json_success(
+					array(
+						'pending' => true,
+						'status'  => $status,
+						'message' => __( 'Your application is still being processed.', 'avvance-for-woocommerce' ),
+					)
+				);
+				break;
 		}
 	}
 

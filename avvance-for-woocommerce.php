@@ -3,7 +3,7 @@
  * Plugin Name: Avvance for WooCommerce
  * Plugin URI: https://www.usbank.com/avvance
  * Description: U.S. Bank point-of-sale financing for WooCommerce. Offer customers flexible installment loans at checkout.
- * Version: 1.2.0
+ * Version: 1.3.0
  * Requires at least: 6.0
  * Tested up to: 6.9
  * Requires PHP: 7.4
@@ -24,7 +24,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'AVVANCE_VERSION', '1.2.0' );
+define( 'AVVANCE_VERSION', '1.3.0' );
 define( 'AVVANCE_PLUGIN_FILE', __FILE__ );
 define( 'AVVANCE_PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
 define( 'AVVANCE_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
@@ -98,6 +98,7 @@ final class Avvance_For_WooCommerce {
 		require_once AVVANCE_PLUGIN_PATH . 'includes/avvance-functions.php';
 		require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-api-base.php';
 		require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-api-client.php';
+		require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-loan-status-api.php';
 		require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-gateway.php';
 		require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-webhooks.php';
 		require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-order-handler.php';
