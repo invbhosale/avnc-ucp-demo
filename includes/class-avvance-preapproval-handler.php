@@ -87,13 +87,6 @@ class Avvance_PreApproval_Handler {
 
 		require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-preapproval-api.php';
 
-		$hashed_mid = $gateway->get_option( 'hashed_merchant_id' );
-
-		if ( empty( $hashed_mid ) ) {
-			avvance_log( 'ERROR: Hashed Merchant ID not configured', 'error' );
-			wp_send_json_error( array( 'message' => 'Pre-approval not configured. Please contact merchant.' ) );
-		}
-
 		$api = new Avvance_PreApproval_API(
 			array(
 				'client_key'    => $gateway->get_option( 'client_key' ),
@@ -105,7 +98,7 @@ class Avvance_PreApproval_Handler {
 
 		avvance_log( 'API client created, calling create_preapproval' );
 
-		$response = $api->create_preapproval( $session_id, $hashed_mid );
+		$response = $api->create_preapproval( $session_id );
 
 		if ( is_wp_error( $response ) ) {
 			avvance_log( 'Pre-approval creation failed: ' . $response->get_error_message(), 'error' );

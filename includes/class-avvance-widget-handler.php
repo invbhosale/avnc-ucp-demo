@@ -764,9 +764,8 @@ class Avvance_Widget_Handler {
 		// Mark modal as rendered globally.
 		global $avvance_modal_rendered;
 		$avvance_modal_rendered = true;
-		$gateway                = avvance_get_gateway();
-		$hashed_mid             = $gateway ? $gateway->get_option( 'hashed_merchant_id' ) : '';
-		$logo_url               = AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg';
+		$gateway  = avvance_get_gateway();
+		$logo_url = AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg';
 		?>
 		<div id="avvance-preapproval-modal" class="avvance-modal" style="display: none;">
 			<div class="avvance-modal-overlay"></div>
@@ -790,7 +789,7 @@ class Avvance_Widget_Handler {
 
 					<div class="avvance-loan-cards" id="avvance-modal-loan-cards"></div>
 
-					<button type="button" class="avvance-btn-primary avvance-qualify-button" data-hashed-mid="<?php echo esc_attr( $hashed_mid ); ?>">
+					<button type="button" class="avvance-btn-primary avvance-qualify-button">
 						See if you qualify
 					</button>
 				</div>

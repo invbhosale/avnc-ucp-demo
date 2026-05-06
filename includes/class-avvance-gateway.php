@@ -20,7 +20,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 	public function __construct() {
 		$this->id                 = 'avvance';
 		$this->method_title       = __( 'U.S. Bank Avvance', 'avvance-for-woocommerce' );
-		$this->method_description = __( 'Offer customers flexible installment financing through U.S. Bank Avvance.', 'avvance-for-woocommerce' );
+		$this->method_description = __( 'Grow your business with U.S. Bank Avvance®. Log into the Avvance Merchant Portal to retrieve your activation settings. If you haven’t already signed up, visit <a href="https://avvance.usbank.com/businesses.html" target="_blank" rel="noopener noreferrer">Avvance.com</a> to get started.', 'avvance-for-woocommerce' );
 		$this->has_fields         = true;
 		$this->supports           = array( 'products', 'refunds' );
 
@@ -55,13 +55,6 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 	 * Initialize form fields
 	 */
 	public function init_form_fields() {
-		// Generate webhook credentials if they don't exist.
-		if ( ! $this->get_option( 'webhook_username' ) ) {
-			$credentials = avvance_generate_webhook_credentials();
-			$this->update_option( 'webhook_username', $credentials['username'] );
-			$this->update_option( 'webhook_password', $credentials['password'] );
-		}
-
 		$this->form_fields = array(
 			'enabled'                 => array(
 				'title'   => __( 'Enable/Disable', 'avvance-for-woocommerce' ),
@@ -108,12 +101,12 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 				'desc_tip'    => true,
 				'placeholder' => 'e.g., CONVERGE',
 			),
-			'hashed_merchant_id'      => array(
-				'title'       => __( 'Hashed Merchant ID', 'avvance-for-woocommerce' ),
-				'type'        => 'text',
-				'description' => __( 'Your Hashed Merchant ID for pre-approval (provided by Avvance)', 'avvance-for-woocommerce' ),
+			'webhook_auth_token'      => array(
+				'title'       => __( 'Authentication Token', 'avvance-for-woocommerce' ),
+				'type'        => 'password',
+				'description' => __( 'Your authentication token from the Avvance Merchant Portal.', 'avvance-for-woocommerce' ),
+				'default'     => '',
 				'desc_tip'    => true,
-				'placeholder' => 'e.g., aa613b14',
 			),
 
 			// ==========================================.
@@ -246,33 +239,6 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 				'desc_tip'          => true,
 			),
 
-			'webhook_title'           => array(
-				'title'       => __( 'Webhook Configuration', 'avvance-for-woocommerce' ),
-				'type'        => 'title',
-				'description' => __( 'Provide these details to Avvance Support to register your webhook endpoint. This webhook will receive both loan status updates and pre-approval notifications.', 'avvance-for-woocommerce' ),
-			),
-			'webhook_url'             => array(
-				'title'             => __( 'Webhook URL', 'avvance-for-woocommerce' ),
-				'type'              => 'text',
-				'description'       => __( 'Provide this URL to Avvance Support for both loan status and pre-approval webhooks', 'avvance-for-woocommerce' ),
-				'default'           => WC()->api_request_url( 'avvance_webhook' ),
-				'custom_attributes' => array( 'readonly' => 'readonly' ),
-				'desc_tip'          => true,
-			),
-			'webhook_username'        => array(
-				'title'             => __( 'Webhook Username', 'avvance-for-woocommerce' ),
-				'type'              => 'text',
-				'description'       => __( 'Provide this username to Avvance Support for Basic Auth', 'avvance-for-woocommerce' ),
-				'custom_attributes' => array( 'readonly' => 'readonly' ),
-				'desc_tip'          => true,
-			),
-			'webhook_password'        => array(
-				'title'             => __( 'Webhook Password', 'avvance-for-woocommerce' ),
-				'type'              => 'text',
-				'description'       => __( 'Provide this password to Avvance Support for Basic Auth', 'avvance-for-woocommerce' ),
-				'custom_attributes' => array( 'readonly' => 'readonly' ),
-				'desc_tip'          => true,
-			),
 			'debug_mode'              => array(
 				'title'       => __( 'Debug Mode', 'avvance-for-woocommerce' ),
 				'type'        => 'checkbox',
@@ -567,6 +533,13 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 								clearInterval(statusInterval);
 								$('#avvance-status').text('<?php echo esc_js( __( 'Payment completed! Redirecting...', 'avvance-for-woocommerce' ) ); ?>');
 								location.reload();
+							} else if (response.data.status === 'cancelled' &&
+							           response.data.avvance_status === 'VOIDED') {
+								clearInterval(statusInterval);
+								$('#avvance-status').html('<?php echo esc_js( __( 'Your financing application was voided. Redirecting to cart...', 'avvance-for-woocommerce' ) ); ?>');
+								setTimeout(function() {
+									window.location = '<?php echo esc_js( wc_get_cart_url() ); ?>';
+								}, 4000);
 							} else if (response.data.status === 'cancelled') {
 								clearInterval(statusInterval);
 								$('#avvance-status').html('<?php echo esc_js( __( 'Application declined. Redirecting so you can try again...', 'avvance-for-woocommerce' ) ); ?>');
@@ -673,150 +646,105 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 	 */
 	public function process_refund( $order_id, $amount = null, $reason = '' ) {
 		avvance_log( '=== REFUND PROCESS STARTED ===' );
-		avvance_log( "Order ID: {$order_id}" );
+		avvance_log( 'Order ID: ' . $order_id );
 		avvance_log( 'Refund Amount: ' . ( $amount ? $amount : 'FULL' ) );
-		avvance_log( 'Reason: ' . ( $reason ? $reason : 'No reason provided' ) );
 
 		$order = wc_get_order( $order_id );
-
 		if ( ! $order ) {
-			avvance_log( "ERROR: Order #{$order_id} not found", 'error' );
+			avvance_log( 'ERROR: Order #' . $order_id . ' not found', 'error' );
 			return new WP_Error( 'invalid_order', __( 'Invalid order', 'avvance-for-woocommerce' ) );
 		}
 
-		avvance_log( 'Order found. Order Status: ' . $order->get_status() );
-		avvance_log( 'Order Total: ' . $order->get_total() );
-		avvance_log( 'Order Payment Method: ' . $order->get_payment_method() );
-
 		$partner_session_id = $order->get_meta( '_avvance_partner_session_id' );
-		avvance_log( 'Partner Session ID: ' . ( $partner_session_id ? $partner_session_id : 'NOT FOUND' ) );
-
-		if ( ! $partner_session_id ) {
-			avvance_log( 'ERROR: Missing Avvance partner session ID', 'error' );
+		if ( empty( $partner_session_id ) ) {
+			avvance_log( 'ERROR: Missing Avvance partner session ID on order #' . $order_id, 'error' );
 			return new WP_Error( 'missing_session', __( 'Avvance session ID not found', 'avvance-for-woocommerce' ) );
 		}
 
-		$application_guid = $order->get_meta( '_avvance_application_guid' );
-		avvance_log( 'Application GUID: ' . ( $application_guid ? $application_guid : 'NOT FOUND' ) );
+		avvance_log( 'Partner Session ID: ' . $partner_session_id );
 
-		$api         = new Avvance_API_Client( $this->get_api_settings() );
-		$last_status = $order->get_meta( '_avvance_last_webhook_status' );
+		// Check current loan status via the loan-status API.
+		$loan_api = new Avvance_Loan_Status_API( $this->get_api_settings() );
+		$status   = $loan_api->get_loan_status( $partner_session_id );
 
-		avvance_log( 'Last Webhook Status (from order meta): ' . ( $last_status ? $last_status : 'NOT SET' ) );
-
-		// Get all order meta for debugging (redact sensitive values).
-		$all_meta = $order->get_meta_data();
-		avvance_log( 'All Avvance-related order meta:' );
-		foreach ( $all_meta as $meta ) {
-			if ( false !== strpos( $meta->key, '_avvance' ) ) {
-				// Redact potentially sensitive values, only log key and type.
-				$value_preview = is_string( $meta->value ) ? substr( $meta->value, 0, 20 ) . '...' : gettype( $meta->value );
-				avvance_log( "  {$meta->key}: [{$value_preview}]" );
+		if ( is_wp_error( $status ) ) {
+			if ( 'loan_not_authorized' === $status->get_error_code() ) {
+				avvance_log( 'Refund blocked: loan not yet authorized for order #' . $order_id, 'error' );
+				return new WP_Error(
+					'loan_not_authorized',
+					__( 'Loan has not been authorized yet and cannot be refunded or voided.', 'avvance-for-woocommerce' )
+				);
 			}
+			avvance_log( 'Refund blocked: loan-status API error: ' . $status->get_error_message(), 'error' );
+			return $status;
 		}
 
-		// Check current status from API using partner session ID.
-		if ( $partner_session_id ) {
-			avvance_log( 'Fetching current notification status from Avvance API...' );
+		avvance_log( 'Loan status for refund decision: ' . $status );
 
-			$status_response = $api->get_notification_status( $partner_session_id );
+		switch ( $status ) {
+			case 'AUTHORIZED':
+				avvance_log( 'Decision: VOID (transaction is authorized but not settled)' );
+				$api_client = new Avvance_API_Client( $this->get_api_settings() );
+				$result     = $api_client->void_transaction( $partner_session_id );
+				$action     = 'void';
+				break;
 
-			if ( ! is_wp_error( $status_response ) ) {
-				avvance_log( 'Notification status API response received' );
-				// Note: Full API response not logged to prevent PII exposure (GDPR/CCPA compliance).
+			case 'SETTLED':
+			case 'REFUNDED':
+				$refund_amount = $amount ? floatval( $amount ) : floatval( $order->get_total() );
+				avvance_log( 'Decision: REFUND, amount: ' . $refund_amount );
+				$api_client = new Avvance_API_Client( $this->get_api_settings() );
+				$result     = $api_client->refund_transaction( $partner_session_id, $refund_amount );
+				$action     = 'refund';
+				break;
 
-				$current_status = $status_response['eventDetails']['loanStatus']['status'] ?? null;
+			case 'REFUND_IN_PROGRESS':
+				avvance_log( 'Refund already in progress for order #' . $order_id, 'warning' );
+				return new WP_Error(
+					'refund_in_progress',
+					__( 'A refund is already in progress. Please wait for it to settle before processing another.', 'avvance-for-woocommerce' )
+				);
 
-				if ( $current_status ) {
-					avvance_log( "Current Status from API: {$current_status}" );
+			case 'VOIDED':
+				avvance_log( 'Cannot refund voided loan for order #' . $order_id, 'error' );
+				return new WP_Error(
+					'already_voided',
+					__( 'This loan has already been voided. No further action is possible.', 'avvance-for-woocommerce' )
+				);
 
-					if ( $current_status !== $last_status ) {
-						avvance_log( 'STATUS MISMATCH DETECTED!', 'warning' );
-						avvance_log( "  Stored in order meta: {$last_status}", 'warning' );
-						avvance_log( "  Current from API: {$current_status}", 'warning' );
-						avvance_log( 'Updating order meta with current status' );
-
-						$order->update_meta_data( '_avvance_last_webhook_status', $current_status );
-						$order->add_order_note(
-							sprintf(
-								/* translators: %1$s: previous status, %2$s: new status */
-								__( 'Avvance status updated during refund: %1$s → %2$s', 'avvance-for-woocommerce' ),
-								$last_status,
-								$current_status
-							)
-						);
-						$order->save();
-
-						$last_status = $current_status;
-					} else {
-						avvance_log( 'Status matches - no update needed' );
-					}
-				} else {
-					avvance_log( 'WARNING: Could not extract status from API response', 'warning' );
-				}
-			} else {
-				avvance_log( 'ERROR: Failed to get notification status from API', 'error' );
-				avvance_log( 'API Error: ' . $status_response->get_error_message(), 'error' );
-			}
-		} else {
-			avvance_log( 'WARNING: No application GUID - cannot check current status from API', 'warning' );
-		}
-
-		avvance_log( 'Final status to use for decision: ' . ( $last_status ? $last_status : 'NONE' ) );
-
-		// Determine if void or refund.
-		if ( 'INVOICE_PAYMENT_TRANSACTION_SETTLED' === $last_status ) {
-			avvance_log( 'Decision: REFUND (transaction is settled)' );
-			avvance_log( 'Calling refund API with amount: ' . ( $amount ? $amount : $order->get_total() ) );
-
-			$result = $api->refund_transaction( $partner_session_id, $amount ? $amount : $order->get_total() );
-			$action = 'refund';
-
-		} elseif ( 'INVOICE_PAYMENT_TRANSACTION_AUTHORIZED' === $last_status ) {
-			avvance_log( 'Decision: VOID (transaction is authorized but not settled)' );
-			avvance_log( 'Calling void API (full void only)' );
-
-			$result = $api->void_transaction( $partner_session_id );
-			$action = 'void';
-
-		} else {
-			avvance_log( "ERROR: Cannot process refund/void for status: {$last_status}", 'error' );
-			avvance_log( 'Valid statuses are:' );
-			avvance_log( '  - INVOICE_PAYMENT_TRANSACTION_SETTLED (for refund)' );
-			avvance_log( '  - INVOICE_PAYMENT_TRANSACTION_AUTHORIZED (for void)' );
-			avvance_log( '=== REFUND PROCESS FAILED ===' );
-
-			return new WP_Error(
-				'invalid_status',
-				sprintf(
-					/* translators: %s: current order status */
-					__( 'Order cannot be refunded in current status: %s. Valid statuses are AUTHORIZED or SETTLED.', 'avvance-for-woocommerce' ),
-					$last_status
-				)
-			);
+			default:
+				avvance_log( 'Cannot process refund for unexpected status: ' . $status, 'error' );
+				return new WP_Error(
+					'unexpected_status',
+					sprintf(
+						/* translators: %s: current loan status */
+						__( 'Cannot process refund. Current loan status is: %s', 'avvance-for-woocommerce' ),
+						$status
+					)
+				);
 		}
 
 		if ( is_wp_error( $result ) ) {
-			avvance_log( "ERROR: {$action} API call failed", 'error' );
-			avvance_log( 'Error message: ' . $result->get_error_message(), 'error' );
+			avvance_log( 'ERROR: ' . $action . ' API call failed: ' . $result->get_error_message(), 'error' );
 			avvance_log( '=== REFUND PROCESS FAILED ===' );
 			return $result;
 		}
 
-		avvance_log( "{$action} API call successful" );
-		// Note: API response not logged to prevent PII exposure (GDPR/CCPA compliance).
-
-		$order->add_order_note(
-			sprintf(
-				/* translators: %1$s: action type (refund or void), %2$s: refund amount or "full amount" */
-				__( 'Avvance %1$s processed: %2$s', 'avvance-for-woocommerce' ),
-				$action,
-				$amount ? wc_price( $amount ) : __( 'full amount', 'avvance-for-woocommerce' )
-			)
+		$note = sprintf(
+			/* translators: %s: action type (refund or void) */
+			__( 'Avvance %s processed successfully.', 'avvance-for-woocommerce' ),
+			$action
 		);
+		if ( 'refund' === $action ) {
+			$note .= ' ' . sprintf(
+				/* translators: %s: refund amount */
+				__( 'Amount: %s', 'avvance-for-woocommerce' ),
+				wc_price( $refund_amount )
+			);
+		}
+		$order->add_order_note( $note );
 
 		avvance_log( '=== REFUND PROCESS COMPLETED SUCCESSFULLY ===' );
-
 		return true;
 	}
 
