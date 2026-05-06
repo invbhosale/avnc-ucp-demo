@@ -104,16 +104,9 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			'webhook_auth_token'      => array(
 				'title'       => __( 'Authentication Token', 'avvance-for-woocommerce' ),
 				'type'        => 'password',
-				'description' => __( 'Your webhook signing token from the Avvance Merchant Portal. Separate from your Client Key and Secret.', 'avvance-for-woocommerce' ),
+				'description' => __( 'Your authentication token from the Avvance Merchant Portal.', 'avvance-for-woocommerce' ),
 				'default'     => '',
 				'desc_tip'    => true,
-			),
-			'hashed_merchant_id'      => array(
-				'title'       => __( 'Hashed Merchant ID', 'avvance-for-woocommerce' ),
-				'type'        => 'text',
-				'description' => __( 'Provided by Avvance. Used for the pre-approval widget and to generate your webhook URL.', 'avvance-for-woocommerce' ),
-				'desc_tip'    => true,
-				'placeholder' => 'e.g., aa613b14',
 			),
 
 			// ==========================================.
