@@ -781,17 +781,13 @@ class Avvance_Widget_Handler {
 					<h1 class="avvance-modal-heading">Pay over time and make your purchase possible</h1>
 					<p class="avvance-modal-subtitle">Applying won't impact your credit score.</p>
 
-					<div class="avvance-input-group">
-						<span class="avvance-input-label">Example loan options for</span>
+					<div class="avvance-calculator-row">
+						<span class="avvance-calculator-label">Example loan options for:</span>
 						<input type="text" class="avvance-currency-input" id="avvance-modal-amount" value="">
-						<button type="button" class="avvance-calc-btn" id="avvance-calc-btn">Calculate monthly payments</button>
+						<button type="button" class="avvance-calc-btn" id="avvance-calc-btn">Calculate</button>
 					</div>
 
 					<div class="avvance-loan-cards" id="avvance-modal-loan-cards"></div>
-
-					<button type="button" class="avvance-btn-primary avvance-qualify-button">
-						See if you qualify
-					</button>
 				</div>
 
 				<div class="avvance-slider-section">
@@ -824,11 +820,14 @@ class Avvance_Widget_Handler {
 						<div class="avvance-dot" data-slider="avvance-slider-preapproval" data-index="2"></div>
 					</div>
 
-					<p class="avvance-disclaimer">
-						Annual Percentage Rates (APR) range from 0% to 24.99% and are subject to eligibility check and approval.
-						<br><a href="#" class="avvance-learn-more">Learn more about U.S. Bank Avvance</a>
-					</p>
+					<button type="button" class="avvance-btn-primary avvance-qualify-button">
+						See if you qualify
+					</button>
 				</div>
+
+				<p class="avvance-disclaimer">
+					Annual Percentage Rates (APR) range from 0%-24.99%. Not all rates are available for all merchants. 0% APR loan options, including promotions, may be available depending on merchant participation and customer qualification. All rates are subject to an eligibility check and approval. Maximum loan amounts and available loan options provided by U.S. Bank depend on your credit score and purchase amount. Loan options with promotion rates will have a higher cost if the loan is held until maturity.
+				</p>
 			</div>
 		</div>
 
@@ -886,17 +885,13 @@ class Avvance_Widget_Handler {
 						<?php endif; ?>
 					</div>
 
-					<div class="avvance-input-group">
-						<span class="avvance-input-label">Example loan options for</span>
+					<div class="avvance-calculator-row">
+						<span class="avvance-calculator-label">Example loan options for:</span>
 						<input type="text" class="avvance-currency-input" id="avvance-preapproved-modal-amount" value="$<?php echo esc_attr( $max_amount ); ?>">
-						<button type="button" class="avvance-calc-btn" id="avvance-preapproved-calc-btn">Calculate monthly payments</button>
+						<button type="button" class="avvance-calc-btn" id="avvance-preapproved-calc-btn">Calculate</button>
 					</div>
 
 					<div class="avvance-loan-cards" id="avvance-preapproved-modal-loan-cards"></div>
-
-					<button type="button" class="avvance-btn-primary avvance-continue-shopping-btn">
-						Continue shopping
-					</button>
 				</div>
 
 				<div class="avvance-slider-section">
@@ -929,10 +924,14 @@ class Avvance_Widget_Handler {
 						<div class="avvance-dot" data-slider="avvance-slider-preapproved" data-index="2"></div>
 					</div>
 
-					<p class="avvance-disclaimer">
-						Your pre-approval expires on the earlier of (i) completion of a single Avvance transaction or (ii) the expiration date shown above.
-					</p>
+					<button type="button" class="avvance-btn-primary avvance-continue-shopping-btn">
+						Continue shopping
+					</button>
 				</div>
+
+				<p class="avvance-disclaimer">
+					Your pre-approval expires on the earlier of (i) completion of a single Avvance transaction or (ii) the expiration date shown above.
+				</p>
 			</div>
 		</div>
 		<?php

@@ -37,6 +37,7 @@ class Avvance_PreApproval_API extends Avvance_API_Base {
 			'Authorization'  => 'Bearer ' . $token,
 			'Content-Type'   => 'application/json',
 			'channel-id'     => 'ECOM',
+			'application-id' => 'woo',
 			'Correlation-ID' => $correlation_id,
 			'Session-ID'     => $session_id,
 		);
