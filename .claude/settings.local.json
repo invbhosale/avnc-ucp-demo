@@ -18,7 +18,8 @@
       "Bash(git merge:*)",
       "Bash(echo:*)",
       "Bash(xxd:*)",
-      "Bash(perl -pi -e:*)"
+      "Bash(perl -pi -e:*)",
+      "Bash(Remove-Item \"c:\\\\Users\\\\vaibh\\\\Downloads\\\\From demo store\\\\avvance-woocommerce\\\\includes\\\\class-avvance-setup-handler.php\")"
     ]
   }
 }

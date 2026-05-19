@@ -382,12 +382,12 @@
 
 .avvance-modal-dialog {
     position: relative;
-    max-width: 394px;
+    max-width: 667px;
     margin: 40px auto;
-    background: #fff;
+    background: #F1F5FB;
     border-radius: 8px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    border: 1px solid #66666A;
+    border: 1px solid #7A7A95;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -439,52 +439,59 @@
 
 /* Modal Body */
 .avvance-modal-body {
-    padding: 0 40px 30px 40px;
-    text-align: center;
+    padding: 0 64px 64px 64px;
+    text-align: left;
 }
 
 .avvance-modal-heading {
-    color: #4C4C50;
-    font-size: 28px;
-    font-weight: 700;
-    line-height: 1.2;
-    margin: 0 0 10px;
+    font-size: 32px;
+    line-height: 40px;
+    letter-spacing: -0.32px;
+    color: #484861;
+    font-weight: 400;
+    margin: 0 0 8px;
 }
 
 .avvance-modal-subtitle {
-    font-size: 18px;
-    font-style: italic;
-    color: #000;
-    margin: 0 0 30px;
+    font-size: 20px;
+    line-height: 32px;
+    color: #484861;
+    font-style: normal;
+    font-weight: 400;
+    margin: 0 0 32px;
 }
 
-/* Calculator Input Group */
-.avvance-input-group {
+/* Calculator Row */
+.avvance-calculator-row {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 15px;
-    margin-bottom: 30px;
+    flex-direction: row;
     flex-wrap: wrap;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 16px;
+    gap: 16px;
+    border: 1px solid #CDD1E2;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    background: #fff;
 }
 
-.avvance-input-label {
-    font-weight: 500;
-    font-size: 18px;
-    color: #2E2E32;
+.avvance-calculator-label {
+    font-size: 20px;
+    line-height: 32px;
+    color: #484861;
+    flex: 1;
 }
 
 .avvance-currency-input {
     border: none;
-    border-bottom: 1px solid #7F7F84;
-    font-size: 18px;
-    padding: 5px;
-    width: 120px;
-    font-weight: 500;
-    color: #4C4C50;
+    border-bottom: 1px solid #7A7A95;
+    font-size: 20px;
+    padding: 2px 4px;
+    width: 110px;
     background: transparent;
     outline: none;
-    text-align: center;
+    color: #484861;
 }
 
 .avvance-currency-input:focus {
@@ -492,93 +499,95 @@
 }
 
 .avvance-calc-btn {
-    border: 1px solid #235AE4;
-    background: #fff;
-    color: #235AE4;
-    padding: 8px 16px;
+    background: #235AE4;
+    color: #fff;
+    border: none;
     border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    font-size: 14px;
-    transition: background 0.2s;
+    white-space: nowrap;
 }
 
 .avvance-calc-btn:hover {
-    background: #EEF6FF;
+    background: #1a47b8;
 }
 
 /* Loan Cards */
 .avvance-loan-cards {
     display: flex;
     flex-direction: column;
-    gap: 15px;
-    margin-bottom: 20px;
+    gap: 8px;
+    margin-bottom: 0;
 }
 
 .avvance-loan-card {
-    border: 1px solid #CCCCD2;
-    border-radius: 10px;
-    padding: 15px;
-    text-align: left;
-}
-
-.avvance-card-badge {
-    background-color: #EEF6FF;
-    color: #235AE4;
-    font-weight: 700;
-    font-size: 12px;
-    padding: 4px 8px;
+    border: 1px solid #CDD1E2;
     border-radius: 4px;
-    display: inline-block;
-    margin-bottom: 8px;
+    padding: 16px;
+    background: #fff;
+    margin-bottom: 0;
 }
 
-.avvance-card-row {
+.avvance-loan-card-header {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 4px;
 }
 
-.avvance-monthly-price {
-    font-size: 20px;
+.avvance-loan-monthly {
+    font-size: 28px;
     font-weight: 700;
     color: #001E79;
+    white-space: nowrap;
 }
 
-.avvance-monthly-price .avvance-price-suffix {
+.avvance-loan-monthly .avvance-price-suffix {
     font-size: 14px;
     font-weight: 400;
-    color: #4C4C50;
+    color: #484861;
 }
 
-.avvance-apr-text {
+.avvance-loan-apr-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
     font-size: 14px;
-    color: #235AE4;
     font-weight: 600;
+    color: #235AE4;
+    white-space: nowrap;
 }
 
-.avvance-card-details {
-    font-size: 12px;
-    color: #4C4C50;
-    margin-top: 4px;
+.avvance-loan-details {
+    font-size: 13px;
+    color: #484861;
+    margin-top: 2px;
+}
+
+.avvance-loan-details span {
+    margin-right: 16px;
 }
 
 /* Primary Button */
 .avvance-btn-primary {
-    background-color: #235AE4;
+    background: #235AE4;
     color: #fff;
     width: 100%;
-    padding: 15px;
+    height: 48px;
+    padding: 12px 32px;
     border: none;
     border-radius: 8px;
     font-size: 16px;
     font-weight: 500;
     cursor: pointer;
-    transition: background 0.2s;
+    margin-top: 0;
 }
 
 .avvance-btn-primary:hover {
-    background-color: #1a47b8;
+    background: #1a47b8;
 }
 
 /* Success Banner (Pre-approved modal) */
@@ -623,8 +632,8 @@
 
 /* Slider Section */
 .avvance-slider-section {
-    background-color: #F5F5FA;
-    padding: 30px 40px;
+    background-color: #F1F5FB;
+    padding: 30px 64px;
     border-top: 1px solid #E5E5EA;
 }
 
@@ -746,10 +755,12 @@
 
 /* Disclaimer */
 .avvance-disclaimer {
-    font-size: 11px;
-    color: #666;
-    margin-top: 20px;
-    line-height: 1.4;
+    font-size: 12px;
+    line-height: 20px;
+    letter-spacing: 0.24px;
+    color: #484861;
+    margin-top: 0;
+    padding: 0 64px 32px 64px;
 }
 
 .avvance-learn-more {

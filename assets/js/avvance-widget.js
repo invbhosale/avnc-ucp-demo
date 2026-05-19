@@ -51,7 +51,8 @@
                 offers.push({
                     apr: item.apr || 0,
                     paymentAmount: item.monthlyPaymentAmount || item.paymentAmount || 0,
-                    termInMonths: item.termInMonths || null,
+                    termCount: item.termCount || null,
+                    totalLoanWithInterest: item.totalLoanWithInterest || null,
                     offerType: item.offerType || (item.apr === 0 ? 'ZERO' : 'APR'),
                     promotionApr: item.promotionApr || null,
                     promotionTermInMonths: item.promotionTermInMonths || null,
@@ -83,50 +84,60 @@
     /**
      * Render loan option cards into a container
      */
-    function renderLoanCards(offers, $container) {
+    function renderLoanCards(offers, $container, originalAmount) {
         if (!offers || offers.length === 0) {
-            $container.html('<p style="color: #666; text-align: center;">No loan options available for this amount.</p>');
+            $container.html('<p style="color: #484861; text-align: center; font-size: 14px;">No loan options available for this amount.</p>');
             return;
         }
 
         var html = '';
         for (var i = 0; i < offers.length; i++) {
             var offer = offers[i];
-            var badge = '';
-            var priceHtml = '';
-            var detailsHtml = '';
+            if (offer.offerType === 'PROMO') continue;
 
-            if (offer.offerType === 'PROMO') {
-                var promoMonths = offer.promotionTermInMonths || '—';
-                badge = 'Promo: 0% interest for the first ' + promoMonths + ' months';
-                var promoPayment = offer.promotionPaymentAmount ? parseFloat(offer.promotionPaymentAmount).toFixed(2) : '—';
-                priceHtml = '$' + promoPayment + ' <span class="avvance-price-suffix">/ month</span>';
-                if (offer.termInMonths) {
-                    detailsHtml = 'Then $' + parseFloat(offer.paymentAmount).toFixed(2) + '/month for ' + offer.termInMonths + ' months';
+            var monthlyHtml = '$' + parseFloat(offer.paymentAmount).toFixed(2) +
+                '<span class="avvance-price-suffix">/month</span>';
+
+            var termCount = offer.termCount || '—';
+            var aprVal = offer.apr !== null && offer.apr !== undefined
+                ? parseFloat(offer.apr).toFixed(2) + '%'
+                : '0%';
+            var aprBadge = aprVal + ' APR for ' + termCount + ' months';
+
+            var detailsHtml = '';
+            if (offer.offerType === 'ZERO') {
+                if (offer.totalLoanWithInterest) {
+                    detailsHtml = 'Total $' + parseFloat(offer.totalLoanWithInterest)
+                        .toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
                 }
-            } else if (offer.offerType === 'ZERO') {
-                var zeroMonths = offer.termInMonths || '—';
-                badge = '0% APR for ' + zeroMonths + ' months';
-                priceHtml = '$' + parseFloat(offer.paymentAmount).toFixed(2) + ' <span class="avvance-price-suffix">/ month</span>';
             } else {
-                // APR offer
-                var aprVal = offer.apr ? parseFloat(offer.apr).toFixed(2) : '0.00';
-                var aprMonths = offer.termInMonths || '—';
-                badge = aprVal + '% APR for ' + aprMonths + ' months';
-                priceHtml = '$' + parseFloat(offer.paymentAmount).toFixed(2) + ' <span class="avvance-price-suffix">/ month</span>';
+                var interest = (offer.totalLoanWithInterest && originalAmount)
+                    ? parseFloat(offer.totalLoanWithInterest) - parseFloat(originalAmount)
+                    : null;
+                if (interest !== null && interest > 0) {
+                    detailsHtml += '<span>Interest $' + interest.toLocaleString('en-US',
+                        {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span>';
+                }
+                if (offer.totalLoanWithInterest) {
+                    detailsHtml += '<span>Total $' + parseFloat(offer.totalLoanWithInterest)
+                        .toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span>';
+                }
             }
 
             html += '<div class="avvance-loan-card">';
-            html += '  <div class="avvance-card-badge">' + badge + '</div>';
-            html += '  <div class="avvance-card-row">';
-            html += '    <div>';
-            html += '      <div class="avvance-monthly-price">' + priceHtml + '</div>';
-            if (detailsHtml) {
-                html += '      <div class="avvance-card-details">' + detailsHtml + '</div>';
-            }
-            html += '    </div>';
+            html += '  <div class="avvance-loan-card-header">';
+            html += '    <span class="avvance-loan-monthly">' + monthlyHtml + '</span>';
+            html += '    <span class="avvance-loan-apr-badge">' + aprBadge + '</span>';
             html += '  </div>';
+            if (detailsHtml) {
+                html += '  <div class="avvance-loan-details">' + detailsHtml + '</div>';
+            }
             html += '</div>';
+        }
+
+        if (!html) {
+            $container.html('<p style="color: #484861; text-align: center; font-size: 14px;">No loan options available for this amount.</p>');
+            return;
         }
 
         $container.html(html);
@@ -154,7 +165,7 @@
             success: function(response) {
                 if (response.success) {
                     var offers = parseOffers(response.data);
-                    renderLoanCards(offers, $container);
+                    renderLoanCards(offers, $container, amount);
                 } else {
                     $container.html('<p style="color: #666; text-align: center;">Unable to load loan options.</p>');
                 }

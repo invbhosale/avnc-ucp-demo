@@ -38,7 +38,7 @@ class Avvance_API_Client extends Avvance_API_Base {
 
 		$payload = array(
 			'partnerSessionId'      => $partner_session_id,
-			'clientApplication'     => 'MERCHANT_PORTAL',
+			'clientApplication'     => 'WOOCOMMERCE',
 			'merchantId'            => $this->merchant_id,
 			'invoiceAmount'         => strval( $order->get_total() ),
 			'invoiceId'             => strval( $order->get_id() ),
