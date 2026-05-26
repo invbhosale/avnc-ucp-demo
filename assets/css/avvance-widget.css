@@ -23,9 +23,7 @@
 }
 
 .avvance-widget-content {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+    display: block;
 }
 
 /* ========================================
@@ -33,10 +31,9 @@
    ======================================== */
 
 .avvance-price-message {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-    flex-wrap: wrap;
+    display: block;
+    line-height: 1.8;
+    text-align: left;
 }
 
 .avvance-loading {
@@ -51,8 +48,10 @@
 .avvance-logo-inline {
     height: 18px;
     width: auto;
+    display: inline-block;
     vertical-align: middle;
-    margin: 0 2px;
+    margin: 0 3px;
+    max-width: 120px;
 }
 
 .avvance-logo-small {
@@ -103,6 +102,24 @@
     text-decoration: none;
 }
 
+.avvance-check-spending-link,
+.avvance-learn-more-link,
+.avvance-preapproved-details-link {
+    color: #235AE4;
+    text-decoration: underline;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.2s;
+    white-space: nowrap;
+}
+
+.avvance-check-spending-link:hover,
+.avvance-learn-more-link:hover,
+.avvance-preapproved-details-link:hover {
+    color: #1a47b8;
+    text-decoration: none;
+}
+
 /* 0% APR badge */
 .avvance-zero-apr {
     color: #0073aa;
@@ -146,52 +163,51 @@
    CATEGORY PAGE WIDGET (COMPACT)
    ======================================== */
 
-.avvance-category-widget {
-    font-size: 12px;
-    text-align: center;
-    margin: 8px 0;
-    padding: 6px 0;
-    line-height: 1.4;
+.woocommerce ul.products li.product .avvance-category-widget {
+    text-align: left;
 }
 
-.avvance-message-small {
+li.product .avvance-category-widget,
+li.product .avvance-category-widget .avvance-widget-content,
+li.product .avvance-category-widget .avvance-price-message {
+    text-align: left !important;
+}
+
+/* ========================================
+   CHECKOUT BANNER
+   ======================================== */
+
+.avvance-checkout-banner {
+    background: #F1F5FB;
+    border: 1px solid #CDD1E2;
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.avvance-checkout-preapproved {
     display: flex;
-    flex-direction: column;
     align-items: center;
-    gap: 3px;
+    gap: 10px;
 }
 
-.avvance-message-small strong {
-    font-weight: 600;
-    color: #000;
-}
-
-.avvance-logo-info-wrapper {
-    display: inline-flex;
-    align-items: flex-start;
-    gap: 1px;
-    position: relative;
-}
-
-.avvance-info-icon {
-    text-decoration: none;
-    cursor: pointer;
-    line-height: 1;
-    display: inline-flex;
+.avvance-checkout-banner-check {
+    background: #02C78F;
+    color: #fff;
+    border-radius: 4px;
+    width: 24px;
+    height: 24px;
+    display: flex;
     align-items: center;
-    position: relative;
-    top: -4px;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
 }
 
-.avvance-info-icon-img {
-    width: 14px;
-    height: 14px;
-    display: block;
-    transition: opacity 0.2s;
-}
-
-.avvance-info-icon:hover .avvance-info-icon-img {
-    opacity: 0.7;
+.avvance-checkout-banner-text {
+    flex: 1;
 }
 
 /* ========================================
@@ -202,6 +218,7 @@
     padding: 12px 0;
     border-top: 1px solid #e0e0e0;
     border-bottom: 1px solid #e0e0e0;
+    text-align: left;
 }
 
 /* ========================================
@@ -590,69 +607,6 @@
     background: #1a47b8;
 }
 
-/* Success Banner (Pre-approved modal) */
-.avvance-success-banner {
-    background-color: #EEF6FF;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    text-align: left;
-}
-
-.avvance-success-title {
-    color: #4C4C50;
-    font-weight: 700;
-    font-size: 24px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.avvance-success-check {
-    background: #02C78F;
-    color: #fff;
-    border-radius: 4px;
-    padding: 0 5px;
-    font-size: 18px;
-    line-height: 1.4;
-}
-
-.avvance-success-text {
-    font-size: 16px;
-    line-height: 1.5;
-    color: #000;
-    margin: 10px 0 0;
-}
-
-.avvance-success-expiry {
-    font-size: 14px;
-    color: #000;
-    margin: 15px 0 0;
-}
-
-/* Slider Section */
-.avvance-slider-section {
-    background-color: #F1F5FB;
-    padding: 30px 64px;
-    border-top: 1px solid #E5E5EA;
-}
-
-.avvance-slider-title {
-    font-size: 18px;
-    font-weight: 500;
-    margin-bottom: 20px;
-    color: #2E2E32;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-.avvance-slider-logo {
-    height: 20px;
-    width: auto;
-}
-
 .avvance-slider-container {
     position: relative;
     background: #fff;
@@ -679,20 +633,6 @@
 @keyframes avvanceFadeIn {
     from { opacity: 0; }
     to { opacity: 1; }
-}
-
-.avvance-step-number {
-    background-color: #EEF6FF;
-    color: #235AE4;
-    font-weight: 700;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    flex-shrink: 0;
 }
 
 .avvance-step-text {
@@ -789,9 +729,17 @@
     .avvance-logo-inline {
         height: 16px;
     }
-    
+
     .avvance-logo-small {
         height: 14px;
+    }
+
+    .avvance-checkout-banner {
+        padding: 10px 12px;
+    }
+
+    .avvance-checkout-preapproved {
+        align-items: flex-start;
     }
     
     .avvance-preapproved-banner {
@@ -842,15 +790,14 @@
 }
 
 @media (max-width: 480px) {
-    .avvance-price-message {
-        flex-direction: column;
-        align-items: flex-start;
+    .avvance-logo-inline {
+        height: 14px;
     }
-    
+
     .avvance-checkout-tagline {
         font-size: 14px;
     }
-    
+
     .avvance-modal-body h2 {
         font-size: 20px;
     }

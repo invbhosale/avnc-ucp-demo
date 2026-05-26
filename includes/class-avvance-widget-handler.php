@@ -98,7 +98,7 @@ class Avvance_Widget_Handler {
 
 		// Checkout page widget.
 		if ( self::$settings['checkout_enabled'] ) {
-			add_action( 'woocommerce_review_order_before_payment', array( __CLASS__, 'render_checkout_widget' ), 10 );
+			add_action( 'woocommerce_review_order_before_payment', array( __CLASS__, 'render_checkout_widget' ), 5 );
 		}
 
 		// Ensure modal is rendered on cart/checkout pages (for WooCommerce Blocks compatibility).
@@ -209,6 +209,7 @@ class Avvance_Widget_Handler {
 				'isProductPage'  => is_product(),
 				'isCartPage'     => is_cart(),
 				'isCheckoutPage' => is_checkout(),
+				'showLogo'       => self::$settings['show_logo'],
 			)
 		);
 	}
@@ -220,13 +221,16 @@ class Avvance_Widget_Handler {
         // phpcs:ignore WordPress.Security.NonceVerification.Missing -- public-facing AJAX for price display, no state change
 		$amount = isset( $_POST['amount'] ) ? floatval( $_POST['amount'] ) : 0;
 
-		if ( $amount < 300 || $amount > 25000 ) {
-			wp_send_json_error( array( 'message' => 'Amount must be between $300 and $25,000' ) );
-		}
-
 		$gateway = avvance_get_gateway();
 		if ( ! $gateway ) {
 			wp_send_json_error( array( 'message' => 'Gateway not available' ) );
+		}
+
+		$min_amount = floatval( $gateway->get_option( 'min_order_amount', 300 ) );
+		$max_amount = floatval( $gateway->get_option( 'max_order_amount', 25000 ) );
+
+		if ( $amount < $min_amount || $amount > $max_amount ) {
+			wp_send_json_error( array( 'message' => 'Amount must be between $' . number_format( $min_amount, 0 ) . ' and $' . number_format( $max_amount, 0 ) ) );
 		}
 
 		require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-price-breakdown-api.php';
@@ -337,12 +341,10 @@ class Avvance_Widget_Handler {
 
 		$price = $product->get_price();
 
-		// Check min/max.
 		if ( $price < self::$settings['min_amount'] || $price > self::$settings['max_amount'] ) {
 			return;
 		}
 
-		$monthly    = self::calculate_monthly_payment( $price );
 		$widget_id  = 'avvance-category-widget-' . $product->get_id();
 		$session_id = self::generate_session_id();
 
@@ -351,21 +353,13 @@ class Avvance_Widget_Handler {
 			class="avvance-category-widget avvance-widget-<?php echo esc_attr( self::$settings['theme'] ); ?>"
 			data-amount="<?php echo esc_attr( $price ); ?>"
 			data-product-id="<?php echo esc_attr( $product->get_id() ); ?>"
-			data-session-id="<?php echo esc_attr( $session_id ); ?>">
-			<span class="avvance-message-small">
-				Or <strong>$<?php echo esc_html( $monthly ); ?>/mo</strong> with
-				<span class="avvance-logo-info-wrapper">
-					<?php if ( self::$settings['show_logo'] ) : ?>
-						<img src="<?php echo esc_url( AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg' ); ?>"
-							alt="Avvance" class="avvance-logo-small">
-					<?php else : ?>
-						<span class="avvance-brand">Avvance</span>
-					<?php endif; ?>
-					<a href="#" class="avvance-info-icon" data-amount="<?php echo esc_attr( $price ); ?>" title="Learn more">
-						<img src="<?php echo esc_url( AVVANCE_PLUGIN_URL . 'assets/images/toggletip-icon.svg' ); ?>" alt="Info" class="avvance-info-icon-img">
-					</a>
-				</span>
-			</span>
+			data-session-id="<?php echo esc_attr( $session_id ); ?>"
+			data-context="category"
+			data-min-amount="<?php echo esc_attr( self::$settings['min_amount'] ); ?>"
+			data-max-amount="<?php echo esc_attr( self::$settings['max_amount'] ); ?>">
+			<div class="avvance-widget-content">
+				<div class="avvance-price-message"></div>
+			</div>
 		</div>
 		<?php
 	}
@@ -416,13 +410,6 @@ class Avvance_Widget_Handler {
 				'product_type' => $product->get_type(),
 			)
 		);
-
-		// Render modal (only once per page).
-		static $modal_rendered = false;
-		if ( ! $modal_rendered ) {
-			self::render_modal();
-			$modal_rendered = true;
-		}
 	}
 
 	/**
@@ -535,16 +522,10 @@ class Avvance_Widget_Handler {
 		echo '<div class="avvance-cart-widget-container" style="margin: 20px 0;">';
 		self::render_widget( $total, $preapproval, $session_id, 'cart' );
 		echo '</div>';
-
-		static $modal_rendered = false;
-		if ( ! $modal_rendered ) {
-			self::render_modal();
-			$modal_rendered = true;
-		}
 	}
 
 	/**
-	 * Render widget on checkout page
+	 * Render checkout banner above payment methods (always visible, priority 5).
 	 */
 	public static function render_checkout_widget() {
 		if ( ! WC()->cart ) {
@@ -560,87 +541,44 @@ class Avvance_Widget_Handler {
 		$session_id  = self::generate_session_id();
 		$preapproval = self::get_current_preapproval();
 
+		$is_preapproved   = $preapproval && 'PRE_APPROVED' === $preapproval['status'];
+		$has_valid_amount = $is_preapproved && isset( $preapproval['max_amount'] ) && floatval( $preapproval['max_amount'] ) > 0;
+		$is_expired       = false;
+
+		if ( $is_preapproved && ! empty( $preapproval['expiry_date'] ) ) {
+			$expiry     = strtotime( $preapproval['expiry_date'] );
+			$is_expired = ( $expiry && $expiry < time() );
+		}
+
+		$show_preapproved = $is_preapproved && $has_valid_amount && ! $is_expired;
 		?>
-		<div id="avvance-checkout-widget-container" style="display: none; margin: 20px 0;">
-			<?php
-			// Only PRE_APPROVED status is considered approved (NOT_APPROVED is declined).
-			$is_preapproved   = $preapproval && 'PRE_APPROVED' === $preapproval['status'];
-			$has_valid_amount = $is_preapproved && isset( $preapproval['max_amount'] ) && floatval( $preapproval['max_amount'] ) > 0;
-			$is_expired       = false;
-
-			if ( $is_preapproved && ! empty( $preapproval['expiry_date'] ) ) {
-				$expiry     = strtotime( $preapproval['expiry_date'] );
-				$is_expired = ( $expiry && $expiry < time() );
-			}
-			?>
-
-			<?php if ( $is_preapproved && $has_valid_amount && ! $is_expired ) : ?>
-				<div class="avvance-preapproved-banner">
-					<div class="avvance-checkmark">✓</div>
-					<div class="avvance-banner-content">
-						<strong>You're preapproved for up to $<?php echo number_format( $preapproval['max_amount'], 0 ); ?></strong>
-						<p>Complete your purchase with flexible monthly payments from U.S. Bank</p>
+		<div id="avvance-checkout-banner" class="avvance-checkout-banner">
+			<?php if ( $show_preapproved ) : ?>
+				<div class="avvance-checkout-preapproved">
+					<div class="avvance-checkout-banner-check">&#10003;</div>
+					<div class="avvance-checkout-banner-text">
+						<strong>You're pre-approved for $<?php echo number_format( $preapproval['max_amount'], 0 ); ?>!</strong>
+						Pay over time with
+						<?php if ( self::$settings['show_logo'] ) : ?>
+							<img src="<?php echo esc_url( AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg' ); ?>" alt="U.S. Bank Avvance" class="avvance-logo-inline">
+						<?php else : ?>
+							<span class="avvance-brand">U.S. Bank Avvance</span>
+						<?php endif; ?>
+						<a href="#" class="avvance-cta-link" data-modal="preapproved-details">See your details</a>
 					</div>
 				</div>
 			<?php else : ?>
-				<?php self::render_checkout_standard_message( $total, $session_id ); ?>
+				<div class="avvance-checkout-widget avvance-widget-<?php echo esc_attr( self::$settings['theme'] ); ?>"
+					data-amount="<?php echo esc_attr( $total ); ?>"
+					data-session-id="<?php echo esc_attr( $session_id ); ?>"
+					data-context="checkout"
+					data-min-amount="<?php echo esc_attr( self::$settings['min_amount'] ); ?>"
+					data-max-amount="<?php echo esc_attr( self::$settings['max_amount'] ); ?>">
+					<div class="avvance-widget-content">
+						<div class="avvance-price-message"></div>
+					</div>
+				</div>
 			<?php endif; ?>
-		</div>
-		
-		<script>
-		jQuery(function($) {
-			// Show/hide widget based on payment method selection.
-			function updateAvvanceCheckoutWidget() {
-				if ($('input[name="payment_method"]:checked').val() === 'avvance') {
-					$('#avvance-checkout-widget-container').slideDown(300);
-				} else {
-					$('#avvance-checkout-widget-container').slideUp(300);
-				}
-			}
-			
-			// On payment method change.
-			$('form.checkout').on('change', 'input[name="payment_method"]', updateAvvanceCheckoutWidget);
-			
-			// On page load.
-			updateAvvanceCheckoutWidget();
-			
-			// After AJAX checkout update.
-			$(document.body).on('updated_checkout', updateAvvanceCheckoutWidget);
-		});
-		</script>
-		<?php
-
-		static $modal_rendered = false;
-		if ( ! $modal_rendered ) {
-			self::render_modal();
-			$modal_rendered = true;
-		}
-	}
-
-	/**
-	 * Render standard checkout message (no pre-approval).
-	 *
-	 * @param float  $total      Cart total.
-	 * @param string $session_id Tracking session ID.
-	 */
-	private static function render_checkout_standard_message( $total, $session_id ) {
-		$monthly = self::calculate_monthly_payment( $total );
-		?>
-		<div class="avvance-checkout-message">
-			<div class="avvance-checkout-header">
-				<?php if ( self::$settings['show_logo'] ) : ?>
-					<img src="<?php echo esc_url( AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg' ); ?>" 
-						alt="U.S. Bank Avvance" class="avvance-logo-checkout">
-				<?php else : ?>
-					<span class="avvance-brand-large">Avvance</span>
-				<?php endif; ?>
-			</div>
-			<p class="avvance-checkout-tagline">
-				Pay as low as <strong>$<?php echo esc_html( $monthly ); ?>/month</strong> with flexible installment financing
-			</p>
-			<a href="#" class="avvance-prequal-link-checkout" data-session-id="<?php echo esc_attr( $session_id ); ?>">
-				Check if you prequalify →
-			</a>
 		</div>
 		<?php
 	}
@@ -731,7 +669,7 @@ class Avvance_Widget_Handler {
 	 */
 	public static function ensure_modal_rendered() {
 		// Render on cart, checkout, shop, and category pages.
-		if ( ! is_cart() && ! is_checkout() && ! is_shop() && ! is_product_category() && ! is_product_tag() ) {
+		if ( ! is_cart() && ! is_checkout() && ! is_shop() && ! is_product_category() && ! is_product_tag() && ! is_product() ) {
 			return;
 		}
 
@@ -764,8 +702,8 @@ class Avvance_Widget_Handler {
 		// Mark modal as rendered globally.
 		global $avvance_modal_rendered;
 		$avvance_modal_rendered = true;
-		$gateway  = avvance_get_gateway();
-		$logo_url = AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg';
+		$gateway                = avvance_get_gateway();
+		$logo_url               = AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg';
 		?>
 		<div id="avvance-preapproval-modal" class="avvance-modal" style="display: none;">
 			<div class="avvance-modal-overlay"></div>

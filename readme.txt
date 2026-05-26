@@ -4,7 +4,7 @@ Tags: payments, financing, installment, bnpl, avvance
 Requires at least: 6.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.3.2
+Stable tag: 1.4.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -108,6 +108,15 @@ Application links are valid for 30 days. After 30 days, expired orders are autom
 5. Cart resume banner
 
 == Changelog ==
+
+= 1.4.0 =
+* Refactored inline payment messaging widgets across
+  product, category, cart, and checkout pages
+* Added always-visible checkout banner above payment methods
+* Removed info icon approach from category page widgets
+* Unified modal trigger system using data-modal attributes
+* Fixed min/max amount validation to use gateway settings
+* Added showLogo flag to widget JavaScript configuration
 
 = 1.0.0 - 2025-01-XX =
 * Initial release
