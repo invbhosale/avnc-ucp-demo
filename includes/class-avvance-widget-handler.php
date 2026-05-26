@@ -665,211 +665,284 @@ class Avvance_Widget_Handler {
 	}
 
 	/**
-	 * Ensure modal is rendered on cart/checkout/shop/category pages
+	 * Ensure modals are rendered on relevant pages (footer hook).
 	 */
 	public static function ensure_modal_rendered() {
-		// Render on cart, checkout, shop, and category pages.
 		if ( ! is_cart() && ! is_checkout() && ! is_shop() && ! is_product_category() && ! is_product_tag() && ! is_product() ) {
 			return;
 		}
 
-		// Check if modal was already rendered by other hooks.
 		static $modal_rendered_in_footer = false;
 		if ( $modal_rendered_in_footer ) {
 			return;
 		}
 
-		// Check if modal element already exists (rendered by product/cart widget hooks).
-		// We use a global flag since static vars in different methods are separate.
 		global $avvance_modal_rendered;
 		if ( ! empty( $avvance_modal_rendered ) ) {
 			return;
 		}
 
-		// Render the modal.
-		self::render_modal();
+		// Modal A: checkout context only ("Learn more").
+		if ( is_checkout() ) {
+			self::render_modal_a();
+		}
+
+		// Modal B and C: all relevant pages.
+		self::render_modal_b();
+		self::render_modal_c();
+
 		$modal_rendered_in_footer = true;
 		$avvance_modal_rendered   = true;
 	}
 
 	/**
-	 * Render the pre-approval modal (Modal 2)
+	 * Render Modal A — checkout "Learn more".
 	 *
-	 * Opened when "Check your spending power" is clicked.
-	 * Loan cards are populated dynamically by JS from the price breakdown API.
+	 * No sticky CTA. Shows loan options and checkout steps.
 	 */
-	private static function render_modal() {
-		// Mark modal as rendered globally.
+	private static function render_modal_a() {
 		global $avvance_modal_rendered;
 		$avvance_modal_rendered = true;
-		$gateway                = avvance_get_gateway();
 		$logo_url               = AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg';
+		$icon_base              = AVVANCE_PLUGIN_URL . 'assets/images/';
 		?>
-		<div id="avvance-preapproval-modal" class="avvance-modal" style="display: none;">
+		<div id="avvance-modal-a" class="avvance-modal" style="display: none;">
 			<div class="avvance-modal-overlay"></div>
 			<div class="avvance-modal-dialog">
-				<div class="avvance-modal-header">
-					<div class="avvance-modal-logo">
+				<div class="avvance-modal-scrollable">
+					<div class="avvance-modal-header">
 						<img src="<?php echo esc_url( $logo_url ); ?>" alt="U.S. Bank Avvance" class="avvance-modal-logo-img">
+						<button class="avvance-modal-close">&times;</button>
 					</div>
-					<button class="avvance-modal-close">&times;</button>
+
+					<div class="avvance-modal-body">
+						<h2 class="avvance-modal-heading">Pay over time and make your purchase possible</h2>
+						<p class="avvance-modal-subtitle">Applying won't impact your credit score.</p>
+
+						<div class="avvance-calculator-row" data-target="avvance-modal-a-cards">
+							<span class="avvance-calculator-label">Example loan options for:</span>
+							<input type="text" class="avvance-currency-input" id="avvance-modal-a-amount" value="">
+							<button type="button" class="avvance-calc-btn">Calculate</button>
+						</div>
+
+						<div class="avvance-loan-cards" id="avvance-modal-a-cards"></div>
+					</div>
+
+					<div class="avvance-carousel-section">
+						<div class="avvance-carousel-title">
+							<span>How to checkout</span>
+							<div class="avvance-carousel-nav">
+								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-a" data-dots="avvance-dots-modal-a" data-dir="-1" aria-label="Previous">&#8249;</button>
+								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-a" data-dots="avvance-dots-modal-a" data-dir="1" aria-label="Next">&#8250;</button>
+							</div>
+						</div>
+
+						<div class="avvance-carousel-container" id="avvance-slider-modal-a">
+							<div class="avvance-slide active">
+								<img src="<?php echo esc_url( $icon_base . 'Checkmark.svg' ); ?>" class="avvance-step-icon" alt="">
+								<span class="avvance-step-text">Select Pay with U.S. Bank Avvance at checkout.</span>
+							</div>
+							<div class="avvance-slide">
+								<img src="<?php echo esc_url( $icon_base . 'Money_stack.svg' ); ?>" class="avvance-step-icon" alt="">
+								<span class="avvance-step-text">Apply and if approved, see your loan options.</span>
+							</div>
+							<div class="avvance-slide">
+								<img src="<?php echo esc_url( $icon_base . 'Shopping_cart.svg' ); ?>" class="avvance-step-icon" alt="">
+								<span class="avvance-step-text">Choose your loan and complete your purchase.</span>
+							</div>
+						</div>
+
+						<div class="avvance-slider-dots" id="avvance-dots-modal-a">
+							<button class="avvance-dot active" data-slider="avvance-slider-modal-a" data-dots="avvance-dots-modal-a" data-index="0" aria-label="Step 1"></button>
+							<button class="avvance-dot" data-slider="avvance-slider-modal-a" data-dots="avvance-dots-modal-a" data-index="1" aria-label="Step 2"></button>
+							<button class="avvance-dot" data-slider="avvance-slider-modal-a" data-dots="avvance-dots-modal-a" data-index="2" aria-label="Step 3"></button>
+						</div>
+					</div>
+
+					<p class="avvance-disclaimer">
+						Annual Percentage Rates (APR) range from 0%-24.99%. Not all rates are available for all merchants. 0% APR loan options, including promotions, may be available depending on merchant participation and customer qualification. All rates are subject to an eligibility check and approval. Maximum loan amounts and available loan options provided by U.S. Bank depend on your credit score and purchase amount. Loan options with promotion rates will have a higher cost if the loan is held until maturity.
+					</p>
+				</div>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render Modal B — "Check your spending power".
+	 *
+	 * Has sticky "See if you qualify" CTA.
+	 */
+	private static function render_modal_b() {
+		$logo_url  = AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg';
+		$icon_base = AVVANCE_PLUGIN_URL . 'assets/images/';
+		?>
+		<div id="avvance-modal-b" class="avvance-modal" style="display: none;">
+			<div class="avvance-modal-overlay"></div>
+			<div class="avvance-modal-dialog">
+				<div class="avvance-modal-scrollable avvance-modal-scrollable--has-cta">
+					<div class="avvance-modal-header">
+						<img src="<?php echo esc_url( $logo_url ); ?>" alt="U.S. Bank Avvance" class="avvance-modal-logo-img">
+						<button class="avvance-modal-close">&times;</button>
+					</div>
+
+					<div class="avvance-modal-body">
+						<h2 class="avvance-modal-heading">Pay over time and make your purchase possible</h2>
+						<p class="avvance-modal-subtitle">Applying won't impact your credit score.</p>
+
+						<div class="avvance-calculator-row" data-target="avvance-modal-b-cards">
+							<span class="avvance-calculator-label">Example loan options for:</span>
+							<input type="text" class="avvance-currency-input" id="avvance-modal-b-amount" value="">
+							<button type="button" class="avvance-calc-btn">Calculate</button>
+						</div>
+
+						<div class="avvance-loan-cards" id="avvance-modal-b-cards"></div>
+					</div>
+
+					<div class="avvance-carousel-section">
+						<div class="avvance-carousel-title">
+							<span>How to get pre-approved</span>
+							<div class="avvance-carousel-nav">
+								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-b" data-dots="avvance-dots-modal-b" data-dir="-1" aria-label="Previous">&#8249;</button>
+								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-b" data-dots="avvance-dots-modal-b" data-dir="1" aria-label="Next">&#8250;</button>
+							</div>
+						</div>
+
+						<div class="avvance-carousel-container" id="avvance-slider-modal-b">
+							<div class="avvance-slide active">
+								<img src="<?php echo esc_url( $icon_base . 'Checklist.svg' ); ?>" class="avvance-step-icon" alt="">
+								<span class="avvance-step-text">Apply to see if you qualify.</span>
+							</div>
+							<div class="avvance-slide">
+								<img src="<?php echo esc_url( $icon_base . 'Money_stack.svg' ); ?>" class="avvance-step-icon" alt="">
+								<span class="avvance-step-text">If approved, see your spending power.</span>
+							</div>
+							<div class="avvance-slide">
+								<img src="<?php echo esc_url( $icon_base . 'Calculator.svg' ); ?>" class="avvance-step-icon" alt="">
+								<span class="avvance-step-text">Calculate your monthly payments.</span>
+							</div>
+						</div>
+
+						<div class="avvance-slider-dots" id="avvance-dots-modal-b">
+							<button class="avvance-dot active" data-slider="avvance-slider-modal-b" data-dots="avvance-dots-modal-b" data-index="0" aria-label="Step 1"></button>
+							<button class="avvance-dot" data-slider="avvance-slider-modal-b" data-dots="avvance-dots-modal-b" data-index="1" aria-label="Step 2"></button>
+							<button class="avvance-dot" data-slider="avvance-slider-modal-b" data-dots="avvance-dots-modal-b" data-index="2" aria-label="Step 3"></button>
+						</div>
+					</div>
+
+					<p class="avvance-disclaimer">
+						Annual Percentage Rates (APR) range from 0%-24.99%. Not all rates are available for all merchants. 0% APR loan options, including promotions, may be available depending on merchant participation and customer qualification. All rates are subject to an eligibility check and approval. Maximum loan amounts and available loan options provided by U.S. Bank depend on your credit score and purchase amount. Loan options with promotion rates will have a higher cost if the loan is held until maturity.
+					</p>
 				</div>
 
-				<div class="avvance-modal-body">
-					<h1 class="avvance-modal-heading">Pay over time and make your purchase possible</h1>
-					<p class="avvance-modal-subtitle">Applying won't impact your credit score.</p>
-
-					<div class="avvance-calculator-row">
-						<span class="avvance-calculator-label">Example loan options for:</span>
-						<input type="text" class="avvance-currency-input" id="avvance-modal-amount" value="">
-						<button type="button" class="avvance-calc-btn" id="avvance-calc-btn">Calculate</button>
-					</div>
-
-					<div class="avvance-loan-cards" id="avvance-modal-loan-cards"></div>
-				</div>
-
-				<div class="avvance-slider-section">
-					<div class="avvance-slider-title">
-						How to get pre-approved with
-						<img src="<?php echo esc_url( $logo_url ); ?>" alt="U.S. Bank Avvance" class="avvance-slider-logo">
-					</div>
-
-					<div class="avvance-slider-container" id="avvance-slider-preapproval">
-						<div class="avvance-slide active">
-							<div class="avvance-step-number">1</div>
-							<div class="avvance-step-text">Apply to see if you qualify.</div>
-						</div>
-						<div class="avvance-slide">
-							<div class="avvance-step-number">2</div>
-							<div class="avvance-step-text">If approved, see your spending power.</div>
-						</div>
-						<div class="avvance-slide">
-							<div class="avvance-step-number">3</div>
-							<div class="avvance-step-text">Calculate your monthly payments.</div>
-						</div>
-
-						<div class="avvance-arrow-nav avvance-arrow-prev" data-slider="avvance-slider-preapproval" data-dir="-1">&#8249;</div>
-						<div class="avvance-arrow-nav avvance-arrow-next" data-slider="avvance-slider-preapproval" data-dir="1">&#8250;</div>
-					</div>
-
-					<div class="avvance-slider-dots" id="avvance-dots-preapproval">
-						<div class="avvance-dot active" data-slider="avvance-slider-preapproval" data-index="0"></div>
-						<div class="avvance-dot" data-slider="avvance-slider-preapproval" data-index="1"></div>
-						<div class="avvance-dot" data-slider="avvance-slider-preapproval" data-index="2"></div>
-					</div>
-
+				<div class="avvance-modal-sticky-cta">
 					<button type="button" class="avvance-btn-primary avvance-qualify-button">
 						See if you qualify
 					</button>
 				</div>
-
-				<p class="avvance-disclaimer">
-					Annual Percentage Rates (APR) range from 0%-24.99%. Not all rates are available for all merchants. 0% APR loan options, including promotions, may be available depending on merchant participation and customer qualification. All rates are subject to an eligibility check and approval. Maximum loan amounts and available loan options provided by U.S. Bank depend on your credit score and purchase amount. Loan options with promotion rates will have a higher cost if the loan is held until maturity.
-				</p>
 			</div>
 		</div>
-
 		<?php
-		// Preapproved details modal (shown when "See your details" is clicked).
-		self::render_preapproved_modal();
 	}
 
 	/**
-	 * Render the preapproved details modal (Modal 3)
+	 * Render Modal C — pre-approved "See your details".
 	 *
-	 * Opened when a pre-approved customer clicks "See your details".
-	 * Shows spending power banner, loan cards (populated by JS), and checkout steps.
+	 * Has sticky "Continue shopping" CTA.
 	 */
-	private static function render_preapproved_modal() {
-		$preapproval    = self::get_current_preapproval();
-		$max_amount     = ( $preapproval && isset( $preapproval['max_amount'] ) ) ? number_format( $preapproval['max_amount'], 2 ) : '0.00';
-		$max_amount_raw = ( $preapproval && isset( $preapproval['max_amount'] ) ) ? floatval( $preapproval['max_amount'] ) : 0;
-		$expiry_date    = '';
+	private static function render_modal_c() {
+		$preapproval      = self::get_current_preapproval();
+		$max_amount_raw   = ( $preapproval && isset( $preapproval['max_amount'] ) ) ? floatval( $preapproval['max_amount'] ) : 0;
+		$max_amount_fmt   = number_format( $max_amount_raw, 2 );
+		$max_amount_short = number_format( $max_amount_raw, 0 );
+		$expiry_date      = '';
 		if ( $preapproval && ! empty( $preapproval['expiry_date'] ) ) {
 			$expiry_timestamp = strtotime( $preapproval['expiry_date'] );
 			if ( $expiry_timestamp ) {
-				$expiry_date = gmdate( 'm/d/Y', $expiry_timestamp ) . ', 11:59 PM PST';
+				$expiry_date = gmdate( 'M j, Y', $expiry_timestamp );
 			}
 		}
-		$min_amount = self::$settings['min_amount'];
-		$logo_url   = AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg';
+		$min_amount     = self::$settings['min_amount'];
+		$min_amount_fmt = number_format( $min_amount, 0 );
+		$retailer_name  = get_bloginfo( 'name' );
+		$logo_url       = AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg';
+		$icon_base      = AVVANCE_PLUGIN_URL . 'assets/images/';
 		?>
-		<div id="avvance-preapproved-details-modal" class="avvance-modal" style="display: none;"
+		<div id="avvance-modal-c" class="avvance-modal" style="display: none;"
 			data-max-amount="<?php echo esc_attr( $max_amount_raw ); ?>">
 			<div class="avvance-modal-overlay"></div>
 			<div class="avvance-modal-dialog">
-				<div class="avvance-modal-header">
-					<div class="avvance-modal-logo">
+				<div class="avvance-modal-scrollable avvance-modal-scrollable--has-cta">
+					<div class="avvance-modal-header">
 						<img src="<?php echo esc_url( $logo_url ); ?>" alt="U.S. Bank Avvance" class="avvance-modal-logo-img">
+						<button class="avvance-modal-close">&times;</button>
 					</div>
-					<button class="avvance-modal-close">&times;</button>
+
+					<div class="avvance-modal-body">
+						<div class="avvance-success-banner">
+							<div class="avvance-success-title">
+								<img src="<?php echo esc_url( $icon_base . 'Avvance-Checkmark.svg' ); ?>" alt="" class="avvance-success-check-icon">
+								Your spending power is $<?php echo esc_html( $max_amount_short ); ?>!
+							</div>
+							<div class="avvance-success-details">
+								<div>Single-purchase range: $<?php echo esc_html( $min_amount_fmt ); ?>–$<?php echo esc_html( $max_amount_short ); ?></div>
+								<div>Eligible Retailer: <?php echo esc_html( $retailer_name ); ?></div>
+								<?php if ( $expiry_date ) : ?>
+								<div>Offer Expires: <?php echo esc_html( $expiry_date ); ?></div>
+								<?php endif; ?>
+							</div>
+						</div>
+
+						<div class="avvance-calculator-row" data-target="avvance-modal-c-cards">
+							<span class="avvance-calculator-label">Example loan options for:</span>
+							<input type="text" class="avvance-currency-input" id="avvance-modal-c-amount" value="$<?php echo esc_attr( $max_amount_fmt ); ?>">
+							<button type="button" class="avvance-calc-btn">Calculate</button>
+						</div>
+
+						<div class="avvance-loan-cards" id="avvance-modal-c-cards"></div>
+					</div>
+
+					<div class="avvance-carousel-section">
+						<div class="avvance-carousel-title">
+							<span>How to checkout</span>
+							<div class="avvance-carousel-nav">
+								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-c" data-dots="avvance-dots-modal-c" data-dir="-1" aria-label="Previous">&#8249;</button>
+								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-c" data-dots="avvance-dots-modal-c" data-dir="1" aria-label="Next">&#8250;</button>
+							</div>
+						</div>
+
+						<div class="avvance-carousel-container" id="avvance-slider-modal-c">
+							<div class="avvance-slide active">
+								<img src="<?php echo esc_url( $icon_base . 'Checkmark.svg' ); ?>" class="avvance-step-icon" alt="">
+								<span class="avvance-step-text">Select Pay with U.S. Bank Avvance at checkout.</span>
+							</div>
+							<div class="avvance-slide">
+								<img src="<?php echo esc_url( $icon_base . 'Money_stack.svg' ); ?>" class="avvance-step-icon" alt="">
+								<span class="avvance-step-text">Choose the loan that works best for you.</span>
+							</div>
+							<div class="avvance-slide">
+								<img src="<?php echo esc_url( $icon_base . 'Shopping_cart.svg' ); ?>" class="avvance-step-icon" alt="">
+								<span class="avvance-step-text">Review terms and complete your purchase.</span>
+							</div>
+						</div>
+
+						<div class="avvance-slider-dots" id="avvance-dots-modal-c">
+							<button class="avvance-dot active" data-slider="avvance-slider-modal-c" data-dots="avvance-dots-modal-c" data-index="0" aria-label="Step 1"></button>
+							<button class="avvance-dot" data-slider="avvance-slider-modal-c" data-dots="avvance-dots-modal-c" data-index="1" aria-label="Step 2"></button>
+							<button class="avvance-dot" data-slider="avvance-slider-modal-c" data-dots="avvance-dots-modal-c" data-index="2" aria-label="Step 3"></button>
+						</div>
+					</div>
+
+					<p class="avvance-disclaimer">
+						Your pre-approval expires on the earlier of (i) completion of a single Avvance transaction or (ii) the expiration date shown above.
+					</p>
 				</div>
 
-				<div class="avvance-modal-body">
-					<div class="avvance-success-banner">
-						<div class="avvance-success-title">
-							<span class="avvance-success-check">&#10003;</span>
-							Your spending power is $<?php echo esc_html( $max_amount ); ?>!
-						</div>
-						<p class="avvance-success-text">
-							You've been pre-approved for U.S. Bank Avvance for $<?php echo esc_html( $max_amount ); ?>.
-							To use your spending power, your purchase must be between
-							$<?php echo esc_html( number_format( $min_amount, 0 ) ); ?> and $<?php echo esc_html( $max_amount ); ?>.
-						</p>
-						<?php if ( $expiry_date ) : ?>
-						<p class="avvance-success-expiry">
-							Expires on <?php echo esc_html( $expiry_date ); ?>.
-						</p>
-						<?php endif; ?>
-					</div>
-
-					<div class="avvance-calculator-row">
-						<span class="avvance-calculator-label">Example loan options for:</span>
-						<input type="text" class="avvance-currency-input" id="avvance-preapproved-modal-amount" value="$<?php echo esc_attr( $max_amount ); ?>">
-						<button type="button" class="avvance-calc-btn" id="avvance-preapproved-calc-btn">Calculate</button>
-					</div>
-
-					<div class="avvance-loan-cards" id="avvance-preapproved-modal-loan-cards"></div>
-				</div>
-
-				<div class="avvance-slider-section">
-					<div class="avvance-slider-title">
-						How to checkout with
-						<img src="<?php echo esc_url( $logo_url ); ?>" alt="U.S. Bank Avvance" class="avvance-slider-logo">
-					</div>
-
-					<div class="avvance-slider-container" id="avvance-slider-preapproved">
-						<div class="avvance-slide active">
-							<div class="avvance-step-number">1</div>
-							<div class="avvance-step-text">Select Pay with U.S. Bank Avvance at checkout.</div>
-						</div>
-						<div class="avvance-slide">
-							<div class="avvance-step-number">2</div>
-							<div class="avvance-step-text">Choose the loan that works best for you.</div>
-						</div>
-						<div class="avvance-slide">
-							<div class="avvance-step-number">3</div>
-							<div class="avvance-step-text">Review terms and complete your purchase.</div>
-						</div>
-
-						<div class="avvance-arrow-nav avvance-arrow-prev" data-slider="avvance-slider-preapproved" data-dir="-1">&#8249;</div>
-						<div class="avvance-arrow-nav avvance-arrow-next" data-slider="avvance-slider-preapproved" data-dir="1">&#8250;</div>
-					</div>
-
-					<div class="avvance-slider-dots" id="avvance-dots-preapproved">
-						<div class="avvance-dot active" data-slider="avvance-slider-preapproved" data-index="0"></div>
-						<div class="avvance-dot" data-slider="avvance-slider-preapproved" data-index="1"></div>
-						<div class="avvance-dot" data-slider="avvance-slider-preapproved" data-index="2"></div>
-					</div>
-
+				<div class="avvance-modal-sticky-cta">
 					<button type="button" class="avvance-btn-primary avvance-continue-shopping-btn">
 						Continue shopping
 					</button>
 				</div>
-
-				<p class="avvance-disclaimer">
-					Your pre-approval expires on the earlier of (i) completion of a single Avvance transaction or (ii) the expiration date shown above.
-				</p>
 			</div>
 		</div>
 		<?php

@@ -115,7 +115,7 @@
         if (hasPreapproval && maxAmount) {
             rateHtml = '<span class="avvance-preapproved-badge">You\'re pre-approved!</span> ' +
                 (formattedPayment ? 'As low as <strong>' + formattedPayment + '/month</strong> with ' : 'Pay over time with ');
-            ctaHtml = '<a href="#" class="avvance-cta-link" data-modal="preapproved-details">See your details</a>';
+            ctaHtml = '<a href="#" class="avvance-cta-link" data-modal="modal-c">See your details</a>';
         } else {
             rateHtml = (hasZeroApr ? '<strong class="avvance-zero-apr">0% APR</strong> or as low as ' : 'As low as ') +
                 (formattedPayment ? '<strong>' + formattedPayment + '/month</strong> with ' : 'with ');
@@ -147,11 +147,11 @@
             var monthlyHtml = '$' + parseFloat(offer.paymentAmount).toFixed(2) +
                 '<span class="avvance-price-suffix">/month</span>';
 
-            var termCount = offer.termCount || '—';
+            var termCount = (offer.termCount && parseInt(offer.termCount) > 0) ? offer.termCount : null;
             var aprVal = offer.apr !== null && offer.apr !== undefined
                 ? parseFloat(offer.apr).toFixed(2) + '%'
                 : '0%';
-            var aprBadge = aprVal + ' APR for ' + termCount + ' months';
+            var aprBadge = aprVal + ' APR' + (termCount ? ' for ' + termCount + ' months' : '');
 
             var detailsHtml = '';
             if (offer.offerType === 'ZERO') {
@@ -240,13 +240,11 @@
     }
 
     /**
-     * Slider navigation
+     * Slider navigation — accepts jQuery objects for slider and dots containers.
      */
-    function moveSlide(sliderId, direction) {
-        var $slider = $('#' + sliderId);
-        var $slides = $slider.find('.avvance-slide');
-        var $dotsContainer = $('#' + sliderId.replace('slider', 'dots'));
-        var $dots = $dotsContainer.find('.avvance-dot');
+    function moveSlide($sliderEl, $dotsEl, direction) {
+        var $slides = $sliderEl.find('.avvance-slide');
+        var $dots = $dotsEl.find('.avvance-dot');
 
         var activeIndex = 0;
         $slides.each(function(i) {
@@ -265,11 +263,9 @@
         $dots.eq(newIndex).addClass('active');
     }
 
-    function setSlide(sliderId, index) {
-        var $slider = $('#' + sliderId);
-        var $slides = $slider.find('.avvance-slide');
-        var $dotsContainer = $('#' + sliderId.replace('slider', 'dots'));
-        var $dots = $dotsContainer.find('.avvance-dot');
+    function setSlide($sliderEl, $dotsEl, index) {
+        var $slides = $sliderEl.find('.avvance-slide');
+        var $dots = $dotsEl.find('.avvance-dot');
 
         $slides.removeClass('active');
         $dots.removeClass('active');
@@ -278,30 +274,37 @@
     }
 
     /**
-     * Open modal by type ('preapproval' or 'preapproved-details')
+     * Open modal by type: 'modal-a', 'modal-b', 'modal-c'.
      */
     function openModalByType(type, amount) {
-        if (type === 'preapproved-details') {
-            var $detailsModal = $('#avvance-preapproved-details-modal');
-            if ($detailsModal.length) {
-                var maxAmount = parseFloat($detailsModal.attr('data-max-amount')) || 0;
-                if (maxAmount > 0) {
-                    loadModalPriceBreakdown(maxAmount, $('#avvance-preapproved-modal-loan-cards'));
+        var modalId = '#avvance-' + type;
+        var $modal = $(modalId);
+        if (!$modal.length) return;
+
+        var $input = $modal.find('.avvance-currency-input');
+        if ($input.length && amount > 0) {
+            $input.val(formatCurrency(amount));
+        }
+
+        var cardsId = $modal.find('.avvance-loan-cards').attr('id');
+        if (cardsId && amount > 0) {
+            loadModalPriceBreakdown(amount, $('#' + cardsId));
+        }
+
+        if (type === 'modal-c') {
+            var maxAmount = parseFloat($modal.attr('data-max-amount')) || amount;
+            if (maxAmount > 0) {
+                if ($input.length) {
+                    $input.val(formatCurrency(maxAmount));
                 }
-                $detailsModal.fadeIn(200);
-                $('body').css('overflow', 'hidden');
-            }
-        } else {
-            var $modal = $('#avvance-preapproval-modal');
-            if ($modal.length) {
-                if (amount > 0) {
-                    $('#avvance-modal-amount').val(formatCurrency(amount));
-                    loadModalPriceBreakdown(amount, $('#avvance-modal-loan-cards'));
+                if (cardsId) {
+                    loadModalPriceBreakdown(maxAmount, $('#' + cardsId));
                 }
-                $modal.fadeIn(200);
-                $('body').css('overflow', 'hidden');
             }
         }
+
+        $modal.fadeIn(200);
+        $('body').css('overflow', 'hidden');
     }
 
     /**
@@ -403,27 +406,28 @@
                 '<div class="avvance-checkout-banner-text">' +
                 '<strong>You\'re pre-approved for $' + formattedMax + '!</strong> ' +
                 'Pay over time with <span style="white-space:nowrap;">' + logoHtml +
-                '<a href="#" class="avvance-cta-link" data-modal="preapproved-details"> See your details</a></span>' +
+                '<a href="#" class="avvance-cta-link" data-modal="modal-c"> See your details</a></span>' +
                 '</div>' +
                 '</div>'
             );
         }
 
-        // Update preapproved details modal data
-        var $detailsModal = $('#avvance-preapproved-details-modal');
+        // Update modal-c (pre-approved details modal) data
+        var $detailsModal = $('#avvance-modal-c');
         if ($detailsModal.length && maxAmount) {
             var formattedMax2 = parseFloat(maxAmount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            var formattedMax2Short = parseFloat(maxAmount).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+            var minAmount = avvanceWidget.minAmount || 300;
+            var checkIconUrl = avvanceWidget.logoUrl.replace('avvance-logo.svg', 'Avvance-Checkmark.svg');
             $detailsModal.data('max-amount', maxAmount);
             $detailsModal.attr('data-max-amount', maxAmount);
             $detailsModal.find('.avvance-success-title').html(
-                '<span class="avvance-success-check">&#10003;</span> Your spending power is $' + formattedMax2 + '!'
+                '<img src="' + checkIconUrl + '" class="avvance-success-check-icon" alt=""> Your spending power is $' + formattedMax2Short + '!'
             );
-            var minAmount = avvanceWidget.minAmount || 300;
-            $detailsModal.find('.avvance-success-text').html(
-                'You\'ve been pre-approved for U.S. Bank Avvance for $' + formattedMax2 + '. ' +
-                'To use your spending power, your purchase must be between $' + minAmount + ' and $' + formattedMax2 + '.'
+            $detailsModal.find('.avvance-success-details').html(
+                '<div>Single-purchase range: $' + minAmount + '–$' + formattedMax2Short + '</div>'
             );
-            $('#avvance-preapproved-modal-amount').val('$' + formattedMax2);
+            $detailsModal.find('.avvance-currency-input').val(formatCurrency(maxAmount));
         }
     }
 
@@ -833,18 +837,14 @@
             e.stopPropagation();
         });
 
-        // Handle "Calculate monthly payments" button in pre-approval modal
-        $(document).on('click', '#avvance-calc-btn', function(e) {
+        // Calculate button — reads data-target on parent .avvance-calculator-row
+        $(document).on('click', '.avvance-calc-btn', function(e) {
             e.preventDefault();
-            var amount = parseCurrencyInput($('#avvance-modal-amount').val());
-            loadModalPriceBreakdown(amount, $('#avvance-modal-loan-cards'));
-        });
-
-        // Handle "Calculate monthly payments" button in preapproved modal
-        $(document).on('click', '#avvance-preapproved-calc-btn', function(e) {
-            e.preventDefault();
-            var amount = parseCurrencyInput($('#avvance-preapproved-modal-amount').val());
-            loadModalPriceBreakdown(amount, $('#avvance-preapproved-modal-loan-cards'));
+            var $row = $(this).closest('.avvance-calculator-row');
+            var amount = parseCurrencyInput($row.find('.avvance-currency-input').val());
+            var targetId = $row.data('target');
+            var $cards = targetId ? $('#' + targetId) : $row.closest('.avvance-modal-body').find('.avvance-loan-cards');
+            loadModalPriceBreakdown(amount, $cards);
         });
 
         // Handle "Continue shopping" button
@@ -853,18 +853,20 @@
             closeModal();
         });
 
-        // Slider arrow navigation
+        // Carousel arrow navigation
         $(document).on('click', '.avvance-arrow-nav', function() {
-            var sliderId = $(this).data('slider');
+            var $sliderEl = $('#' + $(this).data('slider'));
+            var $dotsEl = $('#' + $(this).data('dots'));
             var dir = parseInt($(this).data('dir'));
-            moveSlide(sliderId, dir);
+            moveSlide($sliderEl, $dotsEl, dir);
         });
 
-        // Slider dot navigation
+        // Carousel dot navigation
         $(document).on('click', '.avvance-dot', function() {
-            var sliderId = $(this).data('slider');
+            var $sliderEl = $('#' + $(this).data('slider'));
+            var $dotsEl = $('#' + $(this).data('dots'));
             var index = parseInt($(this).data('index'));
-            setSlide(sliderId, index);
+            setSlide($sliderEl, $dotsEl, index);
         });
 
         // Handle "See if you qualify" button

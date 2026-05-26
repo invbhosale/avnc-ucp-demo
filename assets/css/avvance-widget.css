@@ -385,7 +385,6 @@ li.product .avvance-category-widget .avvance-price-message {
     height: 100%;
     z-index: 999999;
     display: none;
-    overflow-y: auto;
 }
 
 .avvance-modal-overlay {
@@ -398,56 +397,79 @@ li.product .avvance-category-widget .avvance-price-message {
 }
 
 .avvance-modal-dialog {
-    position: relative;
-    max-width: 667px;
-    margin: 40px auto;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 660px;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 32px);
     background: #F1F5FB;
     border-radius: 8px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-    border: 1px solid #7A7A95;
+    border: 1px solid #7f7f84;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    animation: avvanceSlideDown 0.3s ease-out;
+    animation: avvanceSlideDown 0.25s ease-out;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
 }
 
 @keyframes avvanceSlideDown {
     from {
-        transform: translateY(-50px);
+        transform: translate(-50%, calc(-50% - 24px));
         opacity: 0;
     }
     to {
-        transform: translateY(0);
+        transform: translate(-50%, -50%);
         opacity: 1;
     }
 }
 
+/* Scrollable body — padding-bottom makes room for sticky CTA when present */
+.avvance-modal-scrollable {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+    padding: 64px;
+}
+
+.avvance-modal-scrollable--has-cta {
+    padding-bottom: 96px;
+}
+
+/* Sticky CTA */
+.avvance-modal-sticky-cta {
+    flex-shrink: 0;
+    padding: 16px 64px;
+    background: #F1F5FB;
+    border-top: 1px solid #e0e0e6;
+}
+
 /* Modal Header */
 .avvance-modal-header {
-    padding: 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
 }
 
-.avvance-modal-logo {
-    display: flex;
-    align-items: center;
-}
-
 .avvance-modal-logo-img {
-    height: 30px;
-    width: auto;
+    width: 100%;
+    max-width: 380px;
+    height: auto;
 }
 
 .avvance-modal-close {
     background: none;
     border: none;
-    font-size: 24px;
+    font-size: 22px;
     cursor: pointer;
-    color: #4C4C50;
+    color: #4c4c50;
     padding: 0;
     line-height: 1;
+    flex-shrink: 0;
 }
 
 .avvance-modal-close:hover {
@@ -456,26 +478,29 @@ li.product .avvance-category-widget .avvance-price-message {
 
 /* Modal Body */
 .avvance-modal-body {
-    padding: 0 64px 64px 64px;
-    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
 .avvance-modal-heading {
-    font-size: 32px;
-    line-height: 40px;
-    letter-spacing: -0.32px;
-    color: #484861;
-    font-weight: 400;
-    margin: 0 0 8px;
+    font-size: 28px;
+    line-height: 35.84px;
+    color: #000;
+    font-weight: 700;
+    margin: 0;
+    text-align: center;
+    word-break: break-word;
 }
 
 .avvance-modal-subtitle {
     font-size: 20px;
     line-height: 32px;
-    color: #484861;
-    font-style: normal;
+    color: #4c4c50;
     font-weight: 400;
-    margin: 0 0 32px;
+    margin: 0;
+    text-align: center;
+    word-break: break-word;
 }
 
 /* Calculator Row */
@@ -483,32 +508,31 @@ li.product .avvance-category-widget .avvance-price-message {
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
-    justify-content: flex-end;
     align-items: center;
     padding: 16px;
     gap: 16px;
-    border: 1px solid #CDD1E2;
-    border-radius: 4px;
-    margin-bottom: 8px;
+    border: 1px solid #d6d6d9;
+    border-radius: 8px;
     background: #fff;
 }
 
 .avvance-calculator-label {
-    font-size: 20px;
-    line-height: 32px;
-    color: #484861;
+    font-size: 16px;
+    line-height: 23.2px;
+    letter-spacing: 0.16px;
+    color: #000;
     flex: 1;
 }
 
 .avvance-currency-input {
     border: none;
-    border-bottom: 1px solid #7A7A95;
+    border-bottom: 1px solid #7f7f84;
     font-size: 20px;
     padding: 2px 4px;
     width: 110px;
     background: transparent;
     outline: none;
-    color: #484861;
+    color: #4c4c50;
 }
 
 .avvance-currency-input:focus {
@@ -520,7 +544,7 @@ li.product .avvance-category-widget .avvance-price-message {
     color: #fff;
     border: none;
     border-radius: 8px;
-    padding: 8px 12px;
+    padding: 8px 16px;
     font-size: 14px;
     font-weight: 500;
     cursor: pointer;
@@ -536,15 +560,16 @@ li.product .avvance-category-widget .avvance-price-message {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin-bottom: 0;
 }
 
 .avvance-loan-card {
-    border: 1px solid #CDD1E2;
-    border-radius: 4px;
-    padding: 16px;
+    border: 1px solid #d6d6d9;
+    border-radius: 8px;
+    padding: 24px;
     background: #fff;
-    margin-bottom: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
 }
 
 .avvance-loan-card-header {
@@ -565,7 +590,7 @@ li.product .avvance-category-widget .avvance-price-message {
 .avvance-loan-monthly .avvance-price-suffix {
     font-size: 14px;
     font-weight: 400;
-    color: #484861;
+    color: #4c4c50;
 }
 
 .avvance-loan-apr-badge {
@@ -580,7 +605,7 @@ li.product .avvance-category-widget .avvance-price-message {
 
 .avvance-loan-details {
     font-size: 13px;
-    color: #484861;
+    color: #4c4c50;
     margin-top: 2px;
 }
 
@@ -593,26 +618,49 @@ li.product .avvance-category-widget .avvance-price-message {
     background: #235AE4;
     color: #fff;
     width: 100%;
-    height: 48px;
+    height: 56px;
     padding: 12px 32px;
     border: none;
     border-radius: 8px;
-    font-size: 16px;
-    font-weight: 500;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 32px;
     cursor: pointer;
-    margin-top: 0;
 }
 
 .avvance-btn-primary:hover {
     background: #1a47b8;
 }
 
-.avvance-slider-container {
-    position: relative;
+/* Carousel Section */
+.avvance-carousel-section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.avvance-carousel-title {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 32px;
+    color: #000;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.avvance-carousel-nav {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.avvance-carousel-container {
     background: #fff;
-    border: 1px solid #CCCCD2;
-    border-radius: 10px;
-    padding: 20px;
+    border: 1px solid #d6d6d9;
+    border-radius: 8px;
+    padding: 24px;
     min-height: 80px;
     display: flex;
     align-items: center;
@@ -621,9 +669,9 @@ li.product .avvance-category-widget .avvance-price-message {
 .avvance-slide {
     display: none;
     width: 100%;
-    align-items: center;
-    gap: 15px;
-    animation: avvanceFadeIn 0.3s ease;
+    align-items: flex-start;
+    gap: 8px;
+    animation: avvanceFadeIn 0.25s ease;
 }
 
 .avvance-slide.active {
@@ -635,72 +683,77 @@ li.product .avvance-category-widget .avvance-price-message {
     to { opacity: 1; }
 }
 
-.avvance-step-text {
-    font-size: 16px;
-    color: #4C4C50;
-    font-weight: 500;
+.avvance-step-icon {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
 }
 
-/* Slider Navigation */
+.avvance-step-text {
+    font-size: 16px;
+    line-height: 25.6px;
+    letter-spacing: 0.16px;
+    color: #4c4c50;
+}
+
+/* Carousel Arrow Navigation */
 .avvance-arrow-nav {
-    position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
     background: #fff;
-    border: 1px solid #ddd;
+    border: 1px solid #d6d6d9;
     border-radius: 50%;
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #4C4C50;
+    color: #4c4c50;
     font-size: 18px;
+    line-height: 1;
     user-select: none;
     transition: background 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+    padding: 0;
+    flex-shrink: 0;
 }
 
 .avvance-arrow-nav:hover {
     background: #f0f0f0;
 }
 
-.avvance-arrow-prev {
-    right: 50px;
-}
-
-.avvance-arrow-next {
-    right: 10px;
-}
-
 .avvance-slider-dots {
     display: flex;
     justify-content: center;
-    gap: 10px;
-    margin-top: 15px;
+    gap: 8px;
 }
 
 .avvance-dot {
     width: 8px;
     height: 8px;
-    background-color: #CCCCD2;
+    background-color: #d6d6d9;
     border-radius: 50%;
     cursor: pointer;
     transition: background-color 0.2s;
+    border: none;
+    padding: 0;
+    appearance: none;
+    -webkit-appearance: none;
 }
 
 .avvance-dot.active {
-    background-color: #7F7F84;
+    background-color: #7f7f84;
+    width: 10px;
+    height: 10px;
 }
 
 /* Disclaimer */
 .avvance-disclaimer {
     font-size: 12px;
-    line-height: 20px;
-    letter-spacing: 0.24px;
-    color: #484861;
-    margin-top: 0;
-    padding: 0 64px 32px 64px;
+    line-height: 19.2px;
+    letter-spacing: 0.12px;
+    color: #4c4c50;
+    margin: 0;
 }
 
 .avvance-learn-more {
@@ -712,6 +765,51 @@ li.product .avvance-category-widget .avvance-price-message {
     text-decoration: underline;
 }
 
+/* Success Banner (Modal C) */
+.avvance-success-banner {
+    background: #fff;
+    border: 1px solid #d6d6d9;
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.avvance-success-title {
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 32px;
+    color: #000;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.avvance-success-check-icon {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.avvance-success-details {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 14px;
+    line-height: 22px;
+    color: #4c4c50;
+}
+
+.avvance-success-text,
+.avvance-success-expiry {
+    font-size: 16px;
+    line-height: 25.6px;
+    letter-spacing: 0.16px;
+    color: #4c4c50;
+    margin: 0;
+}
+
 /* ========================================
    RESPONSIVE STYLES
    ======================================== */
@@ -721,11 +819,11 @@ li.product .avvance-category-widget .avvance-price-message {
     .avvance-cart-widget {
         font-size: 13px;
     }
-    
+
     .avvance-category-widget {
         font-size: 11px;
     }
-    
+
     .avvance-logo-inline {
         height: 16px;
     }
@@ -741,51 +839,48 @@ li.product .avvance-category-widget .avvance-price-message {
     .avvance-checkout-preapproved {
         align-items: flex-start;
     }
-    
-    .avvance-preapproved-banner {
-        flex-direction: column;
-        text-align: center;
-        padding: 15px;
-    }
-    
-    .avvance-checkmark {
-        width: 40px;
-        height: 40px;
-        font-size: 22px;
-    }
-    
-    .avvance-banner-content {
-        text-align: center;
-    }
-    
-    .avvance-modal-dialog {
-        margin: 20px;
-        max-width: calc(100% - 40px);
+
+    .avvance-modal-scrollable {
+        padding: 24px 20px 32px;
+        gap: 32px;
     }
 
-    .avvance-modal-body {
-        padding: 0 20px 20px 20px;
+    .avvance-modal-scrollable--has-cta {
+        padding-bottom: 80px;
     }
 
-    .avvance-slider-section {
-        padding: 20px;
+    .avvance-modal-sticky-cta {
+        padding: 12px 20px;
     }
 
     .avvance-modal-heading {
         font-size: 22px;
+        line-height: 1.3;
     }
 
-    .avvance-input-group {
-        flex-direction: column;
-        gap: 10px;
+}
+
+@media (max-width: 600px) {
+    .avvance-modal-dialog {
+        top: 0;
+        left: 0;
+        transform: none;
+        width: 100%;
+        max-width: 100%;
+        max-height: 100%;
+        border-radius: 0;
+        border: none;
     }
 
-    .avvance-arrow-prev {
-        right: 40px;
-    }
-    
-    #avvance-checkout-widget-container {
-        padding: 15px;
+    @keyframes avvanceSlideDown {
+        from {
+            transform: translateY(24px);
+            opacity: 0;
+        }
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
     }
 }
 
@@ -794,11 +889,7 @@ li.product .avvance-category-widget .avvance-price-message {
         height: 14px;
     }
 
-    .avvance-checkout-tagline {
-        font-size: 14px;
-    }
-
-    .avvance-modal-body h2 {
+    .avvance-modal-heading {
         font-size: 20px;
     }
 }
