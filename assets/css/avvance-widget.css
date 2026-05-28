@@ -451,8 +451,9 @@ li.product .avvance-category-widget .avvance-price-message {
 /* Modal Header */
 .avvance-modal-header {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
+    position: relative;
 }
 
 .avvance-modal-logo-img {
@@ -462,6 +463,10 @@ li.product .avvance-category-widget .avvance-price-message {
 }
 
 .avvance-modal-close {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
     background: none;
     border: none;
     font-size: 22px;
@@ -469,7 +474,6 @@ li.product .avvance-category-widget .avvance-price-message {
     color: #4c4c50;
     padding: 0;
     line-height: 1;
-    flex-shrink: 0;
 }
 
 .avvance-modal-close:hover {
@@ -489,7 +493,6 @@ li.product .avvance-category-widget .avvance-price-message {
     color: #000;
     font-weight: 700;
     margin: 0;
-    text-align: center;
     word-break: break-word;
 }
 
@@ -499,7 +502,6 @@ li.product .avvance-category-widget .avvance-price-message {
     color: #4c4c50;
     font-weight: 400;
     margin: 0;
-    text-align: center;
     word-break: break-word;
 }
 
