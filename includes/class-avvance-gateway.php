@@ -44,6 +44,8 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 
 		// Hooks.
 		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
+		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'validate_api_credentials' ), 20 );
+		add_action( 'admin_notices', array( $this, 'show_credential_error_notice' ) );
 		add_action( 'woocommerce_thankyou_' . $this->id, array( $this, 'thankyou_page' ) );
 		add_filter( 'woocommerce_endpoint_order-received_title', array( $this, 'customize_order_received_title' ), 10, 2 );
 		add_filter( 'woocommerce_thankyou_order_received_text', array( $this, 'customize_order_received_text' ), 10, 2 );
@@ -759,6 +761,63 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			'partner_id'    => $this->get_option( 'partner_id' ),
 			'environment'   => $this->get_option( 'environment' ),
 		);
+	}
+
+	/**
+	 * Test API credentials after settings are saved and store a transient on failure.
+	 */
+	public function validate_api_credentials() {
+		$client_key    = $this->get_option( 'client_key' );
+		$client_secret = $this->get_option( 'client_secret' );
+		$environment   = $this->get_option( 'environment' );
+
+		if ( empty( $client_key ) || empty( $client_secret ) ) {
+			return;
+		}
+
+		$base_url = ( 'production' === $environment )
+			? 'https://alpha-api2.usbank.com'
+			: 'https://alpha-api.usbank.com';
+
+		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- required for HTTP Basic Auth
+		$auth = base64_encode( $client_key . ':' . $client_secret );
+
+		$response = wp_remote_post(
+			$base_url . '/auth/oauth2/v1/token',
+			array(
+				'headers' => array(
+					'Authorization' => 'Basic ' . $auth,
+					'Content-Type'  => 'application/x-www-form-urlencoded',
+				),
+				'body'    => 'grant_type=client_credentials',
+				'timeout' => 15,
+			)
+		);
+
+		$success = ! is_wp_error( $response )
+			&& 200 === wp_remote_retrieve_response_code( $response )
+			&& ! empty( json_decode( wp_remote_retrieve_body( $response ), true )['accessToken'] );
+
+		if ( ! $success ) {
+			set_transient( 'avvance_credential_error', 1, 60 );
+			avvance_log( 'Credential validation failed after settings save', 'error' );
+		} else {
+			delete_transient( 'avvance_credential_error' );
+		}
+	}
+
+	/**
+	 * Display admin notice if credential validation failed on last save.
+	 */
+	public function show_credential_error_notice() {
+		if ( ! get_transient( 'avvance_credential_error' ) ) {
+			return;
+		}
+		delete_transient( 'avvance_credential_error' );
+		echo '<div class="notice notice-error"><p>';
+		echo '<strong>' . esc_html__( 'U.S. Bank Avvance', 'avvance-for-woocommerce' ) . ':</strong> ';
+		echo esc_html__( 'Credentials saved but API connection failed — please verify your Client Key and Secret.', 'avvance-for-woocommerce' );
+		echo '</p></div>';
 	}
 
 	/**
