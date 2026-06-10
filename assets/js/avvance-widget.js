@@ -53,7 +53,7 @@
                     totalLoanWithInterest: item.totalLoanWithInterest || null,
                     offerType: item.offerType || (item.apr === 0 ? 'ZERO' : 'APR'),
                     promotionApr: item.promotionApr || null,
-                    promotionTermInMonths: item.promotionTermInMonths || null,
+                    promotionTermInMonths: item.promotionTerm || item.promotionTermInMonths || null,
                     promotionPaymentAmount: item.promotionPaymentAmount || null
                 });
             }
@@ -139,10 +139,70 @@
             return;
         }
 
+        var tipIconUrl = (typeof avvanceWidget !== 'undefined' && avvanceWidget.logoUrl)
+            ? avvanceWidget.logoUrl.replace('avvance-logo.svg', 'toggletip-icon.svg')
+            : '';
+
         var html = '';
         for (var i = 0; i < offers.length; i++) {
             var offer = offers[i];
-            if (offer.offerType === 'PROMO') continue;
+
+            if (offer.offerType === 'PROMO') {
+                var promoApr   = parseFloat(offer.promotionApr || 0);
+                var postApr    = parseFloat(offer.apr || 0).toFixed(2);
+                var promoTerm  = parseInt(offer.promotionTermInMonths || 0);
+                var totalTerm  = parseInt(offer.termCount || 0);
+                var remainTerm = totalTerm - promoTerm;
+
+                var bannerHtml   = '<strong>Promo: ' + promoApr + '% interest for the first ' + promoTerm +
+                    ' months</strong> then ' + postApr + '% applies for remaining ' + remainTerm + ' months';
+                var promoMonthly = '$' + parseFloat(offer.paymentAmount).toFixed(2) +
+                    '<span class="avvance-price-suffix">/month</span>';
+                var chipText     = postApr + '% APR for ' + totalTerm + ' months';
+                var tipText      = 'This APR combines the ' + promoApr + '% promotion period and the' +
+                    ' interest after the promotion ' + postApr + '%, estimating total loan cost if only' +
+                    ' minimum payments are made.';
+                var tipHtml      = tipIconUrl
+                    ? ' <button class="avvance-toggletip-btn" type="button" aria-label="More information about APR">' +
+                      '<img src="' + tipIconUrl + '" class="avvance-toggletip-icon" alt="">' +
+                      '<span class="avvance-toggletip" role="tooltip">' + tipText + '</span>' +
+                      '</button>'
+                    : '';
+
+                var promoInterest = (offer.totalLoanWithInterest && originalAmount)
+                    ? parseFloat(offer.totalLoanWithInterest) - parseFloat(originalAmount) : null;
+                var promoDetails  = '';
+                if (promoInterest !== null && promoInterest > 0) {
+                    promoDetails += '<span>Interest $' + promoInterest.toLocaleString('en-US',
+                        {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span>';
+                }
+                if (offer.totalLoanWithInterest) {
+                    promoDetails += '<span>Total $' + parseFloat(offer.totalLoanWithInterest)
+                        .toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span>';
+                }
+                var avoidHtml = offer.promotionPaymentAmount
+                    ? '<p class="avvance-promo-avoid-interest">Or pay' +
+                      ' <strong class="avvance-promo-avoid-amount">$' +
+                      parseFloat(offer.promotionPaymentAmount).toFixed(2) + '/month</strong>' +
+                      ' to avoid interest</p>'
+                    : '';
+
+                html += '<div class="avvance-loan-card avvance-loan-card--promo">';
+                html += '<div class="avvance-promo-banner">' + bannerHtml + '</div>';
+                html += '<div class="avvance-promo-card-body">';
+                html += '<p class="avvance-loan-card-label">Minimum required payment</p>';
+                html += '<div class="avvance-loan-card-header">';
+                html += '<span class="avvance-loan-monthly">' + promoMonthly + '</span>';
+                html += '<span class="avvance-loan-apr-badge avvance-loan-apr-badge--chip">' + chipText + tipHtml + '</span>';
+                html += '</div>';
+                if (promoDetails) {
+                    html += '<div class="avvance-loan-details">' + promoDetails + '</div>';
+                }
+                html += avoidHtml;
+                html += '</div>';
+                html += '</div>';
+                continue;
+            }
 
             var monthlyHtml = '$' + parseFloat(offer.paymentAmount).toFixed(2) +
                 '<span class="avvance-price-suffix">/month</span>';
@@ -867,6 +927,21 @@
             var $dotsEl = $('#' + $(this).data('dots'));
             var index = parseInt($(this).data('index'));
             setSlide($sliderEl, $dotsEl, index);
+        });
+
+        // Toggletip — toggle on icon click, close when clicking elsewhere in modal
+        $(document).on('click', '.avvance-toggletip-btn', function(e) {
+            e.stopPropagation();
+            var $tip      = $(this).find('.avvance-toggletip');
+            var isVisible = $tip.hasClass('is-visible');
+            $('.avvance-toggletip.is-visible').removeClass('is-visible');
+            if (!isVisible) {
+                $tip.addClass('is-visible');
+            }
+        });
+
+        $(document).on('click', '.avvance-modal-dialog', function() {
+            $('.avvance-toggletip.is-visible').removeClass('is-visible');
         });
 
         // Handle "See if you qualify" button
