@@ -137,8 +137,6 @@ class Avvance_API_Client extends Avvance_API_Base {
 			return $token;
 		}
 
-		avvance_log( 'Getting notification status for notificationId: ' . $notification_id );
-
 		$request_url    = $this->base_url . '/poslp/services/avvance-loan/v1/notification-status';
 		$correlation_id = $this->generate_correlation_id();
 
@@ -150,8 +148,6 @@ class Avvance_API_Client extends Avvance_API_Base {
 			'merchant-Id'    => $this->merchant_id,
 			'notificationId' => $notification_id,
 		);
-
-		avvance_log( "Notification-status request: URL={$request_url}, correlationId={$correlation_id}, merchantId={$this->merchant_id}, notificationId={$notification_id}, environment={$this->environment}" );
 
 		$response = wp_remote_get(
 			$request_url,
@@ -169,9 +165,6 @@ class Avvance_API_Client extends Avvance_API_Base {
 		$code = wp_remote_retrieve_response_code( $response );
 		$body = wp_remote_retrieve_body( $response );
 
-		// Log the actual response for debugging.
-		avvance_log( "Notification status response code: {$code}, body: {$body}" );
-
 		if ( 200 !== $code ) {
 			avvance_log( 'Notification status request failed with code ' . $code, 'error' );
 
@@ -184,7 +177,6 @@ class Avvance_API_Client extends Avvance_API_Base {
 			return new WP_Error( 'api_error', "Failed to get notification status (HTTP {$code}): {$body}" );
 		}
 
-		avvance_log( 'Notification status retrieved successfully' );
 		return json_decode( $body, true );
 	}
 
@@ -228,9 +220,6 @@ class Avvance_API_Client extends Avvance_API_Base {
 
 		$code = wp_remote_retrieve_response_code( $response );
 		$body = json_decode( wp_remote_retrieve_body( $response ), true );
-
-		// Log the raw response details.
-		avvance_log( 'API Response | Status Code: ' . $code . ' | Body: ' . wp_json_encode( $body ) );
 
 		if ( 201 !== $code && 200 !== $code ) {
 			$error_msg = isset( $body['error']['message'] ) ? $body['error']['message'] : 'Void failed';

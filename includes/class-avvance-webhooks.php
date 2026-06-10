@@ -37,9 +37,7 @@ class Avvance_Webhooks {
 	 * Validates authentication and routes to appropriate processor
 	 */
 	public static function handle_webhook() {
-		avvance_log( '=== WEBHOOK RECEIVED ===' );
 		$request_method = isset( $_SERVER['REQUEST_METHOD'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) : '';
-		avvance_log( 'Request Method: ' . $request_method );
 
 		// Only accept POST requests.
 		if ( 'POST' !== $request_method ) {
@@ -54,17 +52,13 @@ class Avvance_Webhooks {
 			wp_send_json_error( array( 'message' => 'Unauthorized' ), 401 );
 		}
 
-		avvance_log( 'Webhook token validation passed' );
-
 		// Record that the webhook endpoint has been confirmed active.
 		if ( get_option( 'avvance_webhook_status' ) !== 'active' ) {
 			update_option( 'avvance_webhook_status', 'active' );
-			avvance_log( 'Webhook endpoint confirmed active - first webhook received' );
 		}
 
 		// Get and parse the payload.
 		$raw_payload = file_get_contents( 'php://input' );
-		avvance_log( 'Raw payload length: ' . strlen( $raw_payload ) );
 
 		if ( empty( $raw_payload ) ) {
 			avvance_log( 'ERROR: Empty webhook payload', 'error' );
@@ -78,12 +72,6 @@ class Avvance_Webhooks {
 			wp_send_json_error( array( 'message' => 'Invalid JSON' ), 400 );
 		}
 
-		// TEMPORARY: Log raw webhook JSON for debugging (REMOVE BEFORE PRODUCTION).
-		avvance_log( '=== RAW WEBHOOK JSON ===' );
-		avvance_log( $raw_payload );
-		avvance_log( '=== END RAW WEBHOOK JSON ===' );
-
-		// Log webhook type (without sensitive data).
 		$event_type = $payload['eventType'] ?? 'unknown';
 		avvance_log( 'Webhook event type: ' . $event_type );
 
@@ -95,7 +83,6 @@ class Avvance_Webhooks {
 			wp_send_json_error( array( 'message' => $result->get_error_message() ), 400 );
 		}
 
-		avvance_log( '=== WEBHOOK PROCESSED SUCCESSFULLY ===' );
 		wp_send_json_success( array( 'message' => 'Webhook processed' ) );
 	}
 
@@ -132,13 +119,11 @@ class Avvance_Webhooks {
 
 		if ( ! empty( $auth_header ) && str_starts_with( trim( $auth_header ), 'Bearer ' ) ) {
 			$provided_token = trim( substr( trim( $auth_header ), 7 ) );
-			avvance_log( 'Webhook auth: using Authorization Bearer header' );
 		}
 
 		// Attempt B: X-Avvance-Token custom header via $_SERVER.
 		if ( empty( $provided_token ) && ! empty( $_SERVER['HTTP_X_AVVANCE_TOKEN'] ) ) {
 			$provided_token = trim( sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_AVVANCE_TOKEN'] ) ) );
-			avvance_log( 'Webhook auth: using X-Avvance-Token header' );
 		}
 
 		// Attempt C: getallheaders() case-insensitive fallback.
@@ -147,12 +132,10 @@ class Avvance_Webhooks {
 				$key_lower = strtolower( $key );
 				if ( 'authorization' === $key_lower && str_starts_with( trim( $value ), 'Bearer ' ) ) {
 					$provided_token = trim( substr( trim( $value ), 7 ) );
-					avvance_log( 'Webhook auth: using Authorization header via getallheaders()' );
 					break;
 				}
 				if ( 'x-avvance-token' === $key_lower && ! empty( $value ) ) {
 					$provided_token = trim( $value );
-					avvance_log( 'Webhook auth: using X-Avvance-Token via getallheaders()' );
 					break;
 				}
 			}
@@ -165,12 +148,9 @@ class Avvance_Webhooks {
 
 		if ( ! hash_equals( $expected_token, $provided_token ) ) {
 			avvance_log( 'Webhook auth: token mismatch', 'error' );
-			avvance_log( 'Provided token length: ' . strlen( $provided_token ) );
-			avvance_log( 'Expected token length: ' . strlen( $expected_token ) );
 			return false;
 		}
 
-		avvance_log( 'Webhook authentication successful' );
 		return true;
 	}
 
@@ -181,19 +161,11 @@ class Avvance_Webhooks {
 	 * @return true|WP_Error
 	 */
 	private static function route_webhook( $payload ) {
-		$event_type    = $payload['eventType'] ?? '';
-		$event_details = $payload['eventDetails'] ?? array();
-
-		avvance_log( 'Routing webhook - Event Type: ' . $event_type );
-
 		// Check if this is a pre-approval webhook.
 		if ( self::is_preapproval_webhook( $payload ) ) {
-			avvance_log( 'Detected pre-approval webhook' );
 			return self::process_preapproval_webhook( $payload );
 		}
 
-		// Otherwise, treat as loan status webhook.
-		avvance_log( 'Processing as loan status webhook' );
 		return self::process_loan_status_webhook( $payload );
 	}
 
@@ -226,8 +198,6 @@ class Avvance_Webhooks {
 	 * @return true|WP_Error
 	 */
 	private static function process_preapproval_webhook( $payload ) {
-		avvance_log( '=== PROCESSING PRE-APPROVAL WEBHOOK ===' );
-
 		// Delegate to PreApproval Handler.
 		if ( class_exists( 'Avvance_PreApproval_Handler' ) ) {
 			return Avvance_PreApproval_Handler::process_preapproval_webhook( $payload );
