@@ -6,9 +6,14 @@
  * - Loan status updates (payment authorized, settled, declined)
  * - Pre-approval status updates
  *
- * Authentication: Validates incoming requests via a bearer token stored in the
- * `webhook_auth_token` plugin setting. The token is pasted from the Avvance Merchant
- * Portal. Accepts Authorization: Bearer <token> or X-Avvance-Token header.
+ * Authentication (dual-mode transition):
+ * 1. HMAC-SHA256 (preferred): sender signs the raw JSON body with the shared secret
+ *    and sends the result as X-Webhook-Signature: sha256=<lowercase_hex>.
+ * 2. Bearer token (legacy, deprecated): Authorization: Bearer <token> or X-Avvance-Token.
+ *    Accepted as a fallback; a deprecation warning is logged. Remove once all senders
+ *    have migrated to HMAC.
+ *
+ * The shared secret for both modes is the `webhook_auth_token` gateway setting.
  *
  * @package Avvance_For_WooCommerce
  * @since 1.0.0
@@ -45,9 +50,17 @@ class Avvance_Webhooks {
 			wp_send_json_error( array( 'message' => 'Method not allowed' ), 405 );
 		}
 
-		// Validate bearer token authentication.
-		if ( ! self::validate_webhook_token() ) {
-			avvance_log( 'ERROR: Webhook token validation failed', 'error' );
+		// Read raw payload before auth — HMAC verification requires the original body bytes.
+		$raw_payload = file_get_contents( 'php://input' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+
+		if ( empty( $raw_payload ) ) {
+			avvance_log( 'ERROR: Empty webhook payload', 'error' );
+			wp_send_json_error( array( 'message' => 'Empty payload' ), 400 );
+		}
+
+		// Validate authentication: HMAC-SHA256 preferred, Bearer token as legacy fallback.
+		if ( ! self::validate_webhook_auth( $raw_payload ) ) {
+			avvance_log( 'ERROR: Webhook authentication failed', 'error' );
 			status_header( 401 );
 			wp_send_json_error( array( 'message' => 'Unauthorized' ), 401 );
 		}
@@ -55,14 +68,6 @@ class Avvance_Webhooks {
 		// Record that the webhook endpoint has been confirmed active.
 		if ( get_option( 'avvance_webhook_status' ) !== 'active' ) {
 			update_option( 'avvance_webhook_status', 'active' );
-		}
-
-		// Get and parse the payload.
-		$raw_payload = file_get_contents( 'php://input' );
-
-		if ( empty( $raw_payload ) ) {
-			avvance_log( 'ERROR: Empty webhook payload', 'error' );
-			wp_send_json_error( array( 'message' => 'Empty payload' ), 400 );
 		}
 
 		$payload = json_decode( $raw_payload, true );
@@ -87,26 +92,89 @@ class Avvance_Webhooks {
 	}
 
 	/**
-	 * Validate webhook bearer token authentication.
+	 * Validate webhook authentication.
 	 *
-	 * Checks Authorization: Bearer <token> header first,
-	 * then falls back to X-Avvance-Token custom header.
+	 * Tries HMAC-SHA256 first (preferred). Falls back to legacy Bearer token
+	 * and logs a deprecation warning so the migration can be tracked.
 	 *
-	 * @return bool True if token is valid, false otherwise.
+	 * @param string $raw_payload Raw request body bytes.
+	 * @return bool True if authentication succeeds, false otherwise.
 	 */
-	private static function validate_webhook_token() {
+	private static function validate_webhook_auth( $raw_payload ) {
 		$gateway = avvance_get_gateway();
 		if ( ! $gateway ) {
 			avvance_log( 'Webhook auth: gateway not available', 'error' );
 			return false;
 		}
 
-		$expected_token = trim( $gateway->get_option( 'webhook_auth_token' ) );
-		if ( empty( $expected_token ) ) {
+		$secret = trim( $gateway->get_option( 'webhook_auth_token' ) );
+		if ( empty( $secret ) ) {
 			avvance_log( 'Webhook auth: webhook_auth_token not configured in plugin settings', 'error' );
 			return false;
 		}
 
+		// Preferred: HMAC-SHA256 via X-Webhook-Signature header.
+		if ( self::verify_hmac_signature( $raw_payload, $secret ) ) {
+			return true;
+		}
+
+		// Legacy fallback: Bearer token (deprecated — migrate to HMAC).
+		if ( self::verify_bearer_token( $secret ) ) {
+			avvance_log( 'Webhook auth: authenticated via legacy Bearer token — configure HMAC signing to remove this warning', 'warning' );
+			return true;
+		}
+
+		avvance_log( 'Webhook auth: HMAC and Bearer authentication both failed', 'error' );
+		return false;
+	}
+
+	/**
+	 * Verify HMAC-SHA256 signature from X-Webhook-Signature header.
+	 *
+	 * Expected header format: X-Webhook-Signature: sha256=<lowercase_hex>
+	 * Signed message: raw request body (no timestamp).
+	 *
+	 * @param string $raw_payload Raw request body bytes.
+	 * @param string $secret      Shared signing secret.
+	 * @return bool True if signature is valid, false if header absent or mismatch.
+	 */
+	private static function verify_hmac_signature( $raw_payload, $secret ) {
+		$provided_sig = '';
+
+		// Primary: $_SERVER maps X-Webhook-Signature → HTTP_X_WEBHOOK_SIGNATURE.
+		if ( ! empty( $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'] ) ) {
+			$provided_sig = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'] ) );
+		}
+
+		// Fallback: getallheaders() for servers that don't expose custom headers in $_SERVER.
+		if ( empty( $provided_sig ) && function_exists( 'getallheaders' ) ) {
+			foreach ( getallheaders() as $key => $value ) {
+				if ( 'x-webhook-signature' === strtolower( $key ) ) {
+					$provided_sig = sanitize_text_field( $value );
+					break;
+				}
+			}
+		}
+
+		// No HMAC header present — this is not an HMAC request.
+		if ( empty( $provided_sig ) ) {
+			return false;
+		}
+
+		$expected_sig = 'sha256=' . hash_hmac( 'sha256', $raw_payload, $secret );
+		return hash_equals( $expected_sig, $provided_sig );
+	}
+
+	/**
+	 * Verify legacy Bearer token authentication.
+	 *
+	 * Checks Authorization: Bearer <token> and X-Avvance-Token headers.
+	 * Deprecated: use HMAC signing instead.
+	 *
+	 * @param string $expected_token The configured webhook token.
+	 * @return bool True if a matching token is found, false otherwise.
+	 */
+	private static function verify_bearer_token( $expected_token ) {
 		$provided_token = '';
 
 		// Attempt A: Authorization: Bearer <token> via $_SERVER.
@@ -142,16 +210,10 @@ class Avvance_Webhooks {
 		}
 
 		if ( empty( $provided_token ) ) {
-			avvance_log( 'Webhook auth: no Authorization Bearer or X-Avvance-Token header found', 'error' );
 			return false;
 		}
 
-		if ( ! hash_equals( $expected_token, $provided_token ) ) {
-			avvance_log( 'Webhook auth: token mismatch', 'error' );
-			return false;
-		}
-
-		return true;
+		return hash_equals( $expected_token, $provided_token );
 	}
 
 	/**
