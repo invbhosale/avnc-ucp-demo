@@ -113,8 +113,11 @@ class Avvance_Webhooks {
 			return false;
 		}
 
+		avvance_log( sprintf( 'Webhook auth: payload length=%d, secret length=%d, payload prefix=%s', strlen( $raw_payload ), strlen( $secret ), substr( $raw_payload, 0, 40 ) ) );
+
 		// Preferred: HMAC-SHA256 via X-Webhook-Signature header.
 		if ( self::verify_hmac_signature( $raw_payload, $secret ) ) {
+			avvance_log( 'Webhook auth: HMAC signature verified successfully' );
 			return true;
 		}
 
@@ -139,18 +142,21 @@ class Avvance_Webhooks {
 	 * @return bool True if signature is valid, false if header absent or mismatch.
 	 */
 	private static function verify_hmac_signature( $raw_payload, $secret ) {
-		$provided_sig = '';
+		$provided_sig  = '';
+		$header_source = 'not found';
 
 		// Primary: $_SERVER maps X-Webhook-Signature → HTTP_X_WEBHOOK_SIGNATURE.
 		if ( ! empty( $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'] ) ) {
-			$provided_sig = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'] ) );
+			$provided_sig  = sanitize_text_field( wp_unslash( $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'] ) );
+			$header_source = '$_SERVER[HTTP_X_WEBHOOK_SIGNATURE]';
 		}
 
 		// Fallback: getallheaders() for servers that don't expose custom headers in $_SERVER.
 		if ( empty( $provided_sig ) && function_exists( 'getallheaders' ) ) {
 			foreach ( getallheaders() as $key => $value ) {
 				if ( 'x-webhook-signature' === strtolower( $key ) ) {
-					$provided_sig = sanitize_text_field( $value );
+					$provided_sig  = sanitize_text_field( $value );
+					$header_source = 'getallheaders()[' . $key . ']';
 					break;
 				}
 			}
@@ -158,11 +164,24 @@ class Avvance_Webhooks {
 
 		// No HMAC header present — this is not an HMAC request.
 		if ( empty( $provided_sig ) ) {
+			avvance_log( 'Webhook HMAC: X-Webhook-Signature header not found — no HMAC attempt' );
 			return false;
 		}
 
-		$expected_sig = 'sha256=' . hash_hmac( 'sha256', $raw_payload, $secret );
-		return hash_equals( $expected_sig, $provided_sig );
+		// Strip optional "sha256=" prefix — U.S. Bank sends bare base64, but accept both forms.
+		$compare_sig  = preg_replace( '/^sha256=/i', '', $provided_sig );
+		$expected_sig = base64_encode( hash_hmac( 'sha256', $raw_payload, $secret, true ) ); // phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
+
+		avvance_log( sprintf( 'Webhook HMAC: header source=%s', $header_source ) );
+		avvance_log( sprintf( 'Webhook HMAC: provided  sig=%s', $compare_sig ) );
+		avvance_log( sprintf( 'Webhook HMAC: expected  sig=%s', $expected_sig ) );
+
+		$match = hash_equals( $expected_sig, $compare_sig );
+		if ( ! $match ) {
+			avvance_log( 'Webhook HMAC: signature mismatch — check that the secret and raw body bytes match exactly', 'error' );
+		}
+
+		return $match;
 	}
 
 	/**
