@@ -17,9 +17,16 @@
     var isProductPage = avvanceWidget.isProductPage || false;
     var isCheckoutPage = avvanceWidget.isCheckoutPage || false;
 
+    // Shared selector matching every inline widget instance on the page.
+    var AVVANCE_WIDGET_SELECTOR = '.avvance-product-widget, .avvance-cart-widget, .avvance-checkout-widget, .avvance-category-widget, .avvance-new-in-store-widget';
+
     // Variables for pre-approval flow
     var preapprovalWindow = null;
     var statusCheckInterval = null;
+
+    // Memoized pre-approval status response, shared across all widget instances
+    // on a page load so multiple widgets don't each fire an identical AJAX call.
+    var preapprovalStatusPromise = null;
 
     function getLightLogoUrl() {
         return avvanceWidget.logoUrlLight || avvanceWidget.logoUrl || '';
@@ -64,7 +71,7 @@
         } else if (Array.isArray(data)) {
             for (var i = 0; i < data.length; i++) {
                 var item = data[i];
-                offers.push({
+                offers.push($.extend({}, item, {
                     apr: item.apr || 0,
                     paymentAmount: item.monthlyPaymentAmount || item.paymentAmount || 0,
                     termCount: item.termCount || null,
@@ -73,7 +80,7 @@
                     promotionApr: item.promotionApr || null,
                     promotionTermInMonths: item.promotionTerm || item.promotionTermInMonths || null,
                     promotionPaymentAmount: item.promotionPaymentAmount || null
-                });
+                }));
             }
         }
 
@@ -468,6 +475,55 @@
     }
 
     /**
+     * Load the actual offers a pre-approved consumer prequalified for
+     * (modal-c only) and render all of them, with no card cap.
+     * Falls back to the generic price-breakdown offers if the
+     * pre-approval-specific endpoint errors for any reason.
+     */
+    function loadPreapprovalOffers(amount, $container, maxPreapprovedAmount) {
+        var $calculatorSection = $container.closest('.avvance-modal-body-calculator, .avvance-modal-body');
+        var $calculatorRow = $calculatorSection.find('.avvance-calculator-row');
+        // Validate amount
+        var validation = validateLoanAmount(amount, maxPreapprovedAmount);
+
+        // Remove any previous page-level error
+        $calculatorSection.find('.avvance-page-level-error').remove();
+        clearFieldLevelError($calculatorRow);
+
+        if (!validation.isValid) {
+            showFieldLevelError($calculatorRow, validation.fieldErrorMessage);
+            // Display error message in loan options container
+            $container.html(validation.displayMessage);
+            return;
+        }
+
+        $container.empty();
+
+        $.ajax({
+            url: avvanceWidget.ajaxUrl,
+            type: 'POST',
+            data: {
+                action: 'avvance_get_preapproval_offers',
+                amount: amount,
+                nonce: avvanceWidget.nonce
+            },
+            success: function(response) {
+                if (response.success) {
+                    var offers = parseOffers(response.data);
+                    renderLoanCards(offers, $container, amount, 0);
+                } else {
+                    // Fall back to generic price-breakdown offers rather than an empty modal.
+                    loadModalPriceBreakdown(amount, $container, maxPreapprovedAmount, 0);
+                }
+            },
+            error: function() {
+                // Fall back to generic price-breakdown offers rather than an empty modal.
+                loadModalPriceBreakdown(amount, $container, maxPreapprovedAmount, 0);
+            }
+        });
+    }
+
+    /**
      * Parse currency string to number (removes $, commas)
      */
     function parseCurrencyInput(val) {
@@ -607,8 +663,8 @@
                     $input.val(formatCurrency(maxAmount));
                 }
                 if (cardsId) {
-                    // Pass maxAmount as the pre-approved maximum
-                    loadModalPriceBreakdown(maxAmount, $('#' + cardsId), maxAmount, 3);
+                    // Fetch the offers this consumer actually prequalified for.
+                    loadPreapprovalOffers(maxAmount, $('#' + cardsId), maxAmount);
                 }
             }
         } else {
@@ -716,7 +772,7 @@
      */
     function updateCTAToPreapproved(maxAmount, expiryDate) {
         // Update inline widgets
-        $('.avvance-product-widget, .avvance-cart-widget, .avvance-checkout-widget, .avvance-category-widget').each(function() {
+        $(AVVANCE_WIDGET_SELECTOR).each(function() {
             var $widget = $(this);
             var offers = $widget.data('offers') || [];
             var sessionId = $widget.data('session-id') || '';
@@ -777,6 +833,25 @@
     }
 
     /**
+     * Get pre-approval status, memoized for the lifetime of the page load so
+     * multiple widget instances (e.g. several "New in store" cards) share a
+     * single AJAX call instead of each querying the same visitor's status.
+     */
+    function getPreapprovalStatus() {
+        if (!preapprovalStatusPromise) {
+            preapprovalStatusPromise = $.ajax({
+                url: avvanceWidget.ajaxUrl,
+                type: 'POST',
+                data: {
+                    action: 'avvance_check_preapproval',
+                    nonce: avvanceWidget.nonce
+                }
+            });
+        }
+        return preapprovalStatusPromise;
+    }
+
+    /**
      * Load price breakdown via AJAX, then check pre-approval, then build widget HTML.
      *
      * Widget states:
@@ -822,31 +897,22 @@
                     $widget.attr('data-has-zero-apr', hasZeroApr ? '1' : '0');
                 }
 
-                $.ajax({
-                    url: avvanceWidget.ajaxUrl,
-                    type: 'POST',
-                    data: {
-                        action: 'avvance_check_preapproval',
-                        nonce: avvanceWidget.nonce
-                    },
-                    success: function(paResponse) {
-                        var hasPreapproval = false;
-                        var maxAmount = 0;
-                        if (paResponse.success && paResponse.data && paResponse.data.has_preapproval) {
-                            hasPreapproval = true;
-                            maxAmount = paResponse.data.max_amount;
-                        }
-                        var context = $widget.data('context') || 'product';
-                        $widget.find('.avvance-widget-content').html(
-                            buildWidgetHtml(offers, hasPreapproval, maxAmount, sessionId, context, $widget)
-                        );
-                    },
-                    error: function() {
-                        var context = $widget.data('context') || 'product';
-                        $widget.find('.avvance-widget-content').html(
-                            buildWidgetHtml(offers, false, 0, sessionId, context, $widget)
-                        );
+                getPreapprovalStatus().done(function(paResponse) {
+                    var hasPreapproval = false;
+                    var maxAmount = 0;
+                    if (paResponse.success && paResponse.data && paResponse.data.has_preapproval) {
+                        hasPreapproval = true;
+                        maxAmount = paResponse.data.max_amount;
                     }
+                    var context = $widget.data('context') || 'product';
+                    $widget.find('.avvance-widget-content').html(
+                        buildWidgetHtml(offers, hasPreapproval, maxAmount, sessionId, context, $widget)
+                    );
+                }).fail(function() {
+                    var context = $widget.data('context') || 'product';
+                    $widget.find('.avvance-widget-content').html(
+                        buildWidgetHtml(offers, false, 0, sessionId, context, $widget)
+                    );
                 });
             },
             error: function() {
@@ -887,7 +953,11 @@
      * Initialize widgets on page
      */
     function initWidgets() {
-        var $widgets = $('.avvance-product-widget, .avvance-cart-widget, .avvance-checkout-widget, .avvance-category-widget');
+        var $widgets = $(AVVANCE_WIDGET_SELECTOR);
+
+        if (isCartPage) {
+            injectNewInStoreWidgets();
+        }
 
         if ($widgets.length === 0 && isCartPage) {
             setTimeout(injectWidgetForBlocks, 2000);
@@ -1074,6 +1144,74 @@
     }
 
     /**
+     * Watch the empty-cart "New in store" block (WooCommerce's
+     * woocommerce/product-new block, rendered client-side inside the Cart
+     * block's empty-cart state) and inject an Avvance widget into each
+     * product card. Uses a MutationObserver rather than a one-shot timer
+     * because this section can mount/unmount repeatedly as the cart's
+     * empty/non-empty state changes via React re-renders.
+     */
+    function injectNewInStoreWidgets() {
+        if (!avvanceWidget.newInStoreEnabled) {
+            return;
+        }
+
+        var minAmount = avvanceWidget.minAmount;
+        var maxAmount = avvanceWidget.maxAmount;
+        var configuredTheme = (avvanceWidget.theme || 'light').toString().toLowerCase();
+        if (configuredTheme !== 'light' && configuredTheme !== 'dark') {
+            configuredTheme = 'light';
+        }
+
+        function processCards() {
+            $('.wp-block-woocommerce-empty-cart-block .wc-block-grid__product:not([data-avvance-processed])').each(function() {
+                var $card = $(this);
+                $card.attr('data-avvance-processed', '1');
+
+                var $addToCart = $card.find('.add_to_cart_button');
+                var amount = parseFloat($addToCart.attr('data-price'));
+                var productId = $addToCart.attr('data-product_id') || '';
+
+                if (!amount) {
+                    var priceText = $card.find('.wc-block-grid__product-price .woocommerce-Price-amount').first().text();
+                    amount = priceText ? parseCurrencyInput(priceText) : 0;
+                }
+
+                if (!amount || amount < minAmount || amount > maxAmount) {
+                    return;
+                }
+
+                var sessionId = 'avv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                var widgetHtml = '<div class="avvance-new-in-store-widget avvance-widget-' + configuredTheme + '"' +
+                    ' data-amount="' + amount + '"' +
+                    (productId ? ' data-product-id="' + productId + '"' : '') +
+                    ' data-session-id="' + sessionId + '"' +
+                    ' data-context="new-in-store"' +
+                    ' data-min-amount="' + minAmount + '"' +
+                    ' data-max-amount="' + maxAmount + '">' +
+                    '<div class="avvance-widget-content"><div class="avvance-price-message"></div></div>' +
+                    '</div>';
+
+                var $priceEl = $card.find('.wc-block-grid__product-price');
+                if ($priceEl.length) {
+                    $priceEl.after(widgetHtml);
+                } else {
+                    $card.append(widgetHtml);
+                }
+
+                loadPriceBreakdown($card.find('.avvance-new-in-store-widget'));
+            });
+        }
+
+        processCards();
+
+        var observer = new MutationObserver(function() {
+            processCards();
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+    }
+
+    /**
      * Inject checkout banner for WooCommerce Blocks checkout
      */
     function injectCheckoutBanner() {
@@ -1172,11 +1310,11 @@
             e.preventDefault();
             var type = $(this).data('modal');
             var $closest = $(this).closest(
-                '.avvance-product-widget, .avvance-cart-widget, .avvance-category-widget, .avvance-checkout-widget, #avvance-checkout-banner'
+                AVVANCE_WIDGET_SELECTOR + ', #avvance-checkout-banner'
             );
             var amount = $closest.length ? parseFloat($closest.data('amount')) : 0;
             if (!amount) {
-                var $widget = $('.avvance-product-widget, .avvance-cart-widget, .avvance-checkout-widget, .avvance-category-widget').first();
+                var $widget = $(AVVANCE_WIDGET_SELECTOR).first();
                 amount = $widget.length ? parseFloat($widget.data('amount')) : 0;
             }
             openModalByType(type, amount);
@@ -1231,13 +1369,12 @@
             
             // Determine if this is a pre-approved modal (modal-c)
             var $modal = $row.closest('.avvance-modal');
-            var maxPreapprovedAmount = null;
             if ($modal.attr('id') === 'avvance-modal-c') {
-                maxPreapprovedAmount = parseFloat($modal.attr('data-max-amount')) || null;
+                var maxPreapprovedAmount = parseFloat($modal.attr('data-max-amount')) || null;
+                loadPreapprovalOffers(amount, $cards, maxPreapprovedAmount);
+            } else {
+                loadModalPriceBreakdown(amount, $cards, null, 0);
             }
-            
-            var initialLimit = ($modal.attr('id') === 'avvance-modal-c') ? 3 : 0;
-            loadModalPriceBreakdown(amount, $cards, maxPreapprovedAmount, initialLimit);
         });
 
         // Ensure $ prefix is always present in currency input
@@ -1319,7 +1456,7 @@
             e.preventDefault();
 
             var $button = $(this);
-            var $widget = $('.avvance-product-widget, .avvance-cart-widget, .avvance-checkout-widget, .avvance-category-widget').first();
+            var $widget = $(AVVANCE_WIDGET_SELECTOR).first();
             var sessionId = $widget.data('session-id');
 
             if (!sessionId) {

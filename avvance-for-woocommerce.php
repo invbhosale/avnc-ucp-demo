@@ -106,6 +106,7 @@ final class Avvance_For_WooCommerce {
 		require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-preapproval-api.php';
 		require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-preapproval-handler.php';
 		require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-price-breakdown-api.php';
+		require_once AVVANCE_PLUGIN_PATH . 'includes/class-avvance-preapproval-offers-api.php';
 	}
 
 	/**

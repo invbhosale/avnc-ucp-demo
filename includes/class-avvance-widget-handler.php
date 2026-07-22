@@ -46,15 +46,16 @@ class Avvance_Widget_Handler {
 		}
 
 		self::$settings = array(
-			'category_enabled' => self::$gateway->get_option( 'category_widget_enabled', 'yes' ) === 'yes',
-			'product_enabled'  => self::$gateway->get_option( 'product_widget_enabled', 'yes' ) === 'yes',
-			'product_position' => self::$gateway->get_option( 'product_widget_position', 'after_price' ),
-			'cart_enabled'     => self::$gateway->get_option( 'cart_widget_enabled', 'yes' ) === 'yes',
-			'checkout_enabled' => self::$gateway->get_option( 'checkout_widget_enabled', 'yes' ) === 'yes',
-			'theme'            => self::$gateway->get_option( 'widget_theme', 'light' ),
-			'show_logo'        => self::$gateway->get_option( 'widget_show_logo', 'yes' ) === 'yes',
-			'min_amount'       => floatval( self::$gateway->get_option( 'min_order_amount', 300 ) ),
-			'max_amount'       => floatval( self::$gateway->get_option( 'max_order_amount', 25000 ) ),
+			'category_enabled'     => self::$gateway->get_option( 'category_widget_enabled', 'yes' ) === 'yes',
+			'product_enabled'      => self::$gateway->get_option( 'product_widget_enabled', 'yes' ) === 'yes',
+			'product_position'     => self::$gateway->get_option( 'product_widget_position', 'after_price' ),
+			'cart_enabled'         => self::$gateway->get_option( 'cart_widget_enabled', 'yes' ) === 'yes',
+			'checkout_enabled'     => self::$gateway->get_option( 'checkout_widget_enabled', 'yes' ) === 'yes',
+			'new_in_store_enabled' => self::$gateway->get_option( 'new_in_store_widget_enabled', 'yes' ) === 'yes',
+			'theme'                => self::$gateway->get_option( 'widget_theme', 'light' ),
+			'show_logo'            => self::$gateway->get_option( 'widget_show_logo', 'yes' ) === 'yes',
+			'min_amount'           => floatval( self::$gateway->get_option( 'min_order_amount', 300 ) ),
+			'max_amount'           => floatval( self::$gateway->get_option( 'max_order_amount', 25000 ) ),
 		);
 	}
 
@@ -110,6 +111,9 @@ class Avvance_Widget_Handler {
 
 		add_action( 'wp_ajax_avvance_check_preapproval', array( __CLASS__, 'ajax_check_preapproval' ) );
 		add_action( 'wp_ajax_nopriv_avvance_check_preapproval', array( __CLASS__, 'ajax_check_preapproval' ) );
+
+		add_action( 'wp_ajax_avvance_get_preapproval_offers', array( __CLASS__, 'ajax_get_preapproval_offers' ) );
+		add_action( 'wp_ajax_nopriv_avvance_get_preapproval_offers', array( __CLASS__, 'ajax_get_preapproval_offers' ) );
 	}
 
 	/**
@@ -200,21 +204,22 @@ class Avvance_Widget_Handler {
 			'avvance-widget',
 			'avvanceWidget',
 			array(
-				'ajaxUrl'        => admin_url( 'admin-ajax.php' ),
-				'nonce'          => wp_create_nonce( 'avvance_preapproval' ),
-				'checkInterval'  => 3000,
-				'logoUrl'        => AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg',
-				'imagesUrl'      => AVVANCE_PLUGIN_URL . 'assets/images/',
-				'retailerName'   => get_bloginfo( 'name' ),
-				'logoUrlLight'   => AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg',
-				'logoUrlDark'    => AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo-white.svg',
-				'theme'          => self::$settings['theme'],
-				'minAmount'      => self::$settings['min_amount'],
-				'maxAmount'      => self::$settings['max_amount'],
-				'isProductPage'  => is_product(),
-				'isCartPage'     => is_cart(),
-				'isCheckoutPage' => is_checkout(),
-				'showLogo'       => self::$settings['show_logo'],
+				'ajaxUrl'           => admin_url( 'admin-ajax.php' ),
+				'nonce'             => wp_create_nonce( 'avvance_preapproval' ),
+				'checkInterval'     => 3000,
+				'logoUrl'           => AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg',
+				'imagesUrl'         => AVVANCE_PLUGIN_URL . 'assets/images/',
+				'retailerName'      => get_bloginfo( 'name' ),
+				'logoUrlLight'      => AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg',
+				'logoUrlDark'       => AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo-white.svg',
+				'theme'             => self::$settings['theme'],
+				'minAmount'         => self::$settings['min_amount'],
+				'maxAmount'         => self::$settings['max_amount'],
+				'isProductPage'     => is_product(),
+				'isCartPage'        => is_cart(),
+				'isCheckoutPage'    => is_checkout(),
+				'showLogo'          => self::$settings['show_logo'],
+				'newInStoreEnabled' => self::$settings['new_in_store_enabled'],
 			)
 		);
 	}
@@ -255,6 +260,56 @@ class Avvance_Widget_Handler {
 		if ( is_wp_error( $response ) ) {
 			avvance_log( 'Price breakdown AJAX error: ' . $response->get_error_message(), 'error' );
 			wp_send_json_error( array( 'message' => 'Unable to get price breakdown' ) );
+		}
+
+		wp_send_json_success( $response );
+	}
+
+	/**
+	 * AJAX: Get pre-approval offers
+	 *
+	 * Returns the actual offers a pre-approved consumer has prequalified for.
+	 * The pre-approval request ID is resolved server-side from the browser
+	 * fingerprint cookie (never trusted from client input) to prevent one
+	 * caller from fetching another consumer's offers.
+	 */
+	public static function ajax_get_preapproval_offers() {
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing -- public-facing AJAX for price display, no state change
+		$amount = isset( $_POST['amount'] ) ? floatval( $_POST['amount'] ) : 0;
+
+		$preapproval = self::get_current_preapproval();
+
+		if ( ! $preapproval || 'PRE_APPROVED' !== ( $preapproval['status'] ?? '' ) || empty( $preapproval['request_id'] ) ) {
+			wp_send_json_error( array( 'message' => 'No active pre-approval found' ) );
+		}
+
+		$gateway = avvance_get_gateway();
+		if ( ! $gateway ) {
+			wp_send_json_error( array( 'message' => 'Gateway not available' ) );
+		}
+
+		$min_amount = floatval( $gateway->get_option( 'min_order_amount', 300 ) );
+		$max_amount = floatval( $gateway->get_option( 'max_order_amount', 25000 ) );
+
+		if ( $amount < $min_amount || $amount > $max_amount ) {
+			wp_send_json_error( array( 'message' => 'Amount must be between $' . number_format( $min_amount, 0 ) . ' and $' . number_format( $max_amount, 0 ) ) );
+		}
+
+		$api = new Avvance_PreApproval_Offers_API(
+			array(
+				'client_key'    => $gateway->get_option( 'client_key' ),
+				'client_secret' => $gateway->get_option( 'client_secret' ),
+				'merchant_id'   => $gateway->get_option( 'merchant_id' ),
+				'partner_id'    => $gateway->get_option( 'partner_id' ),
+				'environment'   => $gateway->get_option( 'environment' ),
+			)
+		);
+
+		$response = $api->get_offers( $preapproval['request_id'], $amount );
+
+		if ( is_wp_error( $response ) ) {
+			avvance_log( 'Pre-approval offers AJAX error: ' . $response->get_error_message(), 'error' );
+			wp_send_json_error( array( 'message' => 'Unable to get pre-approval offers' ) );
 		}
 
 		wp_send_json_success( $response );
@@ -916,14 +971,14 @@ class Avvance_Widget_Handler {
 								<span class="avvance-detail-value">$<?php echo esc_html( $min_amount_fmt ); ?>–$<?php echo esc_html( $max_amount_short ); ?></span>
 							</div>
 							<div class="avvance-detail-row">
-        						<span class="avvance-detail-label">Eligible Merchant:</span>
-        						<span class="avvance-detail-value"><?php echo esc_html( $retailer_name ); ?></span>
-    						</div>
+								<span class="avvance-detail-label">Eligible Merchant:</span>
+								<span class="avvance-detail-value"><?php echo esc_html( $retailer_name ); ?></span>
+							</div>
 							<?php if ( $expiry_date ) : ?>
 							<div class="avvance-detail-row">
-        						<span class="avvance-detail-label">Offer Expires:</span>
-        						<span class="avvance-detail-value"><?php echo esc_html( $expiry_date ); ?></span>
-    						</div>
+								<span class="avvance-detail-label">Offer Expires:</span>
+								<span class="avvance-detail-value"><?php echo esc_html( $expiry_date ); ?></span>
+							</div>
 							<?php endif; ?>
 						</div>
 						<div class="avvance-modal-body-calculator">

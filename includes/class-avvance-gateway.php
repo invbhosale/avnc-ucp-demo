@@ -58,13 +58,13 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 	 */
 	public function init_form_fields() {
 		$this->form_fields = array(
-			'enabled'                 => array(
+			'enabled'                     => array(
 				'title'   => __( 'Enable/Disable', 'avvance-for-woocommerce' ),
 				'type'    => 'checkbox',
 				'label'   => __( 'Enable Avvance', 'avvance-for-woocommerce' ),
 				'default' => 'no',
 			),
-			'environment'             => array(
+			'environment'                 => array(
 				'title'   => __( 'Environment', 'avvance-for-woocommerce' ),
 				'type'    => 'select',
 				'options' => array(
@@ -73,37 +73,37 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 				),
 				'default' => 'sandbox',
 			),
-			'api_credentials_title'   => array(
+			'api_credentials_title'       => array(
 				'title'       => __( 'API Credentials', 'avvance-for-woocommerce' ),
 				'type'        => 'title',
 				'description' => __( 'Enter your Avvance API credentials from the Avvance Merchant Portal.', 'avvance-for-woocommerce' ),
 			),
-			'client_key'              => array(
+			'client_key'                  => array(
 				'title'       => __( 'Client Key', 'avvance-for-woocommerce' ),
 				'type'        => 'text',
 				'description' => __( 'Your Avvance OAuth Client Key', 'avvance-for-woocommerce' ),
 				'desc_tip'    => true,
 			),
-			'client_secret'           => array(
+			'client_secret'               => array(
 				'title'       => __( 'Client Secret', 'avvance-for-woocommerce' ),
 				'type'        => 'password',
 				'description' => __( 'Your Avvance OAuth Client Secret', 'avvance-for-woocommerce' ),
 				'desc_tip'    => true,
 			),
-			'merchant_id'             => array(
+			'merchant_id'                 => array(
 				'title'       => __( 'Merchant ID', 'avvance-for-woocommerce' ),
 				'type'        => 'text',
 				'description' => __( 'Your Elavon Merchant ID (MID)', 'avvance-for-woocommerce' ),
 				'desc_tip'    => true,
 			),
-			'partner_id'              => array(
+			'partner_id'                  => array(
 				'title'       => __( 'Partner ID', 'avvance-for-woocommerce' ),
 				'type'        => 'text',
 				'description' => __( 'Your Avvance Partner ID (provided by Avvance). Used to identify your integration in API requests.', 'avvance-for-woocommerce' ),
 				'desc_tip'    => true,
 				'placeholder' => 'e.g., CONVERGE',
 			),
-			'webhook_auth_token'      => array(
+			'webhook_auth_token'          => array(
 				'title'       => __( 'Authentication Token', 'avvance-for-woocommerce' ),
 				'type'        => 'password',
 				'description' => __( 'Your authentication token from the Avvance Merchant Portal.', 'avvance-for-woocommerce' ),
@@ -114,14 +114,14 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			// ==========================================.
 			// WIDGET DISPLAY SETTINGS SECTION.
 			// ==========================================.
-			'widget_settings_title'   => array(
+			'widget_settings_title'       => array(
 				'title'       => __( 'Widget Display Settings', 'avvance-for-woocommerce' ),
 				'type'        => 'title',
 				'description' => __( 'Control where Avvance payment messaging appears on your store.', 'avvance-for-woocommerce' ),
 			),
 
 			// Category page widget.
-			'category_widget_enabled' => array(
+			'category_widget_enabled'     => array(
 				'title'       => __( 'Category Page Widget', 'avvance-for-woocommerce' ),
 				'label'       => __( 'Show payment messaging on shop/category pages', 'avvance-for-woocommerce' ),
 				'type'        => 'checkbox',
@@ -131,7 +131,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			),
 
 			// Product page widget.
-			'product_widget_enabled'  => array(
+			'product_widget_enabled'      => array(
 				'title'       => __( 'Product Page Widget', 'avvance-for-woocommerce' ),
 				'label'       => __( 'Show payment messaging on product pages', 'avvance-for-woocommerce' ),
 				'type'        => 'checkbox',
@@ -141,7 +141,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			),
 
 			// Product widget position.
-			'product_widget_position' => array(
+			'product_widget_position'     => array(
 				'title'       => __( 'Product Widget Position', 'avvance-for-woocommerce' ),
 				'type'        => 'select',
 				'class'       => 'wc-enhanced-select',
@@ -156,7 +156,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			),
 
 			// Cart page widget.
-			'cart_widget_enabled'     => array(
+			'cart_widget_enabled'         => array(
 				'title'       => __( 'Cart Page Widget', 'avvance-for-woocommerce' ),
 				'label'       => __( 'Show payment messaging on cart page', 'avvance-for-woocommerce' ),
 				'type'        => 'checkbox',
@@ -166,7 +166,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			),
 
 			// Checkout widget.
-			'checkout_widget_enabled' => array(
+			'checkout_widget_enabled'     => array(
 				'title'       => __( 'Checkout Widget', 'avvance-for-woocommerce' ),
 				'label'       => __( 'Show payment details on checkout page', 'avvance-for-woocommerce' ),
 				'type'        => 'checkbox',
@@ -175,17 +175,27 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 				'desc_tip'    => true,
 			),
 
+			// "New in store" empty-cart widget.
+			'new_in_store_widget_enabled' => array(
+				'title'       => __( '"New in Store" Widget', 'avvance-for-woocommerce' ),
+				'label'       => __( 'Show payment messaging on the empty-cart "New in store" products', 'avvance-for-woocommerce' ),
+				'type'        => 'checkbox',
+				'description' => __( 'Display "Pay as low as $X/mo" under each product shown in the empty-cart "New in store" section.', 'avvance-for-woocommerce' ),
+				'default'     => 'yes',
+				'desc_tip'    => true,
+			),
+
 			// ==========================================.
 			// WIDGET APPEARANCE SETTINGS.
 			// ==========================================.
-			'widget_appearance_title' => array(
+			'widget_appearance_title'     => array(
 				'title'       => __( 'Widget Appearance', 'avvance-for-woocommerce' ),
 				'type'        => 'title',
 				'description' => __( 'Customize the look and feel of Avvance widgets.', 'avvance-for-woocommerce' ),
 			),
 
 			// Theme/Color.
-			'widget_theme'            => array(
+			'widget_theme'                => array(
 				'title'       => __( 'Widget Theme', 'avvance-for-woocommerce' ),
 				'type'        => 'select',
 				'class'       => 'wc-enhanced-select',
@@ -199,7 +209,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			),
 
 			// Show Logo.
-			'widget_show_logo'        => array(
+			'widget_show_logo'            => array(
 				'title'       => __( 'Show Avvance Logo', 'avvance-for-woocommerce' ),
 				'label'       => __( 'Display the Avvance logo in widget messaging', 'avvance-for-woocommerce' ),
 				'type'        => 'checkbox',
@@ -211,13 +221,13 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			// ==========================================.
 			// ELIGIBILITY SETTINGS.
 			// ==========================================.
-			'eligibility_title'       => array(
+			'eligibility_title'           => array(
 				'title'       => __( 'Eligibility Settings', 'avvance-for-woocommerce' ),
 				'type'        => 'title',
 				'description' => __( 'Configure minimum and maximum order amounts for Avvance financing.', 'avvance-for-woocommerce' ),
 			),
 
-			'min_order_amount'        => array(
+			'min_order_amount'            => array(
 				'title'             => __( 'Minimum Order Amount', 'avvance-for-woocommerce' ),
 				'type'              => 'number',
 				'description'       => __( 'Minimum order amount for Avvance to be available (in dollars). Widgets will not show for amounts below this.', 'avvance-for-woocommerce' ),
@@ -229,7 +239,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 				'desc_tip'          => true,
 			),
 
-			'max_order_amount'        => array(
+			'max_order_amount'            => array(
 				'title'             => __( 'Maximum Order Amount', 'avvance-for-woocommerce' ),
 				'type'              => 'number',
 				'description'       => __( 'Maximum order amount for Avvance (in dollars). Widgets will not show for amounts above this.', 'avvance-for-woocommerce' ),
@@ -241,7 +251,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 				'desc_tip'          => true,
 			),
 
-			'debug_mode'              => array(
+			'debug_mode'                  => array(
 				'title'       => __( 'Debug Mode', 'avvance-for-woocommerce' ),
 				'type'        => 'checkbox',
 				'label'       => __( 'Enable debug logging', 'avvance-for-woocommerce' ),
@@ -536,7 +546,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 								$('#avvance-status').text('<?php echo esc_js( __( 'Payment completed! Redirecting...', 'avvance-for-woocommerce' ) ); ?>');
 								location.reload();
 							} else if (response.data.status === 'cancelled' &&
-							           response.data.avvance_status === 'VOIDED') {
+										response.data.avvance_status === 'VOIDED') {
 								clearInterval(statusInterval);
 								$('#avvance-status').html('<?php echo esc_js( __( 'Your financing application was voided. Redirecting to cart...', 'avvance-for-woocommerce' ) ); ?>');
 								setTimeout(function() {
