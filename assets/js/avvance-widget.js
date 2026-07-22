@@ -21,6 +21,24 @@
     var preapprovalWindow = null;
     var statusCheckInterval = null;
 
+    function getLightLogoUrl() {
+        return avvanceWidget.logoUrlLight || avvanceWidget.logoUrl || '';
+    }
+
+    function getDarkLogoUrl() {
+        return avvanceWidget.logoUrlDark || getLightLogoUrl();
+    }
+
+    function getLogoUrlForElement($element) {
+        var isDarkTheme = false;
+
+        if ($element && $element.length) {
+            isDarkTheme = $element.hasClass('avvance-widget-dark') || $element.closest('.avvance-widget-dark').length > 0;
+        }
+
+        return isDarkTheme ? getDarkLogoUrl() : getLightLogoUrl();
+    }
+
     /**
      * Check if status indicates pre-approval was successful.
      *
@@ -87,7 +105,7 @@
      * 2. Not pre-approved, 0% APR: "0% APR or as low as $XX/month with [logo] Check your spending power"
      * 3. Pre-approved: "You're pre-approved! As low as $XX/month with [logo] See your details"
      */
-    function buildWidgetHtml(offers, hasPreapproval, maxAmount, sessionId, context) {
+    function buildWidgetHtml(offers, hasPreapproval, maxAmount, sessionId, context, $widget) {
         var bestOffer = getBestOffer(offers);
         var hasZeroApr = false;
         var displayPayment = null;
@@ -106,19 +124,25 @@
 
         var formattedPayment = displayPayment ? '$' + parseFloat(displayPayment).toFixed(2) : null;
         var showLogo = avvanceWidget.showLogo !== false;
-        var logoHtml = showLogo
-            ? '<img src="' + avvanceWidget.logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline" style="display:inline-block;vertical-align:middle;">'
-            : '<span class="avvance-brand">U.S. Bank Avvance</span>';
-
+        var logoUrl = getLogoUrlForElement($widget);
+        var badgeHtml = '';
         var rateHtml, ctaHtml;
+        var logoHtml = showLogo
+            ? '<span class="avvance-widget-logo"><img src="' + logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline"></span>'
+            : '<span class="avvance-brand avvance-widget-logo">U.S. Bank Avvance</span>';
 
         if (hasPreapproval && maxAmount) {
-            rateHtml = '<span class="avvance-preapproved-badge">You\'re pre-approved!</span> ' +
-                (formattedPayment ? 'As low as <strong>' + formattedPayment + '/month</strong> with ' : 'Pay over time with ');
+            badgeHtml = '<span class="avvance-preapproved-badge">You\'re pre-approved!</span>';
+            rateHtml = formattedPayment
+                ? 'As low as <strong>' + formattedPayment + '/month</strong> with'
+                : 'Pay over time with';
             ctaHtml = '<a href="#" class="avvance-cta-link" data-modal="modal-c">See your details</a>';
         } else {
+            var amountWithHtml = formattedPayment
+                ? '<span class="avvance-rate-amount-with"><strong>' + formattedPayment + '/month</strong> with</span>'
+                : 'with';
             rateHtml = (hasZeroApr ? '<strong class="avvance-zero-apr">0% APR</strong> or as low as ' : 'As low as ') +
-                (formattedPayment ? '<strong>' + formattedPayment + '/month</strong> with ' : 'with ');
+                amountWithHtml;
             if (context === 'checkout') {
                 ctaHtml = '<a href="#" class="avvance-learn-more-link" data-modal="modal-a" data-session-id="' + sessionId + '">Learn more</a>';
             } else {
@@ -126,25 +150,29 @@
             }
         }
 
-        //return '<div class="avvance-price-message">' + rateHtml + '<span style="white-space:nowrap;">' + logoHtml + ctaHtml + '</span>' + '</div>';
-        return rateHtml + '<span style="white-space:nowrap;">' + logoHtml + ctaHtml + '</span>';
+        return badgeHtml + '<span class="avvance-rate-text">' + rateHtml + '</span>' + logoHtml + ctaHtml;
     }
 
     /**
      * Render loan option cards into a container
      */
-    function renderLoanCards(offers, $container, originalAmount) {
+    function renderLoanCards(offers, $container, originalAmount, initialLimit) {
         if (!offers || offers.length === 0) {
             $container.html('<p style="color: #484861; text-align: center; font-size: 14px;">No loan options available for this amount.</p>');
             return;
         }
 
-        var tipIconUrl = (typeof avvanceWidget !== 'undefined' && avvanceWidget.logoUrl)
-            ? avvanceWidget.logoUrl.replace('avvance-logo.svg', 'toggletip-icon.svg')
+        var tipIconUrl = (typeof avvanceWidget !== 'undefined' && getLightLogoUrl())
+            ? getLightLogoUrl().replace('avvance-logo.svg', 'toggletip-icon.svg')
             : '';
 
         var html = '';
-        for (var i = 0; i < offers.length; i++) {
+        var limit = parseInt(initialLimit, 10);
+        if (isNaN(limit) || limit < 0) {
+            limit = 0;
+        }
+        var displayCount = (limit > 0) ? Math.min(limit, offers.length) : offers.length;
+        for (var i = 0; i < displayCount; i++) {
             var offer = offers[i];
 
             if (offer.offerType === 'PROMO') {
@@ -155,7 +183,7 @@
                 var remainTerm = totalTerm - promoTerm;
 
                 var bannerHtml   = '<strong>Promo: ' + promoApr + '% interest for the first ' + promoTerm +
-                    ' months</strong> then ' + postApr + '% applies for remaining ' + remainTerm + ' months';
+                    ' months</strong> then <strong>' + postApr + '%</strong> applies for remaining ' + remainTerm + ' months';
                 var promoMonthly = '$' + parseFloat(offer.paymentAmount).toFixed(2) +
                     '<span class="avvance-price-suffix">/month</span>';
                 var chipText     = postApr + '% APR for ' + totalTerm + ' months';
@@ -173,18 +201,18 @@
                     ? parseFloat(offer.totalLoanWithInterest) - parseFloat(originalAmount) : null;
                 var promoDetails  = '';
                 if (promoInterest !== null && promoInterest > 0) {
-                    promoDetails += '<span>Interest $' + promoInterest.toLocaleString('en-US',
-                        {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span>';
+                    promoDetails += '<p><span class="avvance-loan-interest-total-label">Interest</span> <span class="avvance-loan-interest-total-value">$' + promoInterest.toLocaleString('en-US',
+                        {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span></p>';
                 }
                 if (offer.totalLoanWithInterest) {
-                    promoDetails += '<span>Total $' + parseFloat(offer.totalLoanWithInterest)
-                        .toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span>';
+                    promoDetails += '<p><span class="avvance-loan-interest-total-label">Total</span> <span class="avvance-loan-interest-total-value">$' + parseFloat(offer.totalLoanWithInterest)
+                        .toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span></p>';
                 }
                 var avoidHtml = offer.promotionPaymentAmount
                     ? '<p class="avvance-promo-avoid-interest">Or pay' +
                       ' <strong class="avvance-promo-avoid-amount">$' +
-                      parseFloat(offer.promotionPaymentAmount).toFixed(2) + '/month</strong>' +
-                      ' to avoid interest</p>'
+                      parseFloat(offer.promotionPaymentAmount).toFixed(2) + '/month to avoid interest</strong>' +
+                      ' </p>'
                     : '';
 
                 html += '<div class="avvance-loan-card avvance-loan-card--promo">';
@@ -198,8 +226,8 @@
                 if (promoDetails) {
                     html += '<div class="avvance-loan-details">' + promoDetails + '</div>';
                 }
-                html += avoidHtml;
                 html += '</div>';
+                html += avoidHtml;
                 html += '</div>';
                 continue;
             }
@@ -214,24 +242,19 @@
             var aprBadge = aprVal + ' APR' + (termCount ? ' for ' + termCount + ' months' : '');
 
             var detailsHtml = '';
-            if (offer.offerType === 'ZERO') {
-                if (offer.totalLoanWithInterest) {
-                    detailsHtml = 'Total $' + parseFloat(offer.totalLoanWithInterest)
-                        .toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-                }
-            } else {
-                var interest = (offer.totalLoanWithInterest && originalAmount)
-                    ? parseFloat(offer.totalLoanWithInterest) - parseFloat(originalAmount)
-                    : null;
-                if (interest !== null && interest > 0) {
-                    detailsHtml += '<span>Interest $' + interest.toLocaleString('en-US',
-                        {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span>';
-                }
-                if (offer.totalLoanWithInterest) {
-                    detailsHtml += '<span>Total $' + parseFloat(offer.totalLoanWithInterest)
-                        .toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span>';
-                }
+            
+            var interest = (offer.totalLoanWithInterest && originalAmount)
+                ? parseFloat(offer.totalLoanWithInterest) - parseFloat(originalAmount)
+                : null;
+            if (interest !== null) {
+                detailsHtml += '<p><span class="avvance-loan-interest-total-label">Interest</span> <span class="avvance-loan-interest-total-value">$' + interest.toLocaleString('en-US',
+                    {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span></p>';
             }
+            if (offer.totalLoanWithInterest) {
+                detailsHtml += '<p><span class="avvance-loan-interest-total-label">Total</span> <span class="avvance-loan-interest-total-value">$' + parseFloat(offer.totalLoanWithInterest)
+                    .toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + '</span></p>';
+            }
+            
 
             html += '<div class="avvance-loan-card">';
             html += '  <div class="avvance-loan-card-header">';
@@ -250,14 +273,167 @@
         }
 
         $container.html(html);
+
+        var $modal = $container.closest('.avvance-modal');
+        if ($modal.length) {
+            $modal.data('all-offers', offers);
+            $modal.data('original-amount', originalAmount);
+
+            var hasMoreOffers = offers.length> 3 && offers.length > displayCount;
+            $modal.find('.avvance-see-more-btn').toggle(hasMoreOffers);
+        }
+    }
+
+    /**
+     * standardized error message HTML for loan options container
+     */
+    function getLoansErrorMessage() {
+        return '<div class="avvance-loan-card avvance-loan-card-error">' +
+               '<p class="avvance-error-message-text">We were unable to load your loan options.</p>' +
+               '</div>';
+    }
+
+    /**
+     * Page-level error HTML for loan options loading failures.
+     */
+    function getPageLevelErrorHtml() {
+        var dangerIconUrl = avvanceWidget.imagesUrl + 'danger-icon.svg';
+        return '<div class="avvance-page-level-error">' +
+               '<img src="' + dangerIconUrl + '" alt="Error" class="avvance-danger-icon" loading="eager">' +
+               '<span>An error occurred while loading your loan options. Please try again.</span>' +
+               '</div>';
+    }
+
+    function formatWholeDollarAmount(amount) {
+        return parseFloat(amount).toLocaleString('en-US', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        });
+    }
+
+    function getFieldLevelErrorMessage(maxPreapprovedAmount) {
+        var minAmount = avvanceWidget.minAmount || 300;
+        var maxAmount = avvanceWidget.maxAmount || 25000;
+        var effectiveMax = maxPreapprovedAmount && maxPreapprovedAmount > 0
+            ? Math.min(maxAmount, maxPreapprovedAmount)
+            : maxAmount;
+
+        return 'Enter a Spending amount between $' + formatWholeDollarAmount(minAmount) + ' and $' + formatWholeDollarAmount(effectiveMax) + '.';
+    }
+
+    function clearFieldLevelError($calculatorRow) {
+        if (!$calculatorRow || !$calculatorRow.length) {
+            return;
+        }
+
+        var $input = $calculatorRow.find('.avvance-currency-input').first();
+        $calculatorRow.find('.avvance-field-error-message').remove();
+        $input.removeClass('avvance-currency-input-error').removeAttr('aria-invalid');
+    }
+
+    function showFieldLevelError($calculatorRow, errorMessage) {
+        if (!$calculatorRow || !$calculatorRow.length) {
+            return;
+        }
+
+        var $input = $calculatorRow.find('.avvance-currency-input').first();
+        var $inputGroup = $input.parent();
+        clearFieldLevelError($calculatorRow);
+
+        if (!errorMessage) {
+            return;
+        }
+
+        var dangerIconUrl = avvanceWidget.imagesUrl + 'danger-icon.svg';
+        $input.addClass('avvance-currency-input-error').attr('aria-invalid', 'true');
+        $inputGroup.append(
+            '<p class="avvance-field-error-message" role="alert">' +
+            '<img src="' + dangerIconUrl + '" alt="Error" class="avvance-field-error-icon" loading="eager">' +
+            '<span>' + errorMessage + '</span>' +
+            '</p>'
+        );
+    }
+
+    /**
+     * Validate amount and return error message if invalid
+     * 
+     * Validation rules:
+     * 1. Missing/empty amount → Field Error
+     * 2. Amount < minAmount → Field Error
+     * 3. Amount > maxAmount → Field Error
+     * 4. Amount > preApprovalMax (for pre-approved users) → Field Error
+     */
+    function validateLoanAmount(amount, maxPreapprovedAmount) {
+        var fieldErrorMessage = getFieldLevelErrorMessage(maxPreapprovedAmount);
+
+        // Check for missing or empty amount
+        if (!amount || amount <= 0) {
+            return {
+                isValid: false,
+                errorType: 'MISSING_AMOUNT',
+                displayMessage: getLoansErrorMessage(),
+                fieldErrorMessage: fieldErrorMessage
+            };
+        }
+
+        var minAmount = avvanceWidget.minAmount || 300;
+        var maxAmount = avvanceWidget.maxAmount || 25000;
+
+        // Check if amount is below minimum
+        if (amount < minAmount) {
+            return {
+                isValid: false,
+                errorType: 'BELOW_MINIMUM',
+                displayMessage: getLoansErrorMessage(),
+                fieldErrorMessage: fieldErrorMessage
+            };
+        }
+
+        // Check if amount exceeds pre-approved max (if user is pre-approved)
+        if (maxPreapprovedAmount && amount > maxPreapprovedAmount) {
+            return {
+                isValid: false,
+                errorType: 'EXCEEDS_PREAPPROVAL_MAX',
+                displayMessage: getLoansErrorMessage(),
+                fieldErrorMessage: fieldErrorMessage
+            };
+        }
+
+        // Check if amount exceeds maximum allowed
+        if (amount > maxAmount) {
+            return {
+                isValid: false,
+                errorType: 'EXCEEDS_MAXIMUM',
+                displayMessage: getLoansErrorMessage(),
+                fieldErrorMessage: fieldErrorMessage
+            };
+        }
+
+        return {
+            isValid: true,
+            errorType: null,
+            displayMessage: null,
+            fieldErrorMessage: null
+        };
     }
 
     /**
      * Load price breakdown for a modal and render loan cards
      */
-    function loadModalPriceBreakdown(amount, $container) {
-        if (!amount || amount < avvanceWidget.minAmount || amount > avvanceWidget.maxAmount) {
-            $container.html('<p style="color: #666; text-align: center;">Amount must be between $' + avvanceWidget.minAmount + ' and $' + avvanceWidget.maxAmount + '.</p>');
+    function loadModalPriceBreakdown(amount, $container, maxPreapprovedAmount, initialLimit) {
+        var $calculatorSection = $container.closest('.avvance-modal-body-calculator, .avvance-modal-body');
+        var $calculatorRow = $calculatorSection.find('.avvance-calculator-row');
+        // Validate amount
+        var validation = validateLoanAmount(amount, maxPreapprovedAmount);
+
+        // Remove any previous page-level error
+        $calculatorSection.find('.avvance-page-level-error').remove();
+        clearFieldLevelError($calculatorRow);
+        
+        if (!validation.isValid) {
+            showFieldLevelError($calculatorRow, validation.fieldErrorMessage);
+            // Display error message in loan options container
+            $container.html(validation.displayMessage);
             return;
         }
 
@@ -274,13 +450,19 @@
             success: function(response) {
                 if (response.success) {
                     var offers = parseOffers(response.data);
-                    renderLoanCards(offers, $container, amount);
+                    renderLoanCards(offers, $container, amount, initialLimit);
                 } else {
-                    $container.html('<p style="color: #666; text-align: center;">Unable to load loan options.</p>');
+                    // Technical error loading loan options — ensure only one page-level error
+                    $calculatorSection.find('.avvance-page-level-error').remove();
+                    $calculatorRow.before(getPageLevelErrorHtml());
+                    $container.html(getLoansErrorMessage());
                 }
             },
             error: function() {
-                $container.html('<p style="color: #666; text-align: center;">Unable to load loan options.</p>');
+                // Technical error loading loan options — ensure only one page-level error
+                $calculatorSection.find('.avvance-page-level-error').remove();
+                $calculatorRow.before(getPageLevelErrorHtml());
+                $container.html(getLoansErrorMessage());
             }
         });
     }
@@ -314,13 +496,18 @@
         });
 
         var newIndex = activeIndex + direction;
-        if (newIndex >= $slides.length) newIndex = 0;
-        if (newIndex < 0) newIndex = $slides.length - 1;
+        // Non-rotational: clamp at boundaries
+        if (newIndex >= $slides.length || newIndex < 0) {
+            return;
+        }
 
         $slides.removeClass('active');
         $dots.removeClass('active');
-        $slides.eq(newIndex).addClass('active');
+        $slides.attr('aria-hidden', 'true');
+        $slides.eq(newIndex).addClass('active').removeAttr('aria-hidden');
         $dots.eq(newIndex).addClass('active');
+        updateDotImages($dots, newIndex);
+        updateArrowStates($sliderEl);
     }
 
     function setSlide($sliderEl, $dotsEl, index) {
@@ -329,17 +516,81 @@
 
         $slides.removeClass('active');
         $dots.removeClass('active');
-        $slides.eq(index).addClass('active');
+        $slides.attr('aria-hidden', 'true');
+        $slides.eq(index).addClass('active').removeAttr('aria-hidden');
         $dots.eq(index).addClass('active');
+        updateDotImages($dots, index);
+        updateArrowStates($sliderEl);
     }
 
+    function updateArrowStates($sliderEl) {
+        var sliderId = $sliderEl.attr('id');
+        var $slides = $sliderEl.find('.avvance-slide');
+        var total = $slides.length;
+        var activeIndex = 0;
+        $slides.each(function(i) {
+            if ($(this).hasClass('active')) {
+                activeIndex = i;
+            }
+        });
+
+        var $prevBtn = $('[data-slider="' + sliderId + '"][data-dir="-1"]');
+        var $nextBtn = $('[data-slider="' + sliderId + '"][data-dir="1"]');
+
+        var imagesUrl = (typeof avvanceWidget !== 'undefined' && avvanceWidget.imagesUrl) ? avvanceWidget.imagesUrl : '';
+
+        // Previous button
+        if (activeIndex === 0) {
+            $prevBtn.prop('disabled', true);
+            $prevBtn.find('img').attr('src', imagesUrl + 'chevron-left-disabled.svg');
+        } else {
+            $prevBtn.prop('disabled', false);
+            $prevBtn.find('img').attr('src', imagesUrl + 'chevron-left.svg');
+        }
+
+        // Next button
+        if (activeIndex === total - 1) {
+            $nextBtn.prop('disabled', true);
+            $nextBtn.find('img').attr('src', imagesUrl + 'chevron-right-disabled.svg');
+        } else {
+            $nextBtn.prop('disabled', false);
+            $nextBtn.find('img').attr('src', imagesUrl + 'chevron-right.svg');
+        }
+    }
+
+    function updateDotImages($dots, newIndex) {
+        $dots.each(function() {
+            var $img = $(this).find('img');
+            if ($img.length) {
+                var inactiveSrc = $(this).data('inactive-img');
+                if (inactiveSrc) $img.attr('src', inactiveSrc);
+            }
+        });
+        var $activeDot = $dots.eq(newIndex);
+        var $activeImg = $activeDot.find('img');
+        if ($activeImg.length) {
+            var activeSrc = $activeDot.data('active-img');
+            if (activeSrc) $activeImg.attr('src', activeSrc);
+        }
+    }
+
+
+    // Track the element that triggered the modal for focus restoration
+    var modalTriggerElement = null;
+
     /**
-     * Open modal by type: 'modal-a', 'modal-b', 'modal-c'.
+     * 
+     * Open Modal types:
+     * - modal-a: Learn more (non-preapproved)
+     * - modal-b: Check spending power (non-preapproved)
+     * - modal-c: See details (pre-approved, has max-amount limit)
      */
     function openModalByType(type, amount) {
         var modalId = '#avvance-' + type;
         var $modal = $(modalId);
         if (!$modal.length) return;
+
+        modalTriggerElement = document.activeElement;
 
         var $input = $modal.find('.avvance-currency-input');
         if ($input.length && amount > 0) {
@@ -347,10 +598,8 @@
         }
 
         var cardsId = $modal.find('.avvance-loan-cards').attr('id');
-        if (cardsId && amount > 0) {
-            loadModalPriceBreakdown(amount, $('#' + cardsId));
-        }
-
+        
+        // For modal-c (pre-approved): use max-amount as pre-approval limit
         if (type === 'modal-c') {
             var maxAmount = parseFloat($modal.attr('data-max-amount')) || amount;
             if (maxAmount > 0) {
@@ -358,12 +607,30 @@
                     $input.val(formatCurrency(maxAmount));
                 }
                 if (cardsId) {
-                    loadModalPriceBreakdown(maxAmount, $('#' + cardsId));
+                    // Pass maxAmount as the pre-approved maximum
+                    loadModalPriceBreakdown(maxAmount, $('#' + cardsId), maxAmount, 3);
                 }
+            }
+        } else {
+            // For modal-a and modal-b (non-preapproved): no pre-approval max
+            if (cardsId && amount > 0) {
+                loadModalPriceBreakdown(amount, $('#' + cardsId), null, 0);
             }
         }
 
-        $modal.fadeIn(200);
+        $modal.fadeIn(200, function() {
+            // Move focus to the modal dialog for accessibility
+            var $dialog = $modal.find('.avvance-modal-dialog');
+            $dialog.attr('tabindex', '-1').focus();
+            // Reset carousel to first slide and update arrow states
+            $modal.find('.avvance-carousel-container').each(function() {
+                var $sliderEl = $(this);
+                var sliderId = $sliderEl.attr('id');
+                var dotsId = sliderId.replace('avvance-slider-', 'avvance-dots-');
+                var $dotsEl = $('#' + dotsId);
+                setSlide($sliderEl, $dotsEl, 0);
+            });
+        });
         $('body').css('overflow', 'hidden');
     }
 
@@ -371,7 +638,13 @@
      * Close modal (any avvance modal)
      */
     function closeModal() {
-        $('.avvance-modal').fadeOut(200);
+        $('.avvance-modal').fadeOut(200, function() {
+            // Restore focus to the element that triggered the modal
+            if (modalTriggerElement && modalTriggerElement.focus) {
+                modalTriggerElement.focus();
+                modalTriggerElement = null;
+            }
+        });
         $('body').css('overflow', '');
     }
 
@@ -396,7 +669,7 @@
 
             checkPreapprovalStatusWithCallback(function(data) {
                 if (data && isPreApprovedStatus(data.status) && data.max_amount) {
-                    updateCTAToPreapproved(data.max_amount);
+                    updateCTAToPreapproved(data.max_amount, data?.expiry_date);
 
                     clearInterval(statusCheckInterval);
                     statusCheckInterval = null;
@@ -441,14 +714,14 @@
      * Update all widgets to show pre-approved state.
      * State 3: "You're pre-approved! As low as $XXX.XX/month with <logo> See your details"
      */
-    function updateCTAToPreapproved(maxAmount) {
+    function updateCTAToPreapproved(maxAmount, expiryDate) {
         // Update inline widgets
         $('.avvance-product-widget, .avvance-cart-widget, .avvance-checkout-widget, .avvance-category-widget').each(function() {
             var $widget = $(this);
             var offers = $widget.data('offers') || [];
             var sessionId = $widget.data('session-id') || '';
             $widget.find('.avvance-widget-content').html(
-                buildWidgetHtml(offers, true, maxAmount, sessionId)
+                buildWidgetHtml(offers, true, maxAmount, sessionId, $widget.data('context') || 'product', $widget)
             );
         });
 
@@ -457,16 +730,17 @@
         if ($checkoutBanner.length) {
             var formattedMax = parseFloat(maxAmount).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
             var showLogo = avvanceWidget.showLogo !== false;
+            var logoUrl = getLogoUrlForElement($checkoutBanner);
             var logoHtml = showLogo
-                ? '<img src="' + avvanceWidget.logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline" style="display:inline-block;vertical-align:middle;">'
-                : '<span class="avvance-brand">U.S. Bank Avvance</span>';
+                ? '<span class="avvance-widget-logo"><img src="' + logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline"></span>'
+                : '<span class="avvance-brand avvance-widget-logo">U.S. Bank Avvance</span>';
             $checkoutBanner.html(
                 '<div class="avvance-checkout-preapproved">' +
                 '<div class="avvance-checkout-banner-check">&#10003;</div>' +
                 '<div class="avvance-checkout-banner-text">' +
                 '<strong>You\'re pre-approved for $' + formattedMax + '!</strong> ' +
-                'Pay over time with <span style="white-space:nowrap;">' + logoHtml +
-                '<a href="#" class="avvance-cta-link" data-modal="modal-c"> See your details</a></span>' +
+                '<span class="avvance-rate-text">Pay over time with</span>' + logoHtml +
+                '<a href="#" class="avvance-cta-link" data-modal="modal-c">See your details</a>' +
                 '</div>' +
                 '</div>'
             );
@@ -478,15 +752,26 @@
             var formattedMax2 = parseFloat(maxAmount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
             var formattedMax2Short = parseFloat(maxAmount).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
             var minAmount = avvanceWidget.minAmount || 300;
-            var checkIconUrl = avvanceWidget.logoUrl.replace('avvance-logo.svg', 'Avvance-Checkmark.svg');
+            var retailerName = avvanceWidget.retailerName || '';
+            const formattedExpiryDate = expiryDate && new Date(expiryDate.replace(' ', 'T') + 'Z').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+            var checkIconUrl = getLightLogoUrl().replace('avvance-logo.svg', 'Avvance-Checkmark.svg');
             $detailsModal.data('max-amount', maxAmount);
             $detailsModal.attr('data-max-amount', maxAmount);
             $detailsModal.find('.avvance-success-title').html(
                 '<img src="' + checkIconUrl + '" class="avvance-success-check-icon" alt=""> Your spending power is $' + formattedMax2Short + '!'
             );
-            $detailsModal.find('.avvance-success-details').html(
-                '<div>Single-purchase range: $' + minAmount + '–$' + formattedMax2Short + '</div>'
-            );
+            if (formattedExpiryDate) {
+                $detailsModal.find('.avvance-success-details').html(
+                    '<div class="avvance-detail-row"><span class="avvance-detail-label">Single-purchase range:</span><span class="avvance-detail-value"> $' + minAmount + '–$' + formattedMax2Short + '</span></div>' +
+                    '<div class="avvance-detail-row"><span class="avvance-detail-label">Eligible Merchant:</span><span class="avvance-detail-value"> ' + retailerName + '</span></div>' +
+                    '<div class="avvance-detail-row"><span class="avvance-detail-label">Offer Expires:</span><span class="avvance-detail-value">' + formattedExpiryDate + '</span></div>'
+                );
+            } else {
+                $detailsModal.find('.avvance-success-details').html(
+                    '<div class="avvance-detail-row"><span class="avvance-detail-label">Single-purchase range:</span><span class="avvance-detail-value"> $' + minAmount + '–$' + formattedMax2Short + '</span></div>' +
+                    '<div class="avvance-detail-row"><span class="avvance-detail-label">Eligible Merchant:</span><span class="avvance-detail-value"> ' + retailerName + '</span></div>'
+                );
+            }
             $detailsModal.find('.avvance-currency-input').val(formatCurrency(maxAmount));
         }
     }
@@ -553,23 +838,24 @@
                         }
                         var context = $widget.data('context') || 'product';
                         $widget.find('.avvance-widget-content').html(
-                            buildWidgetHtml(offers, hasPreapproval, maxAmount, sessionId, context)
+                            buildWidgetHtml(offers, hasPreapproval, maxAmount, sessionId, context, $widget)
                         );
                     },
                     error: function() {
                         var context = $widget.data('context') || 'product';
                         $widget.find('.avvance-widget-content').html(
-                            buildWidgetHtml(offers, false, 0, sessionId, context)
+                            buildWidgetHtml(offers, false, 0, sessionId, context, $widget)
                         );
                     }
                 });
             },
             error: function() {
                 var showLogo = avvanceWidget.showLogo !== false;
+                var logoUrl = getLogoUrlForElement($widget);
                 $widget.find('.avvance-widget-content').html(
                     '<div class="avvance-price-message">Pay over time with ' +
                     (showLogo
-                        ? '<img src="' + avvanceWidget.logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline">'
+                        ? '<img src="' + logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline">'
                         : '<span class="avvance-brand">U.S. Bank Avvance</span>') +
                     '</div>'
                 );
@@ -749,7 +1035,12 @@
         }
 
         var sessionId = 'avv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-        var widgetHtml = '<div class="avvance-cart-widget avvance-cart-widget-injected" data-amount="' + cartTotal + '" data-session-id="' + sessionId + '" data-context="cart" style="margin: 20px 0; padding: 15px; background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 6px;">' +
+        var configuredTheme = (avvanceWidget.theme || 'light').toString().toLowerCase();
+        if (configuredTheme !== 'light' && configuredTheme !== 'dark') {
+            configuredTheme = 'light';
+        }
+
+        var widgetHtml = '<div class="avvance-cart-widget avvance-cart-widget-injected avvance-widget-' + configuredTheme + '" data-amount="' + cartTotal + '" data-session-id="' + sessionId + '" data-context="cart" style="margin: 20px 0;">' +
             '<div class="avvance-widget-content">' +
             '<div class="avvance-price-message"></div>' +
             '</div>' +
@@ -800,14 +1091,18 @@
         if (total < min || total > max) return;
 
         var sessionId = 'avv_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        var configuredTheme = (avvanceWidget.theme || 'light').toString().toLowerCase();
+        if (configuredTheme !== 'light' && configuredTheme !== 'dark') {
+            configuredTheme = 'light';
+        }
         var showLogo = avvanceWidget.showLogo !== false;
         var logoUrl = avvanceWidget.logoUrl;
 
         var logoHtml = showLogo
-            ? '<img src="' + logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline" style="display:inline-block;vertical-align:middle;">'
+            ? '<img src="' + logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline">'
             : '<strong>U.S. Bank Avvance</strong>';
 
-        var bannerHtml = '<div id="avvance-checkout-banner" class="avvance-checkout-banner"' +
+        var bannerHtml = '<div id="avvance-checkout-banner" class="avvance-checkout-banner avvance-widget-' + configuredTheme + '"' +
             ' data-amount="' + total + '"' +
             ' data-session-id="' + sessionId + '"' +
             ' data-context="checkout"' +
@@ -891,7 +1186,36 @@
         $(document).on('click', '.avvance-modal-close, .avvance-modal-overlay', function() {
             closeModal();
         });
-
+        // Close modal on Escape key and trap focus within modal
+        $(document).on('keydown', function(e) {
+            if (e.key === 'Escape' || e.keyCode === 27) {
+                if ($('.avvance-modal:visible').length) {
+                    closeModal();
+                }
+            }
+            // Focus trap: keep Tab within the visible modal
+            if (e.key === 'Tab' || e.keyCode === 9) {
+                var $visibleModal = $('.avvance-modal:visible');
+                if ($visibleModal.length) {
+                    var $focusable = $visibleModal.find('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])').filter(':visible');
+                    if ($focusable.length) {
+                        var firstFocusable = $focusable[0];
+                        var lastFocusable = $focusable[$focusable.length - 1];
+                        if (e.shiftKey) {
+                            if (document.activeElement === firstFocusable) {
+                                e.preventDefault();
+                                lastFocusable.focus();
+                            }
+                        } else {
+                            if (document.activeElement === lastFocusable) {
+                                e.preventDefault();
+                                firstFocusable.focus();
+                            }
+                        }
+                    }
+                }
+            }
+        });
         // Prevent modal dialog clicks from closing modal
         $(document).on('click', '.avvance-modal-dialog', function(e) {
             e.stopPropagation();
@@ -904,7 +1228,36 @@
             var amount = parseCurrencyInput($row.find('.avvance-currency-input').val());
             var targetId = $row.data('target');
             var $cards = targetId ? $('#' + targetId) : $row.closest('.avvance-modal-body').find('.avvance-loan-cards');
-            loadModalPriceBreakdown(amount, $cards);
+            
+            // Determine if this is a pre-approved modal (modal-c)
+            var $modal = $row.closest('.avvance-modal');
+            var maxPreapprovedAmount = null;
+            if ($modal.attr('id') === 'avvance-modal-c') {
+                maxPreapprovedAmount = parseFloat($modal.attr('data-max-amount')) || null;
+            }
+            
+            var initialLimit = ($modal.attr('id') === 'avvance-modal-c') ? 3 : 0;
+            loadModalPriceBreakdown(amount, $cards, maxPreapprovedAmount, initialLimit);
+        });
+
+        // Ensure $ prefix is always present in currency input
+        $(document).on('input', '.avvance-currency-input', function() {
+            var val = $(this).val();
+            // Strip everything except digits and dot
+            var raw = val.replace(/[^0-9.]/g, '');
+            $(this).val('$' + raw);
+        });
+ 
+        // Format currency input as $X.XX on blur
+        $(document).on('blur', '.avvance-currency-input', function() {
+            var raw = $(this).val().replace(/[^0-9.]/g, '');
+            var amount = parseFloat(raw) || 0;
+            $(this).val('$' + amount.toFixed(2));
+        });
+
+        // Clear field-level error styling and message while user edits amount.
+        $(document).on('input', '.avvance-currency-input', function() {
+            clearFieldLevelError($(this).closest('.avvance-calculator-row'));
         });
 
         // Handle "Continue shopping" button
@@ -942,6 +1295,23 @@
 
         $(document).on('click', '.avvance-modal-dialog', function() {
             $('.avvance-toggletip.is-visible').removeClass('is-visible');
+        });
+
+        // Expand modal-c loan cards from first offer to all offers.
+        $(document).on('click', '.avvance-see-more-btn', function(e) {
+            e.preventDefault();
+
+            var $button = $(this);
+            var $modal = $button.closest('.avvance-modal');
+            var offers = $modal.data('all-offers');
+            var originalAmount = $modal.data('original-amount');
+            var $cards = $modal.find('.avvance-loan-cards').first();
+
+            if (!offers || !offers.length || !$cards.length) {
+                return;
+            }
+
+            renderLoanCards(offers, $cards, originalAmount, 0);
         });
 
         // Handle "See if you qualify" button

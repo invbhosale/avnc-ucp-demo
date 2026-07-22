@@ -76,13 +76,23 @@ class Avvance_Blocks_Integration extends AbstractPaymentMethodType {
 			true
 		);
 
+		$theme = strtolower( (string) $this->gateway->get_option( 'widget_theme', 'light' ) );
+		if ( ! in_array( $theme, array( 'light', 'dark' ), true ) ) {
+			$theme = 'light';
+		}
+		$icon_light = AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg';
+		$icon_dark  = AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo-white.svg';
+
 		wp_localize_script(
 			'avvance-blocks',
 			'avvanceBlocksData',
 			array(
 				'title'       => $this->gateway->title,
 				'description' => $this->gateway->description,
-				'icon'        => AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg',
+				'icon'        => ( 'dark' === $theme ) ? $icon_dark : $icon_light,
+				'iconLight'   => $icon_light,
+				'iconDark'    => $icon_dark,
+				'theme'       => $theme,
 			)
 		);
 

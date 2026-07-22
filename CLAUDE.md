@@ -7,7 +7,7 @@ This file captures the full context of the plugin, its architecture, and all sig
 ## Plugin Overview
 
 **Plugin Name:** Avvance for WooCommerce
-**Version:** 1.2.0
+**Version:** 1.4.0
 **Text Domain:** `avvance-for-woocommerce`
 **Description:** U.S. Bank point-of-sale installment financing integrated as a WooCommerce payment gateway. Customers apply for financing at checkout; the merchant gets paid while the customer repays U.S. Bank Avvance in installments.
 
@@ -53,7 +53,7 @@ assets/
 ## Plugin Constants
 
 ```php
-AVVANCE_VERSION      // '1.2.0'
+AVVANCE_VERSION      // '1.4.0'
 AVVANCE_PLUGIN_FILE  // Full path to main plugin file
 AVVANCE_PLUGIN_PATH  // Directory path (trailing slash)
 AVVANCE_PLUGIN_URL   // URL (trailing slash)
@@ -82,8 +82,7 @@ AVVANCE_PLUGIN_URL   // URL (trailing slash)
 | Min Order Amount | `min_order_amount` | Default $300 |
 | Max Order Amount | `max_order_amount` | Default $25,000 |
 | Webhook URL | `webhook_url` | Read-only, give to Avvance Support |
-| Webhook Username | `webhook_username` | Basic Auth for webhooks |
-| Webhook Password | `webhook_password` | Basic Auth for webhooks |
+| Authentication Token | `webhook_auth_token` | Shared secret — signs HMAC-SHA256 requests (preferred) and authenticates legacy Bearer/`X-Avvance-Token` requests (deprecated fallback) |
 | Debug Mode | `debug_mode` | Logs to WooCommerce logs |
 
 ---
@@ -195,10 +194,20 @@ File: `class-avvance-webhooks.php`
 | `APPLICATION_DENIED_REQUEST_ALTERNATE_PAYMENT` | **Keep order pending** (NOT cancelled) — stores in `_avvance_last_webhook_status` |
 | `APPLICATION_PARTIALLY_APPROVED` | **Keep order pending** — stores in `_avvance_last_webhook_status` |
 | `SYSTEM_ERROR_REQUEST_ALTERNATE_PAYMENT` | **Keep order pending** — stores in `_avvance_last_webhook_status` |
-| `INVOICE_PAYMENT_TRANSACTION_AUTHORIZED` | Mark order as processing |
+| `APPLICATION_LINK_EXPIRED` | Cancels the order |
+| `INVOICE_PAYMENT_TRANSACTION_AUTHORIZED` | Mark order as processing *(see note below)* |
 | `INVOICE_PAYMENT_TRANSACTION_SETTLED` | Mark order as completed |
+| Unrecognized/unknown status (`default`) | Adds a generic order note only — no status change |
+
+**Note:** `INVOICE_PAYMENT_TRANSACTION_AUTHORIZED` does not mark the order processing unconditionally. The handler first makes a live confirmation call to `Avvance_Loan_Status_API::get_loan_status()` and only transitions the order to processing if that call independently confirms an AUTHORIZED status.
 
 **Key decision:** Declined/error orders stay `pending` so the consumer or a spouse can retry with Avvance or use a different payment method. The JS polling detects the declined `avvance_status` and redirects to the order-pay page.
+
+### Webhook Authentication (dual-mode)
+
+- **Preferred — HMAC-SHA256:** The sender signs the raw request body with the shared secret (`webhook_auth_token`) and sends the result via the `X-Webhook-Signature` header. Verified in `verify_hmac_signature()`.
+- **Legacy (deprecated) — Bearer token:** `Authorization: Bearer <token>` or `X-Avvance-Token` header, compared against `webhook_auth_token` with `hash_equals()`. Accepted only as a fallback when no HMAC header is present; logged as deprecated. Intended for removal once all senders have migrated to HMAC.
+- ⚠ **Unresolved discrepancy:** the class docblock documents the HMAC header format as `sha256=<lowercase_hex>`, but `verify_hmac_signature()` actually computes and compares a **base64**-encoded signature (with a code comment claiming "U.S. Bank sends bare base64"). This wasn't verified against U.S. Bank's actual webhook spec — if hex is truly sent, verification will always fail and silently fall through to the deprecated Bearer path. Needs confirmation before relying on HMAC-only auth.
 
 ---
 

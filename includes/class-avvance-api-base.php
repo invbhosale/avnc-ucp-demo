@@ -92,6 +92,7 @@ abstract class Avvance_API_Base {
 		$cached    = get_transient( $cache_key );
 
 		if ( $cached ) {
+			avvance_log( 'Using cached access token' );
 			return $cached;
 		}
 
@@ -119,6 +120,8 @@ abstract class Avvance_API_Base {
 	 * @return string|WP_Error Access token or error
 	 */
 	private function fetch_new_token( $cache_key ) {
+		avvance_log( 'Requesting new access token' );
+
 		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- required for HTTP Basic Auth
 		$auth = base64_encode( $this->client_key . ':' . $this->client_secret );
 
@@ -151,6 +154,7 @@ abstract class Avvance_API_Base {
 		$ttl = max( 60, intval( $body['expiresIn'] ?? 600 ) - 60 );
 		set_transient( $cache_key, $body['accessToken'], $ttl );
 
+		avvance_log( 'Access token obtained and cached (TTL: ' . $ttl . 's)' );
 		return $body['accessToken'];
 	}
 

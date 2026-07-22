@@ -204,6 +204,11 @@ class Avvance_Widget_Handler {
 				'nonce'          => wp_create_nonce( 'avvance_preapproval' ),
 				'checkInterval'  => 3000,
 				'logoUrl'        => AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg',
+				'imagesUrl'      => AVVANCE_PLUGIN_URL . 'assets/images/',
+				'retailerName'   => get_bloginfo( 'name' ),
+				'logoUrlLight'   => AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg',
+				'logoUrlDark'    => AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo-white.svg',
+				'theme'          => self::$settings['theme'],
 				'minAmount'      => self::$settings['min_amount'],
 				'maxAmount'      => self::$settings['max_amount'],
 				'isProductPage'  => is_product(),
@@ -551,8 +556,15 @@ class Avvance_Widget_Handler {
 		}
 
 		$show_preapproved = $is_preapproved && $has_valid_amount && ! $is_expired;
+		$theme            = strtolower( (string) self::$settings['theme'] );
+		if ( ! in_array( $theme, array( 'light', 'dark' ), true ) ) {
+			$theme = 'light';
+		}
+		$theme_logo_url = ( 'dark' === $theme )
+			? AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo-white.svg'
+			: AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg';
 		?>
-		<div id="avvance-checkout-banner" class="avvance-checkout-banner">
+		<div id="avvance-checkout-banner" class="avvance-checkout-banner avvance-widget-<?php echo esc_attr( $theme ); ?>">
 			<?php if ( $show_preapproved ) : ?>
 				<div class="avvance-checkout-preapproved">
 					<div class="avvance-checkout-banner-check">&#10003;</div>
@@ -560,7 +572,7 @@ class Avvance_Widget_Handler {
 						<strong>You're pre-approved for $<?php echo number_format( $preapproval['max_amount'], 0 ); ?>!</strong>
 						Pay over time with
 						<?php if ( self::$settings['show_logo'] ) : ?>
-							<img src="<?php echo esc_url( AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg' ); ?>" alt="U.S. Bank Avvance" class="avvance-logo-inline">
+							<img src="<?php echo esc_url( $theme_logo_url ); ?>" alt="U.S. Bank Avvance" class="avvance-logo-inline">
 						<?php else : ?>
 							<span class="avvance-brand">U.S. Bank Avvance</span>
 						<?php endif; ?>
@@ -706,56 +718,61 @@ class Avvance_Widget_Handler {
 		$logo_url               = AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg';
 		$icon_base              = AVVANCE_PLUGIN_URL . 'assets/images/';
 		?>
-		<div id="avvance-modal-a" class="avvance-modal" style="display: none;">
-			<div class="avvance-modal-overlay"></div>
+		<div id="avvance-modal-a" class="avvance-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="avvance-modal-a-heading">
+			<div class="avvance-modal-overlay" aria-hidden="true"></div>
 			<div class="avvance-modal-dialog">
+				<div class="avvance-modal-sticky-cta-closeicon">
+					<button class="avvance-modal-close" aria-label="Close dialog"><img src="<?php echo esc_url( $icon_base . 'Close.svg' ); ?>" alt="" aria-hidden="true"></button>
+				</div>
 				<div class="avvance-modal-scrollable">
 					<div class="avvance-modal-header">
 						<img src="<?php echo esc_url( $logo_url ); ?>" alt="U.S. Bank Avvance" class="avvance-modal-logo-img">
-						<button class="avvance-modal-close">&times;</button>
 					</div>
-
 					<div class="avvance-modal-body">
-						<h2 class="avvance-modal-heading">Pay over time and make your purchase possible</h2>
+						<h2 id="avvance-modal-a-heading" class="avvance-modal-heading">Pay over time and make your purchase possible</h2>
 						<p class="avvance-modal-subtitle">Applying won't impact your credit score.</p>
 
+					</div>
+					<div class="avvance-modal-body-calculator">
 						<div class="avvance-calculator-row" data-target="avvance-modal-a-cards">
-							<span class="avvance-calculator-label">Example loan options for:</span>
-							<input type="text" class="avvance-currency-input" id="avvance-modal-a-amount" value="">
+							<div>
+								<span class="avvance-calculator-label">Sample loan options for:</span>
+								<input type="text" class="avvance-currency-input" id="avvance-modal-a-amount" value="" aria-label="Loan amount">
+							</div>
 							<button type="button" class="avvance-calc-btn">Calculate</button>
 						</div>
 
-						<div class="avvance-loan-cards" id="avvance-modal-a-cards"></div>
+						<div class="avvance-loan-cards" id="avvance-modal-a-cards" aria-live="polite" aria-atomic="true"></div>
 					</div>
 
 					<div class="avvance-carousel-section">
 						<div class="avvance-carousel-title">
 							<span>How to checkout</span>
 							<div class="avvance-carousel-nav">
-								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-a" data-dots="avvance-dots-modal-a" data-dir="-1" aria-label="Previous">&#8249;</button>
-								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-a" data-dots="avvance-dots-modal-a" data-dir="1" aria-label="Next">&#8250;</button>
+								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-a" data-dots="avvance-dots-modal-a" data-dir="-1" aria-label="Previous"><img src="<?php echo esc_url( $icon_base . 'chevron-left.svg' ); ?>" alt="Previous"></button>
+								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-a" data-dots="avvance-dots-modal-a" data-dir="1" aria-label="Next"><img src="<?php echo esc_url( $icon_base . 'chevron-right.svg' ); ?>" alt="Next"></button>
 							</div>
 						</div>
 
 						<div class="avvance-carousel-container" id="avvance-slider-modal-a">
 							<div class="avvance-slide active">
 								<img src="<?php echo esc_url( $icon_base . 'Checkmark.svg' ); ?>" class="avvance-step-icon" alt="">
-								<span class="avvance-step-text">Select Pay with U.S. Bank Avvance at checkout.</span>
+								<span class="avvance-step-text">Select “Pay with U.S. Bank Avvance” at checkout.</span>
 							</div>
-							<div class="avvance-slide">
+							<div class="avvance-slide" aria-hidden="true">
 								<img src="<?php echo esc_url( $icon_base . 'Money_stack.svg' ); ?>" class="avvance-step-icon" alt="">
 								<span class="avvance-step-text">Apply and if approved, see your loan options.</span>
 							</div>
-							<div class="avvance-slide">
+							<div class="avvance-slide" aria-hidden="true">
 								<img src="<?php echo esc_url( $icon_base . 'Shopping_cart.svg' ); ?>" class="avvance-step-icon" alt="">
 								<span class="avvance-step-text">Choose your loan and complete your purchase.</span>
 							</div>
 						</div>
 
 						<div class="avvance-slider-dots" id="avvance-dots-modal-a">
-							<button class="avvance-dot active" data-slider="avvance-slider-modal-a" data-dots="avvance-dots-modal-a" data-index="0" aria-label="Step 1"></button>
-							<button class="avvance-dot" data-slider="avvance-slider-modal-a" data-dots="avvance-dots-modal-a" data-index="1" aria-label="Step 2"></button>
-							<button class="avvance-dot" data-slider="avvance-slider-modal-a" data-dots="avvance-dots-modal-a" data-index="2" aria-label="Step 3"></button>
+							<button class="avvance-dot active" data-slider="avvance-slider-modal-a" data-dots="avvance-dots-modal-a" data-index="0" aria-label="Step 1" data-active-img="<?php echo esc_url( $icon_base . 'ellipse-active.svg' ); ?>" data-inactive-img="<?php echo esc_url( $icon_base . 'Ellipse.svg' ); ?>"><img src="<?php echo esc_url( $icon_base . 'ellipse-active.svg' ); ?>" alt=""></button>
+							<button class="avvance-dot" data-slider="avvance-slider-modal-a" data-dots="avvance-dots-modal-a" data-index="1" aria-label="Step 2" data-active-img="<?php echo esc_url( $icon_base . 'ellipse-active.svg' ); ?>" data-inactive-img="<?php echo esc_url( $icon_base . 'Ellipse.svg' ); ?>"><img src="<?php echo esc_url( $icon_base . 'Ellipse.svg' ); ?>" alt=""></button>
+							<button class="avvance-dot" data-slider="avvance-slider-modal-a" data-dots="avvance-dots-modal-a" data-index="2" aria-label="Step 3" data-active-img="<?php echo esc_url( $icon_base . 'ellipse-active.svg' ); ?>" data-inactive-img="<?php echo esc_url( $icon_base . 'Ellipse.svg' ); ?>"><img src="<?php echo esc_url( $icon_base . 'Ellipse.svg' ); ?>" alt=""></button>
 						</div>
 					</div>
 
@@ -777,34 +794,40 @@ class Avvance_Widget_Handler {
 		$logo_url  = AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg';
 		$icon_base = AVVANCE_PLUGIN_URL . 'assets/images/';
 		?>
-		<div id="avvance-modal-b" class="avvance-modal" style="display: none;">
-			<div class="avvance-modal-overlay"></div>
+		<div id="avvance-modal-b" class="avvance-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="avvance-modal-b-heading">
+			<div class="avvance-modal-overlay" aria-hidden="true"></div>
 			<div class="avvance-modal-dialog">
+				<div class="avvance-modal-sticky-cta-closeicon">
+					<button class="avvance-modal-close" aria-label="Close dialog"><img src="<?php echo esc_url( $icon_base . 'Close.svg' ); ?>" alt="" aria-hidden="true"></button>
+				</div>
 				<div class="avvance-modal-scrollable avvance-modal-scrollable--has-cta">
 					<div class="avvance-modal-header">
 						<img src="<?php echo esc_url( $logo_url ); ?>" alt="U.S. Bank Avvance" class="avvance-modal-logo-img">
-						<button class="avvance-modal-close">&times;</button>
 					</div>
 
 					<div class="avvance-modal-body">
-						<h2 class="avvance-modal-heading">Pay over time and make your purchase possible</h2>
+						<h2 id="avvance-modal-b-heading" class="avvance-modal-heading">Pay over time and make your purchase possible</h2>
 						<p class="avvance-modal-subtitle">Applying won't impact your credit score.</p>
 
+					</div>
+					<div class="avvance-modal-body-calculator"> 
 						<div class="avvance-calculator-row" data-target="avvance-modal-b-cards">
-							<span class="avvance-calculator-label">Example loan options for:</span>
-							<input type="text" class="avvance-currency-input" id="avvance-modal-b-amount" value="">
+							<div>
+								<span class="avvance-calculator-label">Sample loan options for:</span>
+								<input type="text" class="avvance-currency-input" id="avvance-modal-b-amount" value="" aria-label="Loan amount">
+							</div>
 							<button type="button" class="avvance-calc-btn">Calculate</button>
 						</div>
 
-						<div class="avvance-loan-cards" id="avvance-modal-b-cards"></div>
+						<div class="avvance-loan-cards" id="avvance-modal-b-cards" aria-live="polite" aria-atomic="true"></div>
 					</div>
 
 					<div class="avvance-carousel-section">
 						<div class="avvance-carousel-title">
 							<span>How to get pre-approved</span>
 							<div class="avvance-carousel-nav">
-								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-b" data-dots="avvance-dots-modal-b" data-dir="-1" aria-label="Previous">&#8249;</button>
-								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-b" data-dots="avvance-dots-modal-b" data-dir="1" aria-label="Next">&#8250;</button>
+								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-b" data-dots="avvance-dots-modal-b" data-dir="-1" aria-label="Previous"><img src="<?php echo esc_url( $icon_base . 'chevron-left.svg' ); ?>" alt="Previous"></button>
+								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-b" data-dots="avvance-dots-modal-b" data-dir="1" aria-label="Next"><img src="<?php echo esc_url( $icon_base . 'chevron-right.svg' ); ?>" alt="Next"></button>
 							</div>
 						</div>
 
@@ -813,20 +836,20 @@ class Avvance_Widget_Handler {
 								<img src="<?php echo esc_url( $icon_base . 'Checklist.svg' ); ?>" class="avvance-step-icon" alt="">
 								<span class="avvance-step-text">Apply to see if you qualify.</span>
 							</div>
-							<div class="avvance-slide">
+							<div class="avvance-slide" aria-hidden="true">
 								<img src="<?php echo esc_url( $icon_base . 'Money_stack.svg' ); ?>" class="avvance-step-icon" alt="">
 								<span class="avvance-step-text">If approved, see your spending power.</span>
 							</div>
-							<div class="avvance-slide">
+							<div class="avvance-slide" aria-hidden="true">
 								<img src="<?php echo esc_url( $icon_base . 'Calculator.svg' ); ?>" class="avvance-step-icon" alt="">
 								<span class="avvance-step-text">Calculate your monthly payments.</span>
 							</div>
 						</div>
 
 						<div class="avvance-slider-dots" id="avvance-dots-modal-b">
-							<button class="avvance-dot active" data-slider="avvance-slider-modal-b" data-dots="avvance-dots-modal-b" data-index="0" aria-label="Step 1"></button>
-							<button class="avvance-dot" data-slider="avvance-slider-modal-b" data-dots="avvance-dots-modal-b" data-index="1" aria-label="Step 2"></button>
-							<button class="avvance-dot" data-slider="avvance-slider-modal-b" data-dots="avvance-dots-modal-b" data-index="2" aria-label="Step 3"></button>
+							<button class="avvance-dot active" data-slider="avvance-slider-modal-b" data-dots="avvance-dots-modal-b" data-index="0" aria-label="Step 1" data-active-img="<?php echo esc_url( $icon_base . 'ellipse-active.svg' ); ?>" data-inactive-img="<?php echo esc_url( $icon_base . 'Ellipse.svg' ); ?>"><img src="<?php echo esc_url( $icon_base . 'ellipse-active.svg' ); ?>" alt=""></button>
+							<button class="avvance-dot" data-slider="avvance-slider-modal-b" data-dots="avvance-dots-modal-b" data-index="1" aria-label="Step 2" data-active-img="<?php echo esc_url( $icon_base . 'ellipse-active.svg' ); ?>" data-inactive-img="<?php echo esc_url( $icon_base . 'Ellipse.svg' ); ?>"><img src="<?php echo esc_url( $icon_base . 'Ellipse.svg' ); ?>" alt=""></button>
+							<button class="avvance-dot" data-slider="avvance-slider-modal-b" data-dots="avvance-dots-modal-b" data-index="2" aria-label="Step 3" data-active-img="<?php echo esc_url( $icon_base . 'ellipse-active.svg' ); ?>" data-inactive-img="<?php echo esc_url( $icon_base . 'Ellipse.svg' ); ?>"><img src="<?php echo esc_url( $icon_base . 'Ellipse.svg' ); ?>" alt=""></button>
 						</div>
 					</div>
 
@@ -868,73 +891,88 @@ class Avvance_Widget_Handler {
 		$logo_url       = AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg';
 		$icon_base      = AVVANCE_PLUGIN_URL . 'assets/images/';
 		?>
-		<div id="avvance-modal-c" class="avvance-modal" style="display: none;"
+		<div id="avvance-modal-c" class="avvance-modal" style="display: none;" role="dialog" aria-modal="true" aria-labelledby="avvance-modal-c-heading"
 			data-max-amount="<?php echo esc_attr( $max_amount_raw ); ?>">
-			<div class="avvance-modal-overlay"></div>
+			<div class="avvance-modal-overlay" aria-hidden="true"></div>
 			<div class="avvance-modal-dialog">
+				<div class="avvance-modal-sticky-cta-closeicon">
+					<button class="avvance-modal-close" aria-label="Close dialog"><img src="<?php echo esc_url( $icon_base . 'Close.svg' ); ?>" alt="" aria-hidden="true"></button>
+				</div>
 				<div class="avvance-modal-scrollable avvance-modal-scrollable--has-cta">
 					<div class="avvance-modal-header">
 						<img src="<?php echo esc_url( $logo_url ); ?>" alt="U.S. Bank Avvance" class="avvance-modal-logo-img">
-						<button class="avvance-modal-close">&times;</button>
 					</div>
 
 					<div class="avvance-modal-body">
 						<div class="avvance-success-banner">
-							<div class="avvance-success-title">
+							<div class="avvance-success-title" id="avvance-modal-c-heading">
 								<img src="<?php echo esc_url( $icon_base . 'Avvance-Checkmark.svg' ); ?>" alt="" class="avvance-success-check-icon">
 								Your spending power is $<?php echo esc_html( $max_amount_short ); ?>!
 							</div>
-							<div class="avvance-success-details">
-								<div>Single-purchase range: $<?php echo esc_html( $min_amount_fmt ); ?>–$<?php echo esc_html( $max_amount_short ); ?></div>
-								<div>Eligible Retailer: <?php echo esc_html( $retailer_name ); ?></div>
-								<?php if ( $expiry_date ) : ?>
-								<div>Offer Expires: <?php echo esc_html( $expiry_date ); ?></div>
-								<?php endif; ?>
+						</div>
+						<div class="avvance-success-details">
+							<div class="avvance-detail-row">
+								<span class="avvance-detail-label">Single-purchase range:</span>
+								<span class="avvance-detail-value">$<?php echo esc_html( $min_amount_fmt ); ?>–$<?php echo esc_html( $max_amount_short ); ?></span>
 							</div>
+							<div class="avvance-detail-row">
+        						<span class="avvance-detail-label">Eligible Merchant:</span>
+        						<span class="avvance-detail-value"><?php echo esc_html( $retailer_name ); ?></span>
+    						</div>
+							<?php if ( $expiry_date ) : ?>
+							<div class="avvance-detail-row">
+        						<span class="avvance-detail-label">Offer Expires:</span>
+        						<span class="avvance-detail-value"><?php echo esc_html( $expiry_date ); ?></span>
+    						</div>
+							<?php endif; ?>
 						</div>
+						<div class="avvance-modal-body-calculator">
+							<div class="avvance-calculator-row" data-target="avvance-modal-c-cards">
+								<div>	
+								<span class="avvance-calculator-label">See your loan options for:</span>
+									<input type="text" class="avvance-currency-input" id="avvance-modal-c-amount" value="$<?php echo esc_attr( $max_amount_fmt ); ?>" aria-label="Loan amount">
+								</div>
+								<button type="button" class="avvance-calc-btn">Calculate</button>
+							</div>
+						</div>	
 
-						<div class="avvance-calculator-row" data-target="avvance-modal-c-cards">
-							<span class="avvance-calculator-label">Example loan options for:</span>
-							<input type="text" class="avvance-currency-input" id="avvance-modal-c-amount" value="$<?php echo esc_attr( $max_amount_fmt ); ?>">
-							<button type="button" class="avvance-calc-btn">Calculate</button>
-						</div>
-
-						<div class="avvance-loan-cards" id="avvance-modal-c-cards"></div>
+						<div class="avvance-loan-cards" id="avvance-modal-c-cards" aria-live="polite" aria-atomic="true"></div>
+						<button class="avvance-see-more-btn" aria-label="See more loan options">See more loan options</button>
 					</div>
 
 					<div class="avvance-carousel-section">
 						<div class="avvance-carousel-title">
 							<span>How to checkout</span>
 							<div class="avvance-carousel-nav">
-								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-c" data-dots="avvance-dots-modal-c" data-dir="-1" aria-label="Previous">&#8249;</button>
-								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-c" data-dots="avvance-dots-modal-c" data-dir="1" aria-label="Next">&#8250;</button>
+								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-c" data-dots="avvance-dots-modal-c" data-dir="-1" aria-label="Previous"><img src="<?php echo esc_url( $icon_base . 'chevron-left.svg' ); ?>" alt="Previous"></button>
+								<button class="avvance-arrow-nav" data-slider="avvance-slider-modal-c" data-dots="avvance-dots-modal-c" data-dir="1" aria-label="Next"><img src="<?php echo esc_url( $icon_base . 'chevron-right.svg' ); ?>" alt="Next"></button>
 							</div>
 						</div>
 
 						<div class="avvance-carousel-container" id="avvance-slider-modal-c">
 							<div class="avvance-slide active">
 								<img src="<?php echo esc_url( $icon_base . 'Checkmark.svg' ); ?>" class="avvance-step-icon" alt="">
-								<span class="avvance-step-text">Select Pay with U.S. Bank Avvance at checkout.</span>
+								<span class="avvance-step-text">Select “Pay with U.S. Bank Avvance” at checkout.</span>
 							</div>
-							<div class="avvance-slide">
+							<div class="avvance-slide" aria-hidden="true">
 								<img src="<?php echo esc_url( $icon_base . 'Money_stack.svg' ); ?>" class="avvance-step-icon" alt="">
 								<span class="avvance-step-text">Choose the loan that works best for you.</span>
 							</div>
-							<div class="avvance-slide">
+							<div class="avvance-slide" aria-hidden="true">
 								<img src="<?php echo esc_url( $icon_base . 'Shopping_cart.svg' ); ?>" class="avvance-step-icon" alt="">
 								<span class="avvance-step-text">Review terms and complete your purchase.</span>
 							</div>
 						</div>
 
 						<div class="avvance-slider-dots" id="avvance-dots-modal-c">
-							<button class="avvance-dot active" data-slider="avvance-slider-modal-c" data-dots="avvance-dots-modal-c" data-index="0" aria-label="Step 1"></button>
-							<button class="avvance-dot" data-slider="avvance-slider-modal-c" data-dots="avvance-dots-modal-c" data-index="1" aria-label="Step 2"></button>
-							<button class="avvance-dot" data-slider="avvance-slider-modal-c" data-dots="avvance-dots-modal-c" data-index="2" aria-label="Step 3"></button>
+							<button class="avvance-dot active" data-slider="avvance-slider-modal-c" data-dots="avvance-dots-modal-c" data-index="0" aria-label="Step 1" data-active-img="<?php echo esc_url( $icon_base . 'ellipse-active.svg' ); ?>" data-inactive-img="<?php echo esc_url( $icon_base . 'Ellipse.svg' ); ?>"><img src="<?php echo esc_url( $icon_base . 'ellipse-active.svg' ); ?>" alt=""></button>
+							<button class="avvance-dot" data-slider="avvance-slider-modal-c" data-dots="avvance-dots-modal-c" data-index="1" aria-label="Step 2" data-active-img="<?php echo esc_url( $icon_base . 'ellipse-active.svg' ); ?>" data-inactive-img="<?php echo esc_url( $icon_base . 'Ellipse.svg' ); ?>"><img src="<?php echo esc_url( $icon_base . 'Ellipse.svg' ); ?>" alt=""></button>
+							<button class="avvance-dot" data-slider="avvance-slider-modal-c" data-dots="avvance-dots-modal-c" data-index="2" aria-label="Step 3" data-active-img="<?php echo esc_url( $icon_base . 'ellipse-active.svg' ); ?>" data-inactive-img="<?php echo esc_url( $icon_base . 'Ellipse.svg' ); ?>"><img src="<?php echo esc_url( $icon_base . 'Ellipse.svg' ); ?>" alt=""></button>
 						</div>
 					</div>
 
 					<p class="avvance-disclaimer">
-						Your pre-approval expires on the earlier of (i) completion of a single Avvance transaction or (ii) the expiration date shown above.
+						Annual Percentage Rates (APR) range from 0%-24.99%. Not all rates are available for all merchants. 0% APR loan options, including promotions, may be available depending on merchant participation and customer qualification. All rates are subject to an eligibility check and approval. Maximum loan amounts and available loan options provided by U.S. Bank depend on your credit score and purchase amount. Loan options with promotion rates will have a higher cost if the loan is held until maturity.
 					</p>
 				</div>
 

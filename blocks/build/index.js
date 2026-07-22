@@ -3,15 +3,28 @@
     const { createElement } = window.wp.element;
     const { __ } = window.wp.i18n;
     
+const theme = (window.avvanceBlocksData?.theme || 'light').toLowerCase();
+const themeClass = (theme === 'dark') ? 'avvance-widget-dark' : 'avvance-widget-light';
+    const iconLight = window.avvanceBlocksData?.iconLight || window.avvanceBlocksData?.icon || '';
+    const iconDark = window.avvanceBlocksData?.iconDark || iconLight;
+    const iconSrc = (theme === 'dark') ? iconDark : iconLight;
+
 const label = createElement('span', {
-    style: { display: 'flex', alignItems: 'center', gap: '8px' }
+    className: themeClass,
+    style: { 
+        display: 'flex', 
+        flexWrap: 'wrap',
+        alignItems: 'center', 
+        gap: '8px',
+        width: '100%'
+    }
 }, [
     'Pay over time with ',
-    window.avvanceBlocksData?.icon && createElement('img', {
+        iconSrc && createElement('img', {
         key: 'icon',
-        src: window.avvanceBlocksData.icon,
+        src: iconSrc,
         alt: 'Avvance',
-        style: { height: '24px', margin: '0 8px' }
+        style: { height: '24px', margin: '0' }
     }),
     createElement('a', {
         key: 'learn-more',
@@ -20,8 +33,7 @@ const label = createElement('span', {
         rel: 'noopener noreferrer',
         style: { 
             fontSize: '0.9em',
-            textDecoration: 'underline',
-            marginLeft: '4px'
+            textDecoration: 'underline'
         },
         onClick: (e) => e.stopPropagation()
     }, 'Learn more')

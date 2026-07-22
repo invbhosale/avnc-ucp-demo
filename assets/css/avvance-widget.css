@@ -9,6 +9,54 @@
  */
 
 /* ========================================
+   CIRCULAR-USB FONT FACE
+   ======================================== */
+
+@font-face {
+    font-family: "Circular-USB";
+    src: url("https://content.usbank.com/content/dam/onlinebanking/common/static/fonts/U.S.BankCircularWeb-Regular.woff2") format("woff2"),
+         url("https://content.usbank.com/content/dam/onlinebanking/common/static/fonts/U.S.BankCircularWeb-Regular.woff") format("woff");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+  font-family: "Circular-USB";
+  src: url("https://content.usbank.com/content/dam/onlinebanking/common/static/fonts/U.S.BankCircularWeb-Italic.woff2") format("woff2"),
+       url("https://content.usbank.com/content/dam/onlinebanking/common/static/fonts/U.S.BankCircularWeb-Italic.woff") format("woff");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+ 
+@font-face {
+  font-family: "Circular-USB";
+  src: url("https://content.usbank.com/content/dam/onlinebanking/common/static/fonts/U.S.BankCircularWeb-Book.woff2") format("woff2"),
+       url("https://content.usbank.com/content/dam/onlinebanking/common/static/fonts/U.S.BankCircularWeb-Book.woff") format("woff");
+  font-weight: 450;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+    font-family: "Circular-USB";
+    src: url("https://content.usbank.com/content/dam/onlinebanking/common/static/fonts/U.S.BankCircularWeb-Medium.woff2") format("woff2"),
+         url("https://content.usbank.com/content/dam/onlinebanking/common/static/fonts/U.S.BankCircularWeb-Medium.woff") format("woff");
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Circular-USB";
+    src: url("https://content.usbank.com/content/dam/onlinebanking/common/static/fonts/U.S.BankCircularWeb-Bold.woff2") format("woff2"),
+         url("https://content.usbank.com/content/dam/onlinebanking/common/static/fonts/U.S.BankCircularWeb-Bold.woff") format("woff");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+/* ========================================
    BASE WIDGET STYLES
    ======================================== */
 
@@ -17,13 +65,17 @@
 .avvance-checkout-widget,
 .avvance-category-widget {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
-    font-size: 14px;
+    font-size: 0.875rem;
     line-height: 1.5;
-    margin: 10px 0;
+    margin: 0.625rem 0;
 }
 
 .avvance-widget-content {
-    display: block;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.1875rem 0.375rem;
+    width: 100%;
 }
 
 /* ========================================
@@ -31,9 +83,23 @@
    ======================================== */
 
 .avvance-price-message {
-    display: block;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.1875rem 0.375rem;
     line-height: 1.8;
     text-align: left;
+}
+
+.avvance-rate-text {
+    display: inline;
+    min-width: 0;
+    flex: 0 1 auto;
+}
+
+.avvance-rate-amount-with {
+    display: inline-block;
+    white-space: nowrap;
 }
 
 .avvance-loading {
@@ -46,25 +112,43 @@
    ======================================== */
 
 .avvance-logo-inline {
-    height: 18px;
+    height: 1.125rem;
     width: auto;
     display: inline-block;
     vertical-align: middle;
-    margin: 0 3px;
-    max-width: 120px;
+    margin: 0 0.1875rem;
+    max-width: 7.5rem;
+}
+
+.avvance-widget-logo {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.avvance-widget-content .avvance-logo-inline,
+.avvance-price-message .avvance-logo-inline {
+    display: block;
+    margin: 0.1875rem 0 0 !important;
+}
+
+/* Local fix: beat WooCommerce global .woocommerce img { height:auto; } */
+.woocommerce .avvance-logo-inline,
+.woocommerce-page .avvance-logo-inline {
+    height: 1.125rem;
 }
 
 .avvance-logo-small {
-    height: 16px;
+    height: 1rem;
     width: auto;
     display: block;
-    margin: 2px auto 0;
+    margin: 0.125rem auto 0;
 }
 
 .avvance-logo-checkout {
-    height: 24px;
+    height: 1.5rem;
     width: auto;
-    margin-bottom: 10px;
+    margin-bottom: 0.625rem;
 }
 
 .avvance-brand {
@@ -75,7 +159,7 @@
 .avvance-brand-large {
     font-weight: 600;
     color: #0073aa;
-    font-size: 20px;
+    font-size: 1.25rem;
 }
 
 /* ========================================
@@ -104,32 +188,36 @@
 
 .avvance-check-spending-link,
 .avvance-learn-more-link,
-.avvance-preapproved-details-link {
+.avvance-preapproved-details-link,
+.avvance-cta-link {
     color: #235AE4;
     text-decoration: underline;
     font-weight: 500;
     cursor: pointer;
     transition: color 0.2s;
     white-space: nowrap;
+    align-self: center;
 }
 
 .avvance-check-spending-link:hover,
 .avvance-learn-more-link:hover,
-.avvance-preapproved-details-link:hover {
+.avvance-preapproved-details-link:hover,
+.avvance-cta-link:hover {
     color: #1a47b8;
     text-decoration: none;
 }
 
-/* 0% APR badge */
+/* 0% APR badge — same color as surrounding text so only the weight stands out */
 .avvance-zero-apr {
-    color: #0073aa;
+    color: #333;
     font-weight: 700;
 }
 
-/* Pre-approved badge */
+/* Pre-approved badge — same color as surrounding text */
 .avvance-preapproved-badge {
-    color: #2e7d32;
+    color: #333;
     font-weight: 700;
+    flex: 0 0 auto;
 }
 
 .avvance-preapproved-state {
@@ -156,7 +244,7 @@
     font-weight: 600;
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 0.3125rem;
 }
 
 /* ========================================
@@ -164,13 +252,18 @@
    ======================================== */
 
 .woocommerce ul.products li.product .avvance-category-widget {
-    text-align: left;
+    text-align: center;
 }
 
 li.product .avvance-category-widget,
 li.product .avvance-category-widget .avvance-widget-content,
 li.product .avvance-category-widget .avvance-price-message {
-    text-align: left !important;
+    text-align: center !important;
+    justify-content: center;
+}
+
+li.product .avvance-category-widget .avvance-widget-logo {
+    justify-content: center;
 }
 
 /* ========================================
@@ -179,35 +272,39 @@ li.product .avvance-category-widget .avvance-price-message {
 
 .avvance-checkout-banner {
     background: #F1F5FB;
-    border: 1px solid #CDD1E2;
-    border-radius: 6px;
-    padding: 12px 16px;
-    margin-bottom: 16px;
-    font-size: 14px;
+    border: 0.0625rem solid #CDD1E2;
+    border-radius: 0.375rem;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
     line-height: 1.5;
 }
 
 .avvance-checkout-preapproved {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 0.625rem;
 }
 
 .avvance-checkout-banner-check {
     background: #02C78F;
     color: #fff;
-    border-radius: 4px;
-    width: 24px;
-    height: 24px;
+    border-radius: 0.25rem;
+    width: 1.5rem;
+    height: 1.5rem;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 14px;
+    font-size: 0.875rem;
     flex-shrink: 0;
 }
 
 .avvance-checkout-banner-text {
     flex: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.1875rem 0.375rem;
 }
 
 /* ========================================
@@ -215,9 +312,9 @@ li.product .avvance-category-widget .avvance-price-message {
    ======================================== */
 
 .avvance-product-widget {
-    padding: 12px 0;
-    border-top: 1px solid #e0e0e0;
-    border-bottom: 1px solid #e0e0e0;
+    padding: 0.75rem 0;
+    border-top: 0.0625rem solid #e0e0e0;
+    border-bottom: 0.0625rem solid #e0e0e0;
     text-align: left;
 }
 
@@ -226,18 +323,18 @@ li.product .avvance-category-widget .avvance-price-message {
    ======================================== */
 
 .avvance-cart-widget-container {
-    margin: 20px 0;
+    margin: 1.25rem 0;
 }
 
 .avvance-cart-widget {
     background: #f8f9fa;
-    padding: 15px;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
+    padding: 0.9375rem;
+    border: 0.0625rem solid #e0e0e0;
+    border-radius: 0.375rem;
 }
 
 .avvance-cart-widget .avvance-price-message {
-    font-size: 15px;
+    font-size: 0.9375rem;
 }
 
 /* ========================================
@@ -246,10 +343,10 @@ li.product .avvance-category-widget .avvance-price-message {
 
 #avvance-checkout-widget-container {
     background: #f8f9fa;
-    padding: 20px;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
-    margin: 15px 0;
+    padding: 1.25rem;
+    border: 0.0625rem solid #e0e0e0;
+    border-radius: 0.375rem;
+    margin: 0.9375rem 0;
 }
 
 .avvance-checkout-message {
@@ -257,12 +354,12 @@ li.product .avvance-category-widget .avvance-price-message {
 }
 
 .avvance-checkout-header {
-    margin-bottom: 15px;
+    margin-bottom: 0.9375rem;
 }
 
 .avvance-checkout-tagline {
-    font-size: 16px;
-    margin: 0 0 15px 0;
+    font-size: 1rem;
+    margin: 0 0 0.9375rem 0;
     color: #333;
 }
 
@@ -273,11 +370,11 @@ li.product .avvance-category-widget .avvance-price-message {
 
 .avvance-prequal-link-checkout {
     display: inline-block;
-    padding: 10px 20px;
+    padding: 0.625rem 1.25rem;
     background: #0073aa;
     color: white !important;
     text-decoration: none !important;
-    border-radius: 4px;
+    border-radius: 0.25rem;
     font-weight: 600;
     transition: background 0.2s;
 }
@@ -293,24 +390,24 @@ li.product .avvance-category-widget .avvance-price-message {
 .avvance-preapproved-banner {
     display: flex;
     align-items: center;
-    gap: 15px;
+    gap: 0.9375rem;
     background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%);
-    padding: 20px;
-    border-radius: 8px;
-    border: 2px solid #4caf50;
+    padding: 1.25rem;
+    border-radius: 0.5rem;
+    border: 0.125rem solid #4caf50;
 }
 
 .avvance-checkmark {
     flex-shrink: 0;
-    width: 50px;
-    height: 50px;
+    width: 3.125rem;
+    height: 3.125rem;
     background: #4caf50;
     color: white;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 28px;
+    font-size: 1.75rem;
     font-weight: bold;
 }
 
@@ -321,15 +418,15 @@ li.product .avvance-category-widget .avvance-price-message {
 
 .avvance-banner-content strong {
     display: block;
-    font-size: 18px;
+    font-size: 1.125rem;
     color: #2e7d32;
-    margin-bottom: 5px;
+    margin-bottom: 0.3125rem;
 }
 
 .avvance-banner-content p {
     margin: 0;
     color: #558b2f;
-    font-size: 14px;
+    font-size: 0.875rem;
 }
 
 /* ========================================
@@ -353,12 +450,12 @@ li.product .avvance-category-widget .avvance-price-message {
 .avvance-widget-dark {
     color: #fff;
     background: #2c3e50;
-    padding: 15px;
-    border-radius: 6px;
+    padding: 0.9375rem;
+    border-radius: 0.375rem;
 }
 
 .avvance-widget-dark .avvance-prequal-link {
-    color: #66b3ff;
+    color: #fff;
 }
 
 .avvance-widget-dark .avvance-price-message {
@@ -366,11 +463,35 @@ li.product .avvance-category-widget .avvance-price-message {
 }
 
 .avvance-widget-dark .avvance-brand {
-    color: #66b3ff;
+    color: #fff;
 }
 
 .avvance-widget-dark .avvance-preapproved-message {
-    color: #66b3ff;
+    color: #fff;
+}
+
+.avvance-widget-dark .avvance-widget-content,
+.avvance-widget-dark .avvance-widget-content strong,
+.avvance-widget-dark .avvance-checkout-preapproved,
+.avvance-widget-dark .avvance-checkout-banner-text,
+.avvance-widget-dark .avvance-zero-apr,
+.avvance-widget-dark .avvance-preapproved-badge,
+.avvance-widget-dark .avvance-check-spending-link,
+.avvance-widget-dark .avvance-learn-more-link,
+.avvance-widget-dark .avvance-preapproved-details-link,
+.avvance-widget-dark .avvance-see-details-link,
+.avvance-widget-dark .avvance-cta-link {
+    color: #fff;
+}
+
+.avvance-widget-dark .avvance-check-spending-link:hover,
+.avvance-widget-dark .avvance-learn-more-link:hover,
+.avvance-widget-dark .avvance-preapproved-details-link:hover,
+.avvance-widget-dark .avvance-see-details-link:hover,
+.avvance-widget-dark .avvance-cta-link:hover,
+.avvance-widget-dark .avvance-prequal-link:hover {
+    color: #fff;
+    opacity: 0.85;
 }
 
 /* ========================================
@@ -396,28 +517,29 @@ li.product .avvance-category-widget .avvance-price-message {
     background: rgba(0, 0, 0, 0.6);
 }
 
+
 .avvance-modal-dialog {
     position: fixed;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    width: 660px;
-    max-width: calc(100vw - 32px);
-    max-height: calc(100vh - 32px);
-    background: #F1F5FB;
-    border-radius: 8px;
-    border: 1px solid #7f7f84;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+    width: 41.25rem;
+    max-width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+    background: #ffffff;
+    border-radius: 0.5rem;    
+    border: 0.0625rem solid var(--utility-muted, #EBEFF6);
+    box-shadow: 0 0.25rem 0.375rem -0.0625rem #0000001F;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     animation: avvanceSlideDown 0.25s ease-out;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+    font-family: "Circular-USB", sans-serif;
 }
 
 @keyframes avvanceSlideDown {
     from {
-        transform: translate(-50%, calc(-50% - 24px));
+        transform: translate(-50%, calc(-50% - 1.5rem));
         opacity: 0;
     }
     to {
@@ -432,202 +554,307 @@ li.product .avvance-category-widget .avvance-price-message {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 48px;
-    padding: 64px;
-}
-
-.avvance-modal-scrollable--has-cta {
-    padding-bottom: 96px;
+    padding: 2.5rem;
+    gap:3rem;
 }
 
 /* Sticky CTA */
 .avvance-modal-sticky-cta {
     flex-shrink: 0;
-    padding: 16px 64px;
+    padding: 1rem;
     background: #F1F5FB;
-    border-top: 1px solid #e0e0e6;
+    border-top: 0.0625rem solid #e0e0e6;
+    box-shadow: 0 0.125rem 0.25rem 0 #0000001F;
 }
+
+.avvance-modal-sticky-cta-closeicon {
+    flex-shrink: 0;
+    padding: 1rem;
+}
+
+/* See more button styles */
+.avvance-see-more-btn {
+    border: none;
+    background-color: transparent;
+    color:var(--standard-mid, #003CC8);
+    text-decoration: underline;
+    font-size: 1rem;
+    font-weight: 400;
+    font-family: Circular-USB, sans-serif;
+}
+
 
 /* Modal Header */
 .avvance-modal-header {
     display: flex;
     justify-content: center;
     align-items: center;
-    position: relative;
+    position: relative;    
 }
 
 .avvance-modal-logo-img {
     width: 100%;
-    max-width: 380px;
-    height: auto;
+    max-width: 23.75rem !important;
+    height: 2.9115625rem !important;
 }
 
-.avvance-modal-close {
+
+
+.avvance-modal-close, .avvance-modal-close:hover {
     position: absolute;
-    right: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    background: none;
+    top: 0.6875rem;
+    right: 0.5625rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    z-index: 1;   
     border: none;
-    font-size: 22px;
+    background: none !important;    
     cursor: pointer;
-    color: #4c4c50;
-    padding: 0;
-    line-height: 1;
+    padding: 0;    
 }
-
-.avvance-modal-close:hover {
-    color: #000;
-}
-
 /* Modal Body */
-.avvance-modal-body {
+.avvance-modal-body, .avvance-modal-body-calculator {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 0.5rem;  
 }
 
 .avvance-modal-heading {
-    font-size: 28px;
-    line-height: 35.84px;
-    color: #000;
-    font-weight: 700;
+    font-size: 2rem;
+    line-height: 2.5rem;
+    letter-spacing: -0.02rem;
+    color: var(--utility-vivid, #484861);    
+    font-weight: 400;
     margin: 0;
-    word-break: break-word;
+    text-wrap: auto;
 }
 
 .avvance-modal-subtitle {
-    font-size: 20px;
-    line-height: 32px;
-    color: #4c4c50;
+    font-size: 1.25rem;
+    line-height: 2rem;
+    color: var(--utility-vivid, #484861);
     font-weight: 400;
-    margin: 0;
-    word-break: break-word;
+    margin: 0;    
+    letter-spacing: 0;
+    font-style: italic;
 }
 
 /* Calculator Row */
 .avvance-calculator-row {
     display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    padding: 16px;
-    gap: 16px;
-    border: 1px solid #d6d6d9;
-    border-radius: 8px;
-    background: #fff;
+    flex-direction: column;
+    /* align-items: center; */
+    padding: 1rem;
+    gap: 1rem;
+    border: 0.0625rem solid #CDD1E2;
+    border-radius: 0.25rem;
+    background: #fff;    
+    justify-content: space-between;
+}
+.avvance-calculator-row div {
+    display: flex;    
+    gap: 0.5rem;
+    flex-direction: column;
 }
 
 .avvance-calculator-label {
-    font-size: 16px;
-    line-height: 23.2px;
-    letter-spacing: 0.16px;
-    color: #000;
-    flex: 1;
+    font-size: 1.25rem;
+    font-weight: 500;
+    line-height: 2rem;
+    letter-spacing: 0;
+    color: var(--utility-vivid, #484861);    
 }
 
 .avvance-currency-input {
-    border: none;
-    border-bottom: 1px solid #7f7f84;
-    font-size: 20px;
-    padding: 2px 4px;
-    width: 110px;
-    background: transparent;
+    font-size: 1.25rem;
+    font-weight: 450 !important;
+    font-family: Circular-USB, sans-serif;
+    line-height: 1.625rem;
+    color: var(--utility-vivid, #484861) !important;    
+    width: 100%;
+    height: 1.75rem;
+    border: none !important;
+    border-bottom: 0.0625rem solid #7A7A95 !important;
+    text-align: left;
+    padding: 0.125rem 0.25rem !important;
+    background: transparent !important;
     outline: none;
-    color: #4c4c50;
+    box-shadow: none !important;
 }
 
 .avvance-currency-input:focus {
     border-bottom-color: #235AE4;
 }
 
+.avvance-currency-input.avvance-currency-input-error,
+.avvance-currency-input.avvance-currency-input-error:focus {
+    border-bottom: 0.125rem solid #CE2935 !important;
+    color: var(--status-danger-mid, #CE2935) !important;
+    caret-color: var(--status-danger-mid, #CE2935);
+}
+
+.avvance-field-error-message {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.25rem;
+    margin: 0;
+    font-weight: 400;
+    font-size: 0.75rem;
+    line-height: 1.125rem;
+    color: var(--status-danger-mid, #CE2935);
+}
+
+.avvance-field-error-message .avvance-field-error-icon {
+    width: 0.875rem;
+    height: 0.875rem;
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+}
+
 .avvance-calc-btn {
-    background: #235AE4;
-    color: #fff;
-    border: none;
-    border-radius: 8px;
-    padding: 8px 16px;
-    font-size: 14px;
+    color: var(--standard-subdued, #235AE4);
+    background: #fff;
+    border: 0.0625rem solid var(--standard-subdued, #235AE4);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
     font-weight: 500;
+    line-height: 0.875rem;
     cursor: pointer;
     white-space: nowrap;
+    width: 100%;
+    height: 2rem;
+    font-family: Circular-USB, sans-serif;
 }
 
 .avvance-calc-btn:hover {
     background: #1a47b8;
+    color: #fff;
 }
 
 /* Loan Cards */
 .avvance-loan-cards {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 0.5rem;
 }
 
 .avvance-loan-card {
-    border: 1px solid #d6d6d9;
-    border-radius: 8px;
-    padding: 24px;
+    border: 1px solid var(--utility-subdued, #CDD1E2) !important;
+    border-radius: 0.25rem;
+    padding: 1.5rem;
     background: #fff;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 0.125rem;
+}
+
+/* Error State - loan cards content message */
+.avvance-loan-card-error {
+    padding: 2rem 1.5rem;
+}
+
+.avvance-error-message-text {
+    font-size: 1rem;
+    line-height: 1.5rem;
+    text-align: center;
+    color: var(--label-muted, #63637F);
+    margin: 0;
+}
+
+/* Page-level error banner */
+.avvance-page-level-error {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1rem 1rem 1.25rem;
+    border-radius: 0.25rem;
+    box-shadow: 0 0.0625rem 0.1875rem 0 #0000001F;
+    border: 0.0625rem solid var(--status-danger-subdued, #FFBEB4);
+    background: var(--status-danger-muted, #FFE9EA);
+    border-top: 0.25rem solid var(--status-danger-mid, #CE2935);
+
+}
+
+.avvance-page-level-error .avvance-danger-icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex-shrink: 0;
+}
+
+.avvance-page-level-error span {
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.3125rem;
+    color: var(--label-vivid, #2D2D3E);    
 }
 
 .avvance-loan-card-header {
     display: flex;
     flex-direction: row;
     align-items: baseline;
-    gap: 12px;
-    margin-bottom: 4px;
+    gap: 0.5rem;    
 }
 
 .avvance-loan-monthly {
-    font-size: 28px;
-    font-weight: 700;
-    color: #001E79;
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: var(--data-a-90, #001E79);
+    line-height: 1.95rem;
+    letter-spacing: 0;
     white-space: nowrap;
 }
 
 .avvance-loan-monthly .avvance-price-suffix {
-    font-size: 14px;
+    font-size: 0.875rem;
     font-weight: 400;
-    color: #4c4c50;
+    color: var(--data-a-90, #001E79);
+    line-height: 1.4875rem;
+    letter-spacing: 0.00875rem;   
 }
 
-.avvance-loan-apr-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    font-size: 14px;
-    font-weight: 600;
-    color: #235AE4;
-    white-space: nowrap;
+.avvance-loan-apr-badge {    
+    min-height: 1.625rem;    
+    font-size: 0.875rem;
+    font-weight: 700;
+    white-space: nowrap;    
+    border-radius: 0.25rem;
+    padding: 0 0.25rem;    
+    line-height: 1.4875rem;
+    letter-spacing: 0.00875rem;
+    color: var(--standard-mid, #003CC8);
+    background: var(--badge-info-background, #EEF6FF);
 }
 
 .avvance-loan-details {
-    font-size: 13px;
-    color: #4c4c50;
-    margin-top: 2px;
+    font-size: 0.875rem;
+    font-weight: 400;   
+    line-height: 1.4875rem;
+    letter-spacing: 0.00875rem;
+    display: flex;
+    gap: 1rem;
 }
 
-.avvance-loan-details span {
-    margin-right: 16px;
+.avvance-loan-details p{
+    display: flex;
+    gap: 0.25rem;
+    margin: 0;
 }
 
 /* PROMO Loan Card */
-.avvance-loan-card--promo {
-    padding: 0;
-    overflow: hidden;
-    gap: 0;
+.avvance-loan-card--promo {    
+    gap: 1rem;
 }
 
 .avvance-promo-banner {
-    background: #EEF6FF;
-    color: #001E79;
-    font-size: 14px;
-    line-height: 22px;
-    padding: 12px 24px;
+    background: var(--status-info-muted, #EEF6FF);
+    border-radius: 0.25rem;
+    border: 0.0625rem solid var(--status-info-muted, #EEF6FF);
+    color: var(--standard-mid, #003CC8);
+    font-size: 0.875rem;
+    line-height: 1.3125rem;
+    padding: 1rem;
+    font-weight: 400;
 }
 
 .avvance-promo-banner strong {
@@ -637,27 +864,37 @@ li.product .avvance-category-widget .avvance-price-message {
 .avvance-promo-card-body {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 16px 24px 24px;
+    gap: 0.125rem;
+    
 }
 
 .avvance-loan-card-label {
-    font-size: 13px;
-    color: #4c4c50;
+    font-size: 0.875rem;
+    font-weight: 400;    
     margin: 0;
+    line-height: 1.4875rem;
+    letter-spacing: 0.00875rem;
+    color: var(--global-status-neutral-mid, #63637F);    
+}
+
+.avvance-loan-interest-total-label {    
+    color: var(--utility-vivid, #484861);  
+}
+
+.avvance-loan-interest-total-value{
+    color: var(--data-a-90, #001E79);
+
 }
 
 .avvance-loan-apr-badge--chip {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    background: #EEF6FF;
-    padding: 4px 10px;
-    border-radius: 20px;
+    gap: 0.25rem;    
 }
 
-.avvance-toggletip-btn {
-    background: none;
+.avvance-toggletip-btn, 
+.avvance-toggletip-btn:hover {
+    background: none !important;
     border: none;
     padding: 0;
     cursor: pointer;
@@ -669,28 +906,32 @@ li.product .avvance-category-widget .avvance-price-message {
 }
 
 .avvance-toggletip-icon {
-    width: 16px;
-    height: 16px;
+    width: 0.75rem;
+    height: 0.75rem !important;
     display: block;
 }
 
 .avvance-toggletip {
     display: none;
     position: absolute;
-    bottom: calc(100% + 8px);
+    bottom: calc(100% + 0.65rem);
     right: 0;
-    background: #1d2333;
-    color: #fff;
-    font-size: 13px;
+    transform: translateX(50%);
+    background: var(--standard-vivid, #00004E);
+    box-shadow: 0rem 0.125rem 0.25rem -0.0625rem #0000001F;
+    color: #FFFFFF;
+    font-size: 0.75rem;
     font-weight: 400;
-    line-height: 1.5;
-    padding: 12px 16px;
-    border-radius: 8px;
-    width: 260px;
+    line-height: 1.125rem;
+    padding: 0.25rem 0.5rem;
+    letter-spacing: 2%;
+    border-radius: 0.125rem;
+    width: 12.5rem;
     z-index: 1000;
     white-space: normal;
     text-align: left;
     pointer-events: none;
+    font-family: Circular-USB, sans-serif;
 }
 
 .avvance-toggletip.is-visible {
@@ -699,13 +940,15 @@ li.product .avvance-category-widget .avvance-price-message {
 }
 
 .avvance-promo-avoid-interest {
-    font-size: 14px;
-    color: #4c4c50;
+    font-size: 0.875rem;
+    color: var(--global-status-neutral-mid, #63637F);
     margin: 0;
+    font-weight: 400;
+    line-height: 1.4875rem;
+    letter-spacing: 0.00875rem;
 }
 
-.avvance-promo-avoid-amount {
-    color: #235AE4;
+.avvance-promo-avoid-amount {    
     font-weight: 700;
 }
 
@@ -714,50 +957,56 @@ li.product .avvance-category-widget .avvance-price-message {
     background: #235AE4;
     color: #fff;
     width: 100%;
-    height: 56px;
-    padding: 12px 32px;
+    height: 2.5rem;
+    padding: 0.5rem 1.5rem;
     border: none;
-    border-radius: 8px;
-    font-size: 20px;
-    font-weight: 700;
-    line-height: 32px;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 1.5rem;
     cursor: pointer;
+    letter-spacing: 0;
+    border: 0.0625rem solid transparent;    
+    font-family: Circular-USB, sans-serif;
 }
 
 .avvance-btn-primary:hover {
     background: #1a47b8;
+    color: #fff;
 }
 
 /* Carousel Section */
 .avvance-carousel-section {
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 0.5rem;
 }
 
 .avvance-carousel-title {
-    font-size: 20px;
+    font-size: 1.25rem;
     font-weight: 700;
-    line-height: 32px;
-    color: #000;
+    line-height: 2rem;
+    letter-spacing: 0;
+    color: var(--utility-vivid, #484861);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: 0.5rem;
+    margin: 0;
 }
 
 .avvance-carousel-nav {
     display: flex;
-    gap: 4px;
+    gap: 0;
     flex-shrink: 0;
 }
 
 .avvance-carousel-container {
     background: #fff;
-    border: 1px solid #d6d6d9;
-    border-radius: 8px;
-    padding: 24px;
-    min-height: 80px;
+    border: 0.0625rem solid #CDD1E2;
+    border-radius: 0.25rem;
+    padding: 2rem;
+    min-height: 7.5rem;       
     display: flex;
     align-items: center;
 }
@@ -765,8 +1014,8 @@ li.product .avvance-category-widget .avvance-price-message {
 .avvance-slide {
     display: none;
     width: 100%;
-    align-items: flex-start;
-    gap: 8px;
+    align-items: center;
+    gap: 1rem;
     animation: avvanceFadeIn 0.25s ease;
 }
 
@@ -780,75 +1029,77 @@ li.product .avvance-category-widget .avvance-price-message {
 }
 
 .avvance-step-icon {
-    width: 32px;
-    height: 32px;
+    width: 3rem;
+    height: 3rem !important;
     flex-shrink: 0;
 }
 
 .avvance-step-text {
-    font-size: 16px;
-    line-height: 25.6px;
-    letter-spacing: 0.16px;
-    color: #4c4c50;
+    font-size: 1rem;
+    line-height: 1.6rem;
+    letter-spacing: 0.01rem;
+    color: var(--utility-vivid, #484861);
+    font-weight: 400;
 }
+
 
 /* Carousel Arrow Navigation */
 .avvance-arrow-nav {
     background: #fff;
-    border: 1px solid #d6d6d9;
-    border-radius: 50%;
-    width: 28px;
-    height: 28px;
+    border: none;    
+    width: 2.75rem;
+    height: 2.75rem;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    color: #4c4c50;
-    font-size: 18px;
+    color: var(--utility-vivid, #484861);    
     line-height: 1;
+    padding: 0;
     user-select: none;
     transition: background 0.2s;
     appearance: none;
-    -webkit-appearance: none;
-    padding: 0;
+    -webkit-appearance: none;    
     flex-shrink: 0;
+    position: relative;
 }
 
-.avvance-arrow-nav:hover {
+.avvance-arrow-nav:disabled, .avvance-dot.active {
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.avvance-arrow-nav:focus{
+    outline-offset: -0.125rem;
+}
+
+.avvance-arrow-nav:hover:not(:disabled) {
     background: #f0f0f0;
 }
 
 .avvance-slider-dots {
     display: flex;
     justify-content: center;
-    gap: 8px;
+    gap: 1rem;
+    padding-top: 0.5rem;
 }
 
-.avvance-dot {
-    width: 8px;
-    height: 8px;
-    background-color: #d6d6d9;
-    border-radius: 50%;
+.avvance-dot,
+.avvance-dot:hover {    
+    background-color: transparent !important;    
     cursor: pointer;
     transition: background-color 0.2s;
-    border: none;
-    padding: 0;
-    appearance: none;
-    -webkit-appearance: none;
-}
-
-.avvance-dot.active {
-    background-color: #7f7f84;
-    width: 10px;
-    height: 10px;
+    border: none;  
+    padding: 0;  
 }
 
 /* Disclaimer */
 .avvance-disclaimer {
-    font-size: 12px;
-    line-height: 19.2px;
-    letter-spacing: 0.12px;
-    color: #4c4c50;
+    font-size: 0.75rem;
+    font-weight: 400;
+    line-height: 1.275rem;
+    letter-spacing: 0.015rem;
+    color: var(--utility-vivid, #484861);
     margin: 0;
 }
 
@@ -864,113 +1115,129 @@ li.product .avvance-category-widget .avvance-price-message {
 /* Success Banner (Modal C) */
 .avvance-success-banner {
     background: #fff;
-    border: 1px solid #d6d6d9;
-    border-radius: 8px;
-    padding: 16px;
+    border: 0.0625rem solid transparent;
+    background:
+    linear-gradient(#ffffff, #ffffff) padding-box,
+    linear-gradient(33deg, #235AE4 10%, #02C78F 90%) border-box;
+    border-radius: 0.75rem;
+    padding: 1rem;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 0.5rem;
 }
 
 .avvance-success-title {
-    font-size: 20px;
-    font-weight: 700;
-    line-height: 32px;
-    color: #000;
+    font-size: 1.75rem;
+    font-family: Circular-USB, sans-serif;
+    font-weight: 500;
+    line-height: 2.25rem;
+    color: #13151B;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 1rem;
 }
 
 .avvance-success-check-icon {
-    width: 24px;
-    height: 24px;
+    width: 1.5rem;
+    height: 1.5rem;
     flex-shrink: 0;
 }
 
 .avvance-success-details {
     display: flex;
     flex-direction: column;
-    gap: 4px;
-    font-size: 14px;
-    line-height: 22px;
-    color: #4c4c50;
+    gap: 0.25rem;
+    font-size: 1.25rem;
+    line-height: 2rem;
+    color: var(--utility-vivid, #484861);
+    font-family: Circular-USB, sans-serif;
+    margin: 1rem 0 2rem;
+}
+.avvance-detail-row {
+    display: flex;
+    gap: 0.25rem;
+}
+.avvance-detail-label {
+    font-weight: 700;
 }
 
 .avvance-success-text,
 .avvance-success-expiry {
-    font-size: 16px;
-    line-height: 25.6px;
-    letter-spacing: 0.16px;
+    font-size: 1rem;
+    line-height: 1.6rem;
+    letter-spacing: 0.01rem;
     color: #4c4c50;
     margin: 0;
+}
+@media (max-width: 47.9375rem) {
+    .avvance-detail-row {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .avvance-detail-label,
+    .avvance-detail-value {
+        flex: none;
+        width: 100%;
+        text-align: left;
+    }
+    .avvance-toggletip {
+        transform: translateX(0);
+    }
+    .avvance-loan-details {
+        font-size: 0.8rem;
+    }
+    .avvance-page-level-error {
+        align-items: flex-start;
+    }
 }
 
 /* ========================================
    RESPONSIVE STYLES
    ======================================== */
 
-@media (max-width: 768px) {
+@media (max-width: 48rem) {
     .avvance-product-widget,
     .avvance-cart-widget {
-        font-size: 13px;
+        font-size: 0.8125rem;
     }
 
     .avvance-category-widget {
-        font-size: 11px;
+        font-size: 0.6875rem;
     }
 
     .avvance-logo-inline {
-        height: 16px;
+        height: 1rem;
+    }
+
+    .woocommerce .avvance-logo-inline,
+    .woocommerce-page .avvance-logo-inline {
+        height: 1rem;
     }
 
     .avvance-logo-small {
-        height: 14px;
+        height: 0.875rem;
     }
 
     .avvance-checkout-banner {
-        padding: 10px 12px;
+        padding: 0.625rem 0.75rem;
     }
 
     .avvance-checkout-preapproved {
         align-items: flex-start;
     }
 
-    .avvance-modal-scrollable {
-        padding: 24px 20px 32px;
-        gap: 32px;
+    .avvance-modal-close, .avvance-modal-close:hover {
+        right: 1.125rem;
     }
-
-    .avvance-modal-scrollable--has-cta {
-        padding-bottom: 80px;
-    }
-
-    .avvance-modal-sticky-cta {
-        padding: 12px 20px;
-    }
-
-    .avvance-modal-heading {
-        font-size: 22px;
-        line-height: 1.3;
-    }
-
+    
 }
 
-@media (max-width: 600px) {
-    .avvance-modal-dialog {
-        top: 0;
-        left: 0;
-        transform: none;
-        width: 100%;
-        max-width: 100%;
-        max-height: 100%;
-        border-radius: 0;
-        border: none;
-    }
-
+@media (max-width: 37.5rem) {
+        
     @keyframes avvanceSlideDown {
         from {
-            transform: translateY(24px);
+            transform: translateY(1.5rem);
             opacity: 0;
         }
         to {
@@ -978,15 +1245,47 @@ li.product .avvance-category-widget .avvance-price-message {
             opacity: 1;
         }
     }
-}
 
-@media (max-width: 480px) {
-    .avvance-logo-inline {
-        height: 14px;
+    .avvance-widget-content,
+    .avvance-price-message {
+        align-items: flex-start;
     }
 
-    .avvance-modal-heading {
-        font-size: 20px;
+    .avvance-preapproved-badge,
+    .avvance-rate-text {
+        flex-basis: 100%;
+    }
+
+    .avvance-rate-text {
+        line-height: 1.6;
+    }
+
+    .avvance-modal-logo-img {
+        max-width: 17.5rem !important;
+    }
+    .avvance-loan-card-header{
+        flex-direction: column;
+        gap: 0.125rem;
+    }
+}
+
+@media (max-width: 30rem) {
+
+    .avvance-widget-logo,
+    .avvance-check-spending-link,
+    .avvance-learn-more-link,
+    .avvance-cta-link,
+    .avvance-see-details-link {
+        flex-basis: 100%;
+    }
+
+    .avvance-logo-inline {
+        height: 0.875rem;
+    }
+
+    .woocommerce .avvance-logo-inline,
+    .woocommerce-page .avvance-logo-inline {
+        height: 0.875rem;
     }
 }
 
@@ -1000,9 +1299,9 @@ li.product .avvance-category-widget .avvance-price-message {
 
 .avvance-loading-spinner {
     display: inline-block;
-    width: 14px;
-    height: 14px;
-    border: 2px solid #ccc;
+    width: 0.875rem;
+    height: 0.875rem;
+    border: 0.125rem solid #ccc;
     border-top-color: #0073aa;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
@@ -1012,4 +1311,8 @@ li.product .avvance-category-widget .avvance-price-message {
     to {
         transform: rotate(360deg);
     }
+}
+
+.avvance-carousel-title .avvance-carousel-nav img{
+    max-width: none !important;
 }

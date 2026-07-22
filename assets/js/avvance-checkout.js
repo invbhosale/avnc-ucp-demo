@@ -8,6 +8,10 @@
     // This file is reserved for future enhancements
     
     $(document).ready(function() {
+        // Log that Avvance is loaded
+        if (window.console && window.console.log) {
+            console.log('Avvance for WooCommerce loaded');
+        }
 
 		 // Change place order button text when Avvance is selected
     $('input[name="payment_method"]').on('change', function() {
