@@ -122,8 +122,9 @@ final class Avvance_For_WooCommerce {
 		// Initialize order handler.
 		Avvance_Order_Handler::init();
 
-		// Initialize widget handler.
-		Avvance_Widget_Handler::init();
+		// Deferred to woocommerce_init: init() calls avvance_get_gateway(), which forces WC_Payment_Gateways
+		// to construct every registered gateway (including third-party ones) if triggered during plugins_loaded.
+		add_action( 'woocommerce_init', array( 'Avvance_Widget_Handler', 'init' ) );
 
 		// Initialize pre-approval handler (registers AJAX endpoints, DB table creation handled on activation).
 		Avvance_PreApproval_Handler::init();
