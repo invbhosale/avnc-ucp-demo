@@ -23,6 +23,7 @@
     // Variables for pre-approval flow
     var preapprovalWindow = null;
     var statusCheckInterval = null;
+    var PREAPPROVAL_OFFERS_PAGE_SIZE = 3;
 
     // Memoized pre-approval status response, shared across all widget instances
     // on a page load so multiple widgets don't each fire an identical AJAX call.
@@ -174,10 +175,16 @@
             : '';
 
         var html = '';
+        var $modal = $container.closest('.avvance-modal');
+        var isPreapprovalModal = $modal.length && $modal.attr('id') === 'avvance-modal-c';
         var limit = parseInt(initialLimit, 10);
+
+        // Modal-c should always start paginated; if a call path omits the limit,
+        // fall back to the configured preapproval page size instead of rendering all.
         if (isNaN(limit) || limit < 0) {
-            limit = 0;
+            limit = isPreapprovalModal ? PREAPPROVAL_OFFERS_PAGE_SIZE : 0;
         }
+
         var displayCount = (limit > 0) ? Math.min(limit, offers.length) : offers.length;
         for (var i = 0; i < displayCount; i++) {
             var offer = offers[i];
@@ -281,13 +288,17 @@
 
         $container.html(html);
 
-        var $modal = $container.closest('.avvance-modal');
         if ($modal.length) {
             $modal.data('all-offers', offers);
             $modal.data('original-amount', originalAmount);
+            $modal.data('display-count', displayCount);
 
-            var hasMoreOffers = offers.length> 3 && offers.length > displayCount;
-            $modal.find('.avvance-see-more-btn').toggle(hasMoreOffers);
+            var hasMoreOffers = offers.length > displayCount;
+            if (hasMoreOffers) {
+                $modal.find('.avvance-see-more-btn').show();
+            } else {
+                $modal.find('.avvance-see-more-btn').hide();
+            }
         }
     }
 
@@ -476,11 +487,11 @@
 
     /**
      * Load the actual offers a pre-approved consumer prequalified for
-     * (modal-c only) and render all of them, with no card cap.
+     * (modal-c only) and render with optional card cap for progressive reveal.
      * Falls back to the generic price-breakdown offers if the
      * pre-approval-specific endpoint errors for any reason.
      */
-    function loadPreapprovalOffers(amount, $container, maxPreapprovedAmount) {
+    function loadPreapprovalOffers(amount, $container, maxPreapprovedAmount, initialLimit) {
         var $calculatorSection = $container.closest('.avvance-modal-body-calculator, .avvance-modal-body');
         var $calculatorRow = $calculatorSection.find('.avvance-calculator-row');
         // Validate amount
@@ -510,15 +521,15 @@
             success: function(response) {
                 if (response.success) {
                     var offers = parseOffers(response.data);
-                    renderLoanCards(offers, $container, amount, 0);
+                    renderLoanCards(offers, $container, amount, initialLimit);
                 } else {
                     // Fall back to generic price-breakdown offers rather than an empty modal.
-                    loadModalPriceBreakdown(amount, $container, maxPreapprovedAmount, 0);
+                    loadModalPriceBreakdown(amount, $container, maxPreapprovedAmount, initialLimit);
                 }
             },
             error: function() {
                 // Fall back to generic price-breakdown offers rather than an empty modal.
-                loadModalPriceBreakdown(amount, $container, maxPreapprovedAmount, 0);
+                loadModalPriceBreakdown(amount, $container, maxPreapprovedAmount, initialLimit);
             }
         });
     }
@@ -664,7 +675,7 @@
                 }
                 if (cardsId) {
                     // Fetch the offers this consumer actually prequalified for.
-                    loadPreapprovalOffers(maxAmount, $('#' + cardsId), maxAmount);
+                    loadPreapprovalOffers(maxAmount, $('#' + cardsId), maxAmount, PREAPPROVAL_OFFERS_PAGE_SIZE);
                 }
             }
         } else {
@@ -952,6 +963,30 @@
     /**
      * Initialize widgets on page
      */
+    /**
+     * Reposition category widgets in WooCommerce Blocks product cards.
+     *
+     * In the classic WooCommerce loop the PHP hook woocommerce_after_shop_loop_item_title
+     * fires after the price template — correct position, no JS needed.
+     *
+     * In WooCommerce Blocks (Product Collection block) the same hook fires after the
+     * title block but before the price block, so the widget ends up above the price.
+     * There is no PHP hook between the price block and the button block.
+     *
+     * This function detects the Blocks context via data-block-name (absent in classic
+     * loop) and moves each widget to immediately after the price block.
+     */
+    function repositionBlocksCategoryWidgets() {
+        $('.avvance-category-widget').each(function() {
+            var $widget = $(this);
+            // data-block-name is only present in WooCommerce Blocks rendered markup.
+            var $priceBlock = $widget.closest('li').find('[data-block-name="woocommerce/product-price"]');
+            if ($priceBlock.length) {
+                $priceBlock.after($widget);
+            }
+        });
+    }
+
     function initWidgets() {
         var $widgets = $(AVVANCE_WIDGET_SELECTOR);
 
@@ -960,13 +995,36 @@
         }
 
         if ($widgets.length === 0 && isCartPage) {
-            setTimeout(injectWidgetForBlocks, 2000);
+            retryInjectWidgetForBlocks();
             return;
         }
 
         $widgets.each(function() {
             loadPriceBreakdown($(this));
         });
+    }
+
+    /**
+     * Retry cart widget injection up to 3 times with 2s delay.
+     * Stops early if the cart widget is found.
+     */
+    function retryInjectWidgetForBlocks() {
+        var attemptsLeft = 3;
+
+        function attempt() {
+            if ($('.avvance-cart-widget').length) {
+                return;
+            }
+
+            injectWidgetForBlocks();
+
+            attemptsLeft--;
+            if (attemptsLeft > 0 && !$('.avvance-cart-widget').length) {
+                setTimeout(attempt, 2000);
+            }
+        }
+
+        setTimeout(attempt, 2000);
     }
 
     /**
@@ -1291,6 +1349,7 @@
      */
     $(document).ready(function() {
         initWidgets();
+        repositionBlocksCategoryWidgets(); // Fix widget position inside WooCommerce Blocks product cards.
 
         if (isProductPage) {
             initVariableProductSupport();
@@ -1371,7 +1430,7 @@
             var $modal = $row.closest('.avvance-modal');
             if ($modal.attr('id') === 'avvance-modal-c') {
                 var maxPreapprovedAmount = parseFloat($modal.attr('data-max-amount')) || null;
-                loadPreapprovalOffers(amount, $cards, maxPreapprovedAmount);
+                loadPreapprovalOffers(amount, $cards, maxPreapprovedAmount, PREAPPROVAL_OFFERS_PAGE_SIZE);
             } else {
                 loadModalPriceBreakdown(amount, $cards, null, 0);
             }
@@ -1448,7 +1507,13 @@
                 return;
             }
 
-            renderLoanCards(offers, $cards, originalAmount, 0);
+            var currentDisplayCount = parseInt($modal.data('display-count'), 10);
+            if (isNaN(currentDisplayCount) || currentDisplayCount < 0) {
+                currentDisplayCount = 0;
+            }
+
+            var nextDisplayCount = currentDisplayCount + PREAPPROVAL_OFFERS_PAGE_SIZE;
+            renderLoanCards(offers, $cards, originalAmount, nextDisplayCount);
         });
 
         // Handle "See if you qualify" button

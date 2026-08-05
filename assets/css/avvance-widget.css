@@ -65,13 +65,14 @@
 .avvance-checkout-widget,
 .avvance-category-widget,
 .avvance-new-in-store-widget {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
     font-size: 0.875rem;
-    line-height: 1.5;
+    font-weight: 400;
+    line-height: 1.5rem;
     margin: 0.625rem 0;
 }
 
 .avvance-widget-content {
+    font-family: "Circular-USB";
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -98,6 +99,12 @@
     flex: 0 1 auto;
 }
 
+.avvance-rate-amount-with strong,
+.avvance-rate-text strong,
+.avvance-rate-amount {
+    font-weight: 700;
+}
+
 .avvance-rate-amount-with {
     display: inline-block;
     white-space: nowrap;
@@ -113,12 +120,11 @@
    ======================================== */
 
 .avvance-logo-inline {
-    height: 1.125rem;
-    width: auto;
+    height: 1.2rem;
     display: inline-block;
     vertical-align: middle;
     margin: 0 0.1875rem;
-    max-width: 7.5rem;
+    min-width: 9.5625rem;
 }
 
 .avvance-widget-logo {
@@ -133,10 +139,11 @@
     margin: 0.1875rem 0 0 !important;
 }
 
-/* Local fix: beat WooCommerce global .woocommerce img { height:auto; } */
+/* Local fix: beat WooCommerce global .woocommerce img { height:auto, width: 100% } */
 .woocommerce .avvance-logo-inline,
 .woocommerce-page .avvance-logo-inline {
-    height: 1.125rem;
+    height: 1.2rem;
+    min-width: 9.5625rem;
 }
 
 .avvance-logo-small {
@@ -193,7 +200,7 @@
 .avvance-cta-link {
     color: #235AE4;
     text-decoration: underline;
-    font-weight: 500;
+    font-weight: 400;
     cursor: pointer;
     transition: color 0.2s;
     white-space: nowrap;
@@ -210,19 +217,19 @@
 
 /* 0% APR badge — same color as surrounding text so only the weight stands out */
 .avvance-zero-apr {
-    color: #333;
+    color: var(--utility-vivid, #484861);
     font-weight: 700;
 }
 
 /* Pre-approved badge — same color as surrounding text */
 .avvance-preapproved-badge {
-    color: #333;
+    color: var(--utility-vivid, #484861);
     font-weight: 700;
     flex: 0 0 auto;
 }
 
 .avvance-preapproved-state {
-    color: #333;
+    color: var(--utility-vivid, #484861);
 }
 
 /* See your details link */
@@ -230,7 +237,7 @@
     color: #0073aa;
     text-decoration: underline;
     cursor: pointer;
-    font-weight: 500;
+    font-weight: 400;
     transition: color 0.2s;
     white-space: nowrap;
 }
@@ -287,6 +294,65 @@ li.product .avvance-category-widget .avvance-widget-logo {
 }
 
 /* ========================================
+   BUTTON Styles (SHARED)
+   Reuse common button typography and layout across:
+   - Gallery/category ->add to cart
+   - PDP -> add to cart
+   - Cart ->proceed to checkout
+   - Checkout -> place order/ pay with US bank Avvance
+   ======================================== */
+
+a.ajax_add_to_cart,
+button.ajax_add_to_cart,
+.single_add_to_cart_button,
+.wc-block-cart__submit-button,
+.wc-block-components-checkout-place-order-button {
+    height: 2.625rem !important;
+    min-height: 2.625rem !important;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+    color: #ffffff !important;
+    font-family: "Circular-USB";
+    font-weight: 400;
+    font-size: 1rem !important;
+    line-height: 1.6rem;
+    text-align: center;
+    text-decoration: none !important;
+}
+
+/* ========================================
+   CATEGORY/GALLERY ADD TO CART BUTTON
+   (Classic WooCommerce + WooCommerce Blocks)
+   ======================================== */
+
+a.ajax_add_to_cart,
+button.ajax_add_to_cart {
+    width: auto !important;
+    min-width: 7.3125rem;
+    border: 0.0625rem solid #7A7A95 !important;
+    background: #7A7A95 !important;
+}
+
+:is(a.ajax_add_to_cart, button.ajax_add_to_cart):is(:hover, :focus) {
+    background: #606078 !important;
+}
+
+/* ========================================
+   PDP ADD TO CART BUTTON
+   (Classic WooCommerce + WooCommerce Blocks)
+   ======================================== */
+
+.single_add_to_cart_button {
+    width: 7.3125rem;
+    border: 0.0625rem solid #003CC8 !important;
+    background: #003CC8 !important;
+}
+
+.single_add_to_cart_button:is(:hover, :focus) {
+    background: #235AE4 !important;
+}
+
+/* ========================================
    CHECKOUT BANNER
    ======================================== */
 
@@ -297,7 +363,7 @@ li.product .avvance-category-widget .avvance-widget-logo {
     padding: 0.75rem 1rem;
     margin-bottom: 1rem;
     font-size: 0.875rem;
-    line-height: 1.5;
+    line-height: 1.5rem;
 }
 
 .avvance-checkout-preapproved {
@@ -347,7 +413,7 @@ li.product .avvance-category-widget .avvance-widget-logo {
 }
 
 .avvance-cart-widget {
-    background: #f8f9fa;
+    background: #F1F5FB;
     padding: 0.9375rem;
     border: 0.0625rem solid #e0e0e0;
     border-radius: 0.375rem;
@@ -355,6 +421,39 @@ li.product .avvance-category-widget .avvance-widget-logo {
 
 .avvance-cart-widget .avvance-price-message {
     font-size: 0.9375rem;
+}
+
+/* ========================================
+   CART PAGE PROCEED TO CHECKOUT BUTTON
+   ======================================== */
+
+/* WooCommerce Blocks may render this control as either <a> or <button>.
+   Remove theme link underlines in both cases while keeping the button look. */
+.wc-block-cart__submit-button {
+    width: 11.625rem !important;
+    border: 0.0625rem solid #003CC8 !important;
+    background: #003CC8 !important;
+}
+
+.wc-block-cart__submit-button:is(:hover, :focus) {
+    background: #235AE4 !important;
+}
+
+/* ========================================
+   CHECKOUT PAGE PLACE ORDER BUTTON
+   (WooCommerce Blocks)
+   ======================================== */
+
+.wc-block-components-checkout-place-order-button {
+    /* Figma dimensions treated as a minimum so long labels can expand cleanly */
+    width: auto !important;
+    min-width: 10.9375rem;
+    border: 0.0625rem solid #003CC8 !important;
+    background: #003CC8 !important;
+}
+
+.wc-block-components-checkout-place-order-button:is(:hover, :focus) {
+    background: #235AE4 !important;
 }
 
 /* ========================================
@@ -380,7 +479,7 @@ li.product .avvance-category-widget .avvance-widget-logo {
 .avvance-checkout-tagline {
     font-size: 1rem;
     margin: 0 0 0.9375rem 0;
-    color: #333;
+    color: var(--utility-vivid, #484861);
 }
 
 .avvance-checkout-tagline strong {
@@ -455,7 +554,7 @@ li.product .avvance-category-widget .avvance-widget-logo {
 
 /* Light Theme (Default) */
 .avvance-widget-light {
-    color: #333;
+    color: var(--utility-vivid, #484861);
 }
 
 .avvance-widget-light .avvance-prequal-link {
@@ -463,13 +562,13 @@ li.product .avvance-category-widget .avvance-widget-logo {
 }
 
 .avvance-widget-light .avvance-price-message {
-    color: #333;
+    color: var(--utility-vivid, #484861);
 }
 
 /* Dark Theme */
 .avvance-widget-dark {
     color: #fff;
-    background: #2c3e50;
+    background: var(--label-muted, rgba(99, 99, 127, 1));
     padding: 0.9375rem;
     border-radius: 0.375rem;
 }
@@ -603,6 +702,15 @@ li.product .avvance-category-widget .avvance-widget-logo {
     font-family: Circular-USB, sans-serif;
 }
 
+.avvance-see-more-btn:hover {
+    background-color: transparent;
+    border-color: transparent;
+    color:var(--standard-mid, #003CC8);
+}
+
+.avvance-see-more-btn:focus {
+    outline-color: transparent;
+}
 
 /* Modal Header */
 .avvance-modal-header {
@@ -1132,6 +1240,49 @@ li.product .avvance-category-widget .avvance-widget-logo {
     text-decoration: underline;
 }
 
+/* WooCommerce Blocks checkout payment method label */
+.avvance-blocks-label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.1875rem 0.375rem;
+    width: 100%;
+    font-family: "Circular-USB";
+    font-size: 0.875rem;
+    font-weight: 400;
+    line-height: 1.5rem;
+}
+
+.avvance-blocks-label-text {
+    display: inline;
+    font-weight: 700;
+}
+
+.avvance-blocks-label-icon {
+    height: 1.2rem !important;
+    margin: 0.1875rem 0 0 !important;
+    min-width: 9.5625rem;
+}
+
+.avvance-blocks-label-link {
+    text-decoration: underline;
+}
+
+.avvance-widget-light.avvance-blocks-label .avvance-blocks-label-link {
+    color: var(--global-status-info-mid, #235AE4);
+}
+
+.avvance-widget-light.avvance-blocks-label .avvance-blocks-label-link:hover {
+    color: #1a47b8;
+    text-decoration: none;
+}
+
+.avvance-widget-dark.avvance-blocks-label .avvance-blocks-label-link:hover {
+    color: #fff;
+    opacity: 0.85;
+    text-decoration: none;
+}
+
 /* Success Banner (Modal C) */
 .avvance-success-banner {
     background: #fff;
@@ -1210,6 +1361,36 @@ li.product .avvance-category-widget .avvance-widget-logo {
     .avvance-page-level-error {
         align-items: flex-start;
     }
+
+    .avvance-product-widget,
+    .avvance-cart-widget,
+    .avvance-checkout-widget,
+    .avvance-category-widget,
+    .avvance-checkout-banner,
+    .avvance-blocks-label,
+    .avvance-new-in-store-widget {
+        font-size: 0.75rem;
+        line-height: 1.275rem;
+    }
+
+    .avvance-logo-inline {
+        height: 0.95rem;
+        max-width: 7.65rem;
+    }
+
+    /* Local fix: beat WooCommerce global .woocommerce img { height:auto, width: 100% } */
+    .woocommerce .avvance-logo-inline,
+    .woocommerce-page .avvance-logo-inline {
+        height: 0.95rem;
+        max-width: 7.65rem;
+        min-width: unset;
+    }
+
+    .avvance-blocks-label-icon {
+        height: 0.95rem !important;
+        max-width: 7.65rem !important;
+        min-width: unset;
+    }
 }
 
 /* ========================================
@@ -1217,24 +1398,6 @@ li.product .avvance-category-widget .avvance-widget-logo {
    ======================================== */
 
 @media (max-width: 48rem) {
-    .avvance-product-widget,
-    .avvance-cart-widget {
-        font-size: 0.8125rem;
-    }
-
-    .avvance-category-widget,
-    .avvance-new-in-store-widget {
-        font-size: 0.6875rem;
-    }
-
-    .avvance-logo-inline {
-        height: 1rem;
-    }
-
-    .woocommerce .avvance-logo-inline,
-    .woocommerce-page .avvance-logo-inline {
-        height: 1rem;
-    }
 
     .avvance-logo-small {
         height: 0.875rem;
@@ -1278,7 +1441,7 @@ li.product .avvance-category-widget .avvance-widget-logo {
     }
 
     .avvance-rate-text {
-        line-height: 1.6;
+        line-height: 1.275rem;
     }
 
     .avvance-modal-logo-img {
@@ -1298,15 +1461,6 @@ li.product .avvance-category-widget .avvance-widget-logo {
     .avvance-cta-link,
     .avvance-see-details-link {
         flex-basis: 100%;
-    }
-
-    .avvance-logo-inline {
-        height: 0.875rem;
-    }
-
-    .woocommerce .avvance-logo-inline,
-    .woocommerce-page .avvance-logo-inline {
-        height: 0.875rem;
     }
 }
 

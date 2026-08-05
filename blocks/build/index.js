@@ -10,31 +10,24 @@ const themeClass = (theme === 'dark') ? 'avvance-widget-dark' : 'avvance-widget-
     const iconSrc = (theme === 'dark') ? iconDark : iconLight;
 
 const label = createElement('span', {
-    className: themeClass,
-    style: { 
-        display: 'flex', 
-        flexWrap: 'wrap',
-        alignItems: 'center', 
-        gap: '8px',
-        width: '100%'
-    }
+    className: themeClass + ' avvance-blocks-label'
 }, [
-    'Pay over time with ',
-        iconSrc && createElement('img', {
+    createElement('span', {
+        key: 'label-text',
+        className: 'avvance-blocks-label-text'
+    }, 'Pay over time with '),
+    iconSrc && createElement('img', {
         key: 'icon',
         src: iconSrc,
         alt: 'Avvance',
-        style: { height: '24px', margin: '0' }
+        className: 'avvance-blocks-label-icon'
     }),
     createElement('a', {
         key: 'learn-more',
         href: 'https://www.usbank.com/avvance-installment-loans.html',
         target: '_blank',
         rel: 'noopener noreferrer',
-        style: { 
-            fontSize: '0.9em',
-            textDecoration: 'underline'
-        },
+        className: 'avvance-blocks-label-link',
         onClick: (e) => e.stopPropagation()
     }, 'Learn more')
 ]);

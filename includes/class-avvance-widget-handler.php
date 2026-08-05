@@ -74,7 +74,10 @@ class Avvance_Widget_Handler {
 
 		// Category/shop page widget.
 		if ( self::$settings['category_enabled'] ) {
-			add_action( 'woocommerce_after_shop_loop_item', array( __CLASS__, 'render_category_widget' ), 10 );
+			// Priority 15 on woocommerce_after_shop_loop_item_title places the widget after
+			// the price (priority 10) and before the add-to-cart button, which lives on the
+			// next hook (woocommerce_after_shop_loop_item at priority 10).
+			add_action( 'woocommerce_after_shop_loop_item_title', array( __CLASS__, 'render_category_widget' ), 15 );
 		}
 
 		// Product page widget (based on position setting).
