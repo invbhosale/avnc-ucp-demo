@@ -37,14 +37,14 @@ class Avvance_API_Client extends Avvance_API_Base {
 		$partner_session_id = wp_generate_uuid4();
 
 		$payload = array(
-			'partnerSessionId'      => $partner_session_id,
-			'clientApplication'     => 'WOOCOMMERCE',
-			'merchantId'            => $this->merchant_id,
-			'invoiceAmount'         => strval( $order->get_total() ),
-			'invoiceId'             => strval( $order->get_id() ),
-			'merchantTransactionId' => $order->get_order_key(),
-			'purchaseDescription'   => sprintf( 'Order #%s from %s', $order->get_order_number(), get_bloginfo( 'name' ) ),
-			'consumer'              => array(
+			'partnerSessionId'        => $partner_session_id,
+			'clientApplication'       => 'WOOCOMMERCE',
+			'merchantId'              => $this->merchant_id,
+			'invoiceAmount'           => strval( $order->get_total() ),
+			'invoiceId'               => strval( $order->get_id() ),
+			'merchantTransactionId'   => $order->get_order_key(),
+			'purchaseDescription'     => sprintf( 'Order #%s from %s', $order->get_order_number(), get_bloginfo( 'name' ) ),
+			'consumer'                => array(
 				'email'           => $order->get_billing_email(),
 				'firstName'       => $order->get_billing_first_name(),
 				'lastName'        => $order->get_billing_last_name(),
@@ -67,8 +67,9 @@ class Avvance_API_Client extends Avvance_API_Base {
 				),
 				'IPAddress'       => $order->get_customer_ip_address(),
 			),
-			'partnerReturnErrorUrl' => wc_get_cart_url(),
-			'metadata'              => array(
+			'partnerReturnSuccessUrl' => $order->get_checkout_order_received_url(),
+			'partnerReturnErrorUrl'   => $order->get_checkout_payment_url(),
+			'metadata'                => array(
 				array(
 					'key'   => 'platform',
 					'value' => 'WooCommerce',
