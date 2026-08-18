@@ -34,13 +34,8 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 		// Clean title for orders and admin (what gets saved to order meta).
 		$this->title = 'U.S. Bank Avvance';
 
-		// Description shown on checkout.
-		$this->description = "To view payment options that you may qualify for, select 'Pay with U.S. Bank Avvance' to leave this site and enter the U.S. Bank Avvance loan application in a new window. Qualification for payment options are subject to application approval.\n\nImportant: After completing your application, please return to this window to see your order confirmation. Keep this window open during your application.";
-
-		// Filter to show marketing message on checkout page only.
-		add_filter( 'woocommerce_gateway_title', array( $this, 'customize_checkout_title' ), 10, 2 );
-				// Set icon.
-				$this->icon = AVVANCE_PLUGIN_URL . 'assets/images/avvance-icon.svg';
+		// No description shown on checkout — the icon (see get_icon() below) carries the full message.
+		$this->description = '';
 
 		// Hooks.
 		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
@@ -275,26 +270,16 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 	}
 
 	/**
-	 * Customize the gateway title for checkout page display.
-	 * Shows marketing message on checkout, clean title everywhere else (orders, admin, emails).
+	 * Gateway icon — always "Pay over time with <logo>", the single consistent
+	 * display used everywhere WooCommerce renders the gateway's icon (checkout,
+	 * order-pay, etc.). The title itself ($this->title) stays plain "U.S. Bank
+	 * Avvance" for orders/admin/emails.
 	 *
-	 * @param string $title      Gateway title.
-	 * @param string $gateway_id Gateway ID.
 	 * @return string
 	 */
-	public function customize_checkout_title( $title, $gateway_id ) {
-		// Only modify our gateway's title.
-		if ( $gateway_id !== $this->id ) {
-			return $title;
-		}
-
-		// Show marketing message on checkout and order-pay pages (frontend), not order-received.
-		if ( is_checkout() && ! is_wc_endpoint_url( 'order-received' ) ) {
-			return 'Pay over time with U.S. Bank Avvance <a href="https://www.usbank.com/avvance-installment-loans.html" target="_blank" rel="noopener noreferrer" style="font-size: 0.9em;">Learn more</a>';
-		}
-
-		// Return clean title for orders, admin, emails, thank you page, etc.
-		return $title;
+	public function get_icon() {
+		$icon = 'Pay over time with <img src="' . esc_url( AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg' ) . '" alt="U.S. Bank Avvance" class="avvance-logo-inline">';
+		return apply_filters( 'woocommerce_gateway_icon', $icon, $this->id );
 	}
 
 	/**

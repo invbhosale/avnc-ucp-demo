@@ -1,6 +1,6 @@
 (function() {
     const { registerPaymentMethod } = window.wc.wcBlocksRegistry;
-    const { createElement } = window.wp.element;
+    const { createElement, Fragment } = window.wp.element;
     const { __ } = window.wp.i18n;
     
     const iconSrc = window.avvanceBlocksData?.icon || '';
@@ -14,31 +14,22 @@ const label = createElement('span', {
         key: 'label-text',
         className: 'avvance-blocks-label-text'
     }, 'Pay over time with '),
-    iconSrc && createElement('img', {
-        key: 'icon',
-        src: iconSrc,
-        alt: 'Avvance',
-        className: 'avvance-blocks-label-icon'
-    }),
-    createElement('a', {
-        key: 'learn-more',
-        href: 'https://www.usbank.com/avvance-installment-loans.html',
-        target: '_blank',
-        rel: 'noopener noreferrer',
-        className: 'avvance-blocks-label-link',
-        onClick: (e) => e.stopPropagation()
-    }, 'Learn more')
+    iconSrc
+        ? createElement('img', {
+            key: 'icon',
+            src: iconSrc,
+            alt: 'U.S. Bank Avvance',
+            className: 'avvance-blocks-label-icon'
+        })
+        : createElement('span', {
+            key: 'icon-fallback',
+            className: 'avvance-blocks-label-text'
+        }, 'U.S. Bank Avvance')
 ]);
 
-const content = createElement('div', {
-    className: 'avvance-blocks-description',
-    style: { 
-        fontSize: '0.9em', 
-        lineHeight: '1.5',
-        whiteSpace: 'pre-wrap',
-        padding: '10px 0'
-    }
-}, window.avvanceBlocksData?.description || '');
+// WC Blocks calls React.cloneElement() on content/edit, so this must be a
+// real (if empty) element — null/undefined aren't valid cloneElement targets.
+const content = createElement(Fragment, {});
 
 registerPaymentMethod({
     name: 'avvance',
