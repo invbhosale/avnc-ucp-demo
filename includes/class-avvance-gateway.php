@@ -391,6 +391,12 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 		$order->update_meta_data( '_avvance_partner_session_id', $response['partnerSessionId'] );
 		$order->update_meta_data( '_avvance_consumer_url', $response['consumerOnboardingURL'] );
 		$order->update_meta_data( '_avvance_url_created_at', time() );
+
+		// Store the browser fingerprint so a later invoice-paid webhook can clear this visitor's pre-approval.
+		if ( isset( $_COOKIE[ Avvance_PreApproval_Handler::COOKIE_NAME ] ) ) {
+			$browser_fingerprint = sanitize_text_field( wp_unslash( $_COOKIE[ Avvance_PreApproval_Handler::COOKIE_NAME ] ) );
+			$order->update_meta_data( '_avvance_browser_fingerprint', $browser_fingerprint );
+		}
 		$order->add_order_note(
 			/* translators: %s: Avvance application GUID */
 			sprintf( __( 'Avvance application created. Application ID: %s', 'avvance-for-woocommerce' ), $response['applicationGUID'] )

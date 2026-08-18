@@ -336,6 +336,45 @@ class Avvance_PreApproval_Handler {
 	}
 
 	/**
+	 * Mark a browser's active pre-approval as booked.
+	 *
+	 * Avvance pre-approvals are single-use and are expired by Avvance once a
+	 * transaction completes, so the local record is marked BOOKED (rather than
+	 * deleted) to keep it out of "you're pre-approved" checks while preserving
+	 * the row for history/debugging.
+	 *
+	 * @param string $fingerprint Browser fingerprint cookie value.
+	 */
+	public static function mark_preapproval_booked( $fingerprint ) {
+		if ( empty( $fingerprint ) ) {
+			return;
+		}
+
+		global $wpdb;
+		$table_name = esc_sql( $wpdb->prefix . 'avvance_preapprovals' );
+
+		$result = $wpdb->update( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			$table_name,
+			array(
+				'status'     => 'BOOKED',
+				'updated_at' => current_time( 'mysql' ),
+			),
+			array(
+				'browser_fingerprint' => sanitize_text_field( $fingerprint ),
+				'status'              => 'PRE_APPROVED',
+			),
+			array( '%s', '%s' ),
+			array( '%s', '%s' )
+		);
+
+		if ( false === $result ) {
+			avvance_log( 'Failed to mark pre-approval BOOKED for fingerprint: ' . $fingerprint, 'error' );
+		} elseif ( $result > 0 ) {
+			avvance_log( 'Pre-approval marked BOOKED for fingerprint: ' . $fingerprint );
+		}
+	}
+
+	/**
 	 * Get latest pre-approval for browser fingerprint.
 	 *
 	 * @param string $fingerprint Browser fingerprint cookie value.

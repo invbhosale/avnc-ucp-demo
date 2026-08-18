@@ -77,17 +77,11 @@ class Avvance_Webhooks {
 		}
 
 		$payload = json_decode( $raw_payload, true );
-		avvance_log( 'Decoded payload: ' . print_r( $payload, true ) );
 
 		if ( json_last_error() !== JSON_ERROR_NONE ) {
 			avvance_log( 'ERROR: Invalid JSON payload: ' . json_last_error_msg(), 'error' );
 			wp_send_json_error( array( 'message' => 'Invalid JSON' ), 400 );
 		}
-
-		// TEMPORARY: Log raw webhook JSON for debugging (REMOVE BEFORE PRODUCTION).
-		avvance_log( '=== RAW WEBHOOK JSON ===' );
-		avvance_log( $raw_payload );
-		avvance_log( '=== END RAW WEBHOOK JSON ===' );
 
 		$event_type = $payload['eventType'] ?? 'unknown';
 		avvance_log( 'Webhook event type: ' . $event_type );
@@ -450,6 +444,13 @@ class Avvance_Webhooks {
 				}
 
 				avvance_log( 'Order #' . $order_id . ' marked as paid - loan-status confirmed AUTHORIZED' );
+
+				// This transaction consumed the visitor's pre-approval — Avvance expires it after one use.
+				$browser_fingerprint = $order->get_meta( '_avvance_browser_fingerprint' );
+				if ( $browser_fingerprint ) {
+					Avvance_PreApproval_Handler::mark_preapproval_booked( $browser_fingerprint );
+				}
+
 				break;
 
 			case 'INVOICE_PAYMENT_TRANSACTION_SETTLED':
