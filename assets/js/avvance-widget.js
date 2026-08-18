@@ -29,6 +29,27 @@
     // on a page load so multiple widgets don't each fire an identical AJAX call.
     var preapprovalStatusPromise = null;
 
+    /**
+     * Open a popup window centered over the current browser window (not just
+     * the screen), matching the convention used by PayPal/Klarna-style
+     * financing popups instead of the browser's default top-left placement.
+     */
+    function openCenteredPopup(url, name, width, height) {
+        var screenLeft = window.screenLeft !== undefined ? window.screenLeft : window.screenX;
+        var screenTop = window.screenTop !== undefined ? window.screenTop : window.screenY;
+        var outerWidth = window.outerWidth || document.documentElement.clientWidth || screen.width;
+        var outerHeight = window.outerHeight || document.documentElement.clientHeight || screen.height;
+
+        var left = screenLeft + Math.max(0, (outerWidth - width) / 2);
+        var top = screenTop + Math.max(0, (outerHeight - height) / 2);
+
+        return window.open(
+            url,
+            name,
+            'toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=' + width + ',height=' + height + ',left=' + left + ',top=' + top
+        );
+    }
+
     function getLightLogoUrl() {
         return avvanceWidget.logoUrlLight || avvanceWidget.logoUrl || '';
     }
@@ -900,10 +921,15 @@
                 nonce: avvanceWidget.nonce
             },
             success: function(response) {
-                var offers = [];
-                if (response.success) {
-                    offers = parseOffers(response.data);
+                if (!response.success) {
+                    // Price breakdown API returned an error — hide the widget entirely rather than
+                    // showing degraded fallback text. The failure is already logged server-side.
+                    console.error('Avvance: price breakdown API error, hiding widget', response && response.data);
+                    $widget.hide();
+                    return;
                 }
+
+                var offers = parseOffers(response.data);
 
                 if (offers.length > 0) {
                     $widget.data('offers', offers);
@@ -939,16 +965,11 @@
                     );
                 });
             },
-            error: function() {
-                var showLogo = avvanceWidget.showLogo !== false;
-                var logoUrl = getLogoUrlForElement($widget);
-                $widget.find('.avvance-widget-content').html(
-                    '<div class="avvance-price-message">Pay over time with ' +
-                    (showLogo
-                        ? '<img src="' + logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline">'
-                        : '<span class="avvance-brand">U.S. Bank Avvance</span>') +
-                    '</div>'
-                );
+            error: function(jqXHR, textStatus) {
+                // Price breakdown API unreachable — hide the widget entirely rather than
+                // showing degraded fallback text.
+                console.error('Avvance: price breakdown request failed (' + textStatus + '), hiding widget');
+                $widget.hide();
             }
         });
     }
@@ -1564,11 +1585,7 @@
                             link_name: 'Pre-Approval Application Opened'
                         }]);
 
-                        preapprovalWindow = window.open(
-                            response.data.url,
-                            'avvance_preapproval',
-                            'toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=600,height=700'
-                        );
+                        preapprovalWindow = openCenteredPopup(response.data.url, 'avvance_preapproval', 600, 700);
 
                         if (preapprovalWindow) {
                             preapprovalWindow.focus();

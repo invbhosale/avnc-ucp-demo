@@ -614,8 +614,15 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			var maxPolls = 120; // 10 minutes at 5-second intervals
 			var lastTrackedStatus = '';
 
-			// Try to open window.
-			var avvanceWindow = window.open(<?php echo wp_json_encode( $url ); ?>, '_blank', 'toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=600,height=700');
+			// Try to open window, centered over the current browser window.
+			var avvancePopupWidth = 600, avvancePopupHeight = 700;
+			var avvanceScreenLeft = window.screenLeft !== undefined ? window.screenLeft : window.screenX;
+			var avvanceScreenTop = window.screenTop !== undefined ? window.screenTop : window.screenY;
+			var avvanceOuterWidth = window.outerWidth || document.documentElement.clientWidth || screen.width;
+			var avvanceOuterHeight = window.outerHeight || document.documentElement.clientHeight || screen.height;
+			var avvancePopupLeft = avvanceScreenLeft + Math.max(0, (avvanceOuterWidth - avvancePopupWidth) / 2);
+			var avvancePopupTop = avvanceScreenTop + Math.max(0, (avvanceOuterHeight - avvancePopupHeight) / 2);
+			var avvanceWindow = window.open(<?php echo wp_json_encode( $url ); ?>, '_blank', 'toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=' + avvancePopupWidth + ',height=' + avvancePopupHeight + ',left=' + avvancePopupLeft + ',top=' + avvancePopupTop);
 
 			$(document).trigger('avvance:track', ['avvance_application_window_open', {
 				order_id: String(orderId),
