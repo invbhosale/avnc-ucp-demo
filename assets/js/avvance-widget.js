@@ -1141,6 +1141,42 @@
     }
 
     /**
+     * Watch the cart total display for changes on the WooCommerce Cart block.
+     * The block updates cart totals via React/Store API re-renders, not the
+     * classic `updated_cart_totals` jQuery event that initCartSupport() relies
+     * on, so quantity/item changes there need a MutationObserver instead.
+     */
+    function initBlocksCartTotalWatcher() {
+        var lastKnownTotal = getCartTotalFromPage();
+        var pending = null;
+
+        function checkForTotalChange() {
+            var newTotal = getCartTotalFromPage();
+            if (newTotal === null || newTotal === lastKnownTotal) {
+                return;
+            }
+            lastKnownTotal = newTotal;
+
+            var $cartWidget = $('.avvance-cart-widget');
+            if ($cartWidget.length) {
+                updateWidget($cartWidget, newTotal);
+            } else if (newTotal >= avvanceWidget.minAmount && newTotal <= avvanceWidget.maxAmount) {
+                // Cart total became eligible (e.g. rose above the minimum) and no widget exists yet.
+                injectWidgetForBlocks();
+            }
+        }
+
+        var observer = new MutationObserver(function() {
+            // Debounce — a single quantity change can trigger several re-renders in quick succession.
+            if (pending) {
+                clearTimeout(pending);
+            }
+            pending = setTimeout(checkForTotalChange, 400);
+        });
+        observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    }
+
+    /**
      * Get cart total from page DOM
      */
     function getCartTotalFromPage() {
@@ -1391,6 +1427,7 @@
 
         if (isCartPage) {
             initCartSupport();
+            initBlocksCartTotalWatcher();
         }
 
         if (isCheckoutPage) {

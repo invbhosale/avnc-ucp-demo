@@ -51,6 +51,11 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 		// No description shown on checkout — the icon (see get_icon() below) carries the full message.
 		$this->description = '';
 
+		// Raw icon URL — read directly by contexts that don't go through get_icon()
+		// (e.g. the admin Settings → Payments gateway list). get_icon() below
+		// computes its own HTML independently and does not depend on this property.
+		$this->icon = AVVANCE_PLUGIN_URL . 'assets/images/avvance-icon.svg';
+
 		// Hooks.
 		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'validate_api_credentials' ), 20 );
@@ -383,15 +388,23 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 	}
 
 	/**
-	 * Gateway icon — always "Pay over time with <logo>", the single consistent
-	 * display used everywhere WooCommerce renders the gateway's icon (checkout,
-	 * order-pay, etc.). The title itself ($this->title) stays plain "U.S. Bank
-	 * Avvance" for orders/admin/emails.
+	 * Gateway icon.
+	 *
+	 * On the checkout/order-pay page: "Pay over time with <logo>", matching
+	 * the consistent display used across checkout. Everywhere else WooCommerce
+	 * renders the gateway's icon (notably the Settings → Payments admin list),
+	 * this returns the plain small icon instead — that admin context has no
+	 * use for the "Pay over time with" copy and expects just a square icon.
 	 *
 	 * @return string
 	 */
 	public function get_icon() {
-		$icon = 'Pay over time with <img src="' . esc_url( AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg' ) . '" alt="U.S. Bank Avvance" class="avvance-logo-inline">';
+		if ( is_checkout() && ! is_wc_endpoint_url( 'order-received' ) ) {
+			$icon = 'Pay over time with <img src="' . esc_url( AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg' ) . '" alt="U.S. Bank Avvance" class="avvance-logo-inline">';
+		} else {
+			$icon = '<img src="' . esc_url( AVVANCE_PLUGIN_URL . 'assets/images/avvance-icon.svg' ) . '" alt="U.S. Bank Avvance">';
+		}
+
 		return apply_filters( 'woocommerce_gateway_icon', $icon, $this->id );
 	}
 
