@@ -508,9 +508,16 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			var orderId = <?php echo absint( $order_id ); ?>;
 			var pollCount = 0;
 			var maxPolls = 120; // 10 minutes at 5-second intervals
+			var lastTrackedStatus = '';
 
 			// Try to open window.
-			var avvanceWindow = window.open('<?php echo esc_js( $url ); ?>', '_blank', 'toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=600,height=700');
+			var avvanceWindow = window.open(<?php echo wp_json_encode( $url ); ?>, '_blank', 'toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=yes,resizable=yes,width=600,height=700');
+
+			$(document).trigger('avvance:track', ['avvance_application_window_open', {
+				order_id: String(orderId),
+				order_total: <?php echo wp_json_encode( (float) $order->get_total() ); ?>,
+				link_name: 'Avvance Application Opened'
+			}]);
 
 			if (!avvanceWindow || avvanceWindow.closed || typeof avvanceWindow.closed === 'undefined') {
 				// Pop-up blocked.
@@ -541,6 +548,17 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 					},
 					success: function(response) {
 						if (response.success && response.data.status) {
+							var statusKey = response.data.status + '|' + (response.data.avvance_status || '');
+							if (statusKey !== lastTrackedStatus) {
+								lastTrackedStatus = statusKey;
+								$(document).trigger('avvance:track', ['avvance_application_status', {
+									order_id: String(orderId),
+									order_status: response.data.status,
+									avvance_status: response.data.avvance_status || '',
+									link_name: 'Avvance Application Status'
+								}]);
+							}
+
 							if (response.data.status === 'completed') {
 								clearInterval(statusInterval);
 								$('#avvance-status').text('<?php echo esc_js( __( 'Payment completed! Redirecting...', 'avvance-for-woocommerce' ) ); ?>');

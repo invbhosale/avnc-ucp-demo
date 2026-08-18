@@ -131,6 +131,91 @@ final class Avvance_For_WooCommerce {
 
 		// Enqueue scripts.
 		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
+
+		// Tealium analytics must load before the widget/checkout scripts that fire events.
+		add_action( 'wp_enqueue_scripts', array( $this, 'enqueue_analytics_scripts' ), 5 );
+	}
+
+	/**
+	 * Enqueue the Tealium reporting layer and its page-level data layer.
+	 */
+	public function enqueue_analytics_scripts() {
+		if ( is_admin() ) {
+			return;
+		}
+
+		wp_enqueue_script(
+			'avvance-tealium-container',
+			'https://tags.tiqcdn.com/utag/usbank/apply-cloud-usl-v2/dev/utag.js',
+			array(),
+			null, // phpcs:ignore WordPress.WP.EnqueuedResourceParameters.MissingVersion -- external CDN script; version is managed by Tealium, not this plugin.
+			true
+		);
+
+		wp_enqueue_script(
+			'avvance-tealium',
+			AVVANCE_PLUGIN_URL . 'assets/js/avvance-tealium.js',
+			array( 'avvance-tealium-container' ),
+			AVVANCE_VERSION,
+			true
+		);
+
+		wp_localize_script( 'avvance-tealium', 'avvanceTealium', $this->get_analytics_data() );
+	}
+
+	/**
+	 * Build the Tealium data layer for the current request.
+	 *
+	 * @return array
+	 */
+	private function get_analytics_data() {
+		$gateway = function_exists( 'avvance_get_gateway' ) ? avvance_get_gateway() : null;
+
+		$page_type = 'other';
+		$page_data = array();
+
+		if ( function_exists( 'is_product' ) && is_product() ) {
+			$page_type = 'product';
+			global $product;
+			$product_obj = is_object( $product ) ? $product : wc_get_product( get_the_ID() );
+			if ( $product_obj ) {
+				$page_data['product_id']    = (string) $product_obj->get_id();
+				$page_data['product_name']  = $product_obj->get_name();
+				$page_data['product_price'] = (float) $product_obj->get_price();
+				$page_data['product_sku']   = $product_obj->get_sku();
+			}
+		} elseif ( function_exists( 'is_cart' ) && is_cart() ) {
+			$page_type = 'cart';
+			if ( WC()->cart ) {
+				$page_data['cart_total']      = (float) WC()->cart->get_total( 'edit' );
+				$page_data['cart_item_count'] = WC()->cart->get_cart_contents_count();
+			}
+		} elseif ( function_exists( 'is_wc_endpoint_url' ) && is_wc_endpoint_url( 'order-received' ) ) {
+			$page_type = 'order_confirmation';
+		} elseif ( function_exists( 'is_checkout' ) && is_checkout() ) {
+			$page_type = 'checkout';
+			if ( WC()->cart ) {
+				$page_data['cart_total']      = (float) WC()->cart->get_total( 'edit' );
+				$page_data['cart_item_count'] = WC()->cart->get_cart_contents_count();
+			}
+		} elseif ( function_exists( 'is_shop' ) && ( is_shop() || is_product_category() || is_product_tag() ) ) {
+			$page_type = 'category';
+		} elseif ( is_front_page() ) {
+			$page_type = 'home';
+		}
+
+		return array(
+			'siteName'       => get_bloginfo( 'name' ),
+			'pageName'       => wp_get_document_title(),
+			'pageType'       => $page_type,
+			'pageData'       => $page_data,
+			'currency'       => function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : 'USD',
+			'environment'    => $gateway ? $gateway->get_option( 'environment' ) : '',
+			'gatewayEnabled' => $gateway && 'yes' === $gateway->get_option( 'enabled' ),
+			'debug'          => $gateway && 'yes' === $gateway->get_option( 'debug_mode' ),
+			'isLoggedIn'     => is_user_logged_in(),
+			'version'        => AVVANCE_VERSION,
+		);
 	}
 
 	/**
@@ -159,7 +244,7 @@ final class Avvance_For_WooCommerce {
 			wp_enqueue_script(
 				'avvance-checkout',
 				AVVANCE_PLUGIN_URL . 'assets/js/avvance-checkout.js',
-				array( 'jquery' ),
+				array( 'jquery', 'avvance-tealium' ),
 				AVVANCE_VERSION,
 				true
 			);

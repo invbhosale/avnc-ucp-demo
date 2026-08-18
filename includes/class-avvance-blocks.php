@@ -81,7 +81,6 @@ class Avvance_Blocks_Integration extends AbstractPaymentMethodType {
 			$theme = 'light';
 		}
 		$icon_light = AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo.svg';
-		$icon_dark  = AVVANCE_PLUGIN_URL . 'assets/images/avvance-logo-white.svg';
 
 		wp_localize_script(
 			'avvance-blocks',
@@ -89,9 +88,7 @@ class Avvance_Blocks_Integration extends AbstractPaymentMethodType {
 			array(
 				'title'       => $this->gateway->title,
 				'description' => $this->gateway->description,
-				'icon'        => ( 'dark' === $theme ) ? $icon_dark : $icon_light,
-				'iconLight'   => $icon_light,
-				'iconDark'    => $icon_dark,
+				'icon'        => $icon_light,
 				'theme'       => $theme,
 			)
 		);

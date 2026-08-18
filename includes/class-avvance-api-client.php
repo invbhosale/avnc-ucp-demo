@@ -92,6 +92,7 @@ class Avvance_API_Client extends Avvance_API_Base {
 				'headers' => array(
 					'Authorization'  => 'Bearer ' . $token,
 					'Content-Type'   => 'application/json',
+					'channel-id'     => 'ECOM',
 					'Correlation-ID' => $this->generate_correlation_id(),
 					'partner-ID'     => $this->partner_id,
 				),

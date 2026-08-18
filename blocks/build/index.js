@@ -3,11 +3,9 @@
     const { createElement } = window.wp.element;
     const { __ } = window.wp.i18n;
     
-const theme = (window.avvanceBlocksData?.theme || 'light').toLowerCase();
-const themeClass = (theme === 'dark') ? 'avvance-widget-dark' : 'avvance-widget-light';
-    const iconLight = window.avvanceBlocksData?.iconLight || window.avvanceBlocksData?.icon || '';
-    const iconDark = window.avvanceBlocksData?.iconDark || iconLight;
-    const iconSrc = (theme === 'dark') ? iconDark : iconLight;
+    const iconSrc = window.avvanceBlocksData?.icon || '';
+    const theme = (window.avvanceBlocksData?.theme || 'light').toLowerCase();
+    const themeClass = (theme === 'dark') ? 'avvance-widget-dark' : 'avvance-widget-light';
 
 const label = createElement('span', {
     className: themeClass + ' avvance-blocks-label'

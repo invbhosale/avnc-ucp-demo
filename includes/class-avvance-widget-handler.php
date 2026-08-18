@@ -198,7 +198,7 @@ class Avvance_Widget_Handler {
 		wp_enqueue_script(
 			'avvance-widget',
 			AVVANCE_PLUGIN_URL . 'assets/js/avvance-widget.js',
-			array( 'jquery' ),
+			array( 'jquery', 'avvance-tealium' ),
 			AVVANCE_VERSION,
 			true
 		);

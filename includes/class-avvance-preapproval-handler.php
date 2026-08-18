@@ -75,6 +75,10 @@ class Avvance_PreApproval_Handler {
 			wp_send_json_error( array( 'message' => 'Invalid session ID' ) );
 		}
 
+		// Page the consumer launched pre-approval from (category/product/cart/etc.) — validated to stay on this site.
+		$return_url = isset( $_POST['return_url'] ) ? esc_url_raw( wp_unslash( $_POST['return_url'] ) ) : '';
+		$return_url = $return_url ? wp_validate_redirect( $return_url, home_url( '/' ) ) : home_url( '/' );
+
 		// Get browser fingerprint.
 		$browser_fingerprint = self::get_browser_fingerprint();
 		avvance_log( 'Browser fingerprint: ' . $browser_fingerprint );
@@ -98,7 +102,7 @@ class Avvance_PreApproval_Handler {
 
 		avvance_log( 'API client created, calling create_preapproval' );
 
-		$response = $api->create_preapproval( $session_id );
+		$response = $api->create_preapproval( $session_id, $return_url );
 
 		if ( is_wp_error( $response ) ) {
 			avvance_log( 'Pre-approval creation failed: ' . $response->get_error_message(), 'error' );

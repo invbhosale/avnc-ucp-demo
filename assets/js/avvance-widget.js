@@ -685,6 +685,12 @@
             }
         }
 
+        $(document).trigger('avvance:track', ['avvance_modal_view', {
+            avvance_modal: type,
+            avvance_amount: amount || 0,
+            link_name: 'Avvance Modal View'
+        }]);
+
         $modal.fadeIn(200, function() {
             // Move focus to the modal dialog for accessibility
             var $dialog = $modal.find('.avvance-modal-dialog');
@@ -782,6 +788,13 @@
      * State 3: "You're pre-approved! As low as $XXX.XX/month with <logo> See your details"
      */
     function updateCTAToPreapproved(maxAmount, expiryDate) {
+        $(document).trigger('avvance:track', ['avvance_preapproval_approved', {
+            avvance_preapproval_status: 'PRE_APPROVED',
+            avvance_max_amount: parseFloat(maxAmount) || 0,
+            avvance_offer_expiry: expiryDate || '',
+            link_name: 'Pre-Approval Approved'
+        }]);
+
         // Update inline widgets
         $(AVVANCE_WIDGET_SELECTOR).each(function() {
             var $widget = $(this);
@@ -1537,13 +1550,19 @@
                 data: {
                     action: 'avvance_create_preapproval',
                     nonce: avvanceWidget.nonce,
-                    session_id: sessionId
+                    session_id: sessionId,
+                    return_url: window.location.href
                 },
                 success: function(response) {
                     $button.removeClass('loading').prop('disabled', false);
 
                     if (response.success && response.data && response.data.url) {
                         closeModal();
+
+                        $(document).trigger('avvance:track', ['avvance_preapproval_window_open', {
+                            avvance_session_id: sessionId,
+                            link_name: 'Pre-Approval Application Opened'
+                        }]);
 
                         preapprovalWindow = window.open(
                             response.data.url,

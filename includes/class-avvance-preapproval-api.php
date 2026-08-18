@@ -22,9 +22,10 @@ class Avvance_PreApproval_API extends Avvance_API_Base {
 	 * Create pre-approval request
 	 *
 	 * @param string $session_id Session ID from Avvance widget.
+	 * @param string $return_url Page to return the consumer to on success (falls back to the site home URL).
 	 * @return array|WP_Error API response or error
 	 */
-	public function create_preapproval( $session_id ) {
+	public function create_preapproval( $session_id, $return_url = '' ) {
 		$token = $this->get_access_token();
 		if ( is_wp_error( $token ) ) {
 			return $token;
@@ -43,7 +44,10 @@ class Avvance_PreApproval_API extends Avvance_API_Base {
 		);
 
 		$request_body = array(
-			'merchantID' => $this->merchant_id,
+			'merchantID'              => $this->merchant_id,
+			'clientApplication'       => 'WOOCOMMERCE',
+			'partnerReturnSuccessUrl' => $return_url ? $return_url : home_url( '/' ),
+			'partnerReturnErrorUrl'   => home_url( '/' ),
 		);
 
 		avvance_log( 'Creating pre-approval request for session: ' . $session_id );
