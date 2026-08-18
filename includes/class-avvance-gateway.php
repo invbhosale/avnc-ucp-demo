@@ -15,6 +15,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 class WC_Gateway_Avvance extends WC_Payment_Gateway {
 
 	/**
+	 * Lowest order amount Avvance will finance.
+	 *
+	 * @var int
+	 */
+	const MIN_ELIGIBLE_AMOUNT = 300;
+
+	/**
+	 * Highest order amount Avvance will finance.
+	 *
+	 * @var int
+	 */
+	const MAX_ELIGIBLE_AMOUNT = 25000;
+
+	/**
 	 * Constructor.
 	 */
 	public function __construct() {
@@ -41,6 +55,8 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'process_admin_options' ) );
 		add_action( 'woocommerce_update_options_payment_gateways_' . $this->id, array( $this, 'validate_api_credentials' ), 20 );
 		add_action( 'admin_notices', array( $this, 'show_credential_error_notice' ) );
+		// Renders any errors added via $this->add_error() during field validation (e.g. min/max eligibility checks).
+		add_action( 'admin_notices', array( $this, 'display_errors' ) );
 		add_action( 'woocommerce_thankyou_' . $this->id, array( $this, 'thankyou_page' ) );
 		add_filter( 'woocommerce_endpoint_order-received_title', array( $this, 'customize_order_received_title' ), 10, 2 );
 		add_filter( 'woocommerce_thankyou_order_received_text', array( $this, 'customize_order_received_text' ), 10, 2 );
@@ -225,10 +241,12 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			'min_order_amount'            => array(
 				'title'             => __( 'Minimum Order Amount', 'avvance-for-woocommerce' ),
 				'type'              => 'number',
-				'description'       => __( 'Minimum order amount for Avvance to be available (in dollars). Widgets will not show for amounts below this.', 'avvance-for-woocommerce' ),
+				/* translators: %1$s: minimum allowed amount, %2$s: maximum allowed amount */
+				'description'       => sprintf( __( 'Minimum order amount for Avvance to be available (in dollars). Widgets will not show for amounts below this. Must be between $%1$s and $%2$s — Avvance only operates in that range.', 'avvance-for-woocommerce' ), number_format( self::MIN_ELIGIBLE_AMOUNT ), number_format( self::MAX_ELIGIBLE_AMOUNT ) ),
 				'default'           => '300',
 				'custom_attributes' => array(
-					'min'  => '0',
+					'min'  => (string) self::MIN_ELIGIBLE_AMOUNT,
+					'max'  => (string) self::MAX_ELIGIBLE_AMOUNT,
 					'step' => '1',
 				),
 				'desc_tip'          => true,
@@ -237,10 +255,12 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			'max_order_amount'            => array(
 				'title'             => __( 'Maximum Order Amount', 'avvance-for-woocommerce' ),
 				'type'              => 'number',
-				'description'       => __( 'Maximum order amount for Avvance (in dollars). Widgets will not show for amounts above this.', 'avvance-for-woocommerce' ),
+				/* translators: %1$s: minimum allowed amount, %2$s: maximum allowed amount */
+				'description'       => sprintf( __( 'Maximum order amount for Avvance (in dollars). Widgets will not show for amounts above this. Must be between $%1$s and $%2$s — Avvance only operates in that range.', 'avvance-for-woocommerce' ), number_format( self::MIN_ELIGIBLE_AMOUNT ), number_format( self::MAX_ELIGIBLE_AMOUNT ) ),
 				'default'           => '25000',
 				'custom_attributes' => array(
-					'min'  => '0',
+					'min'  => (string) self::MIN_ELIGIBLE_AMOUNT,
+					'max'  => (string) self::MAX_ELIGIBLE_AMOUNT,
 					'step' => '1',
 				),
 				'desc_tip'          => true,
@@ -255,6 +275,99 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 				'desc_tip'    => true,
 			),
 		);
+	}
+
+	/**
+	 * Validate the minimum order amount field.
+	 *
+	 * @param string $key   Field key.
+	 * @param string $value Posted value.
+	 * @return string
+	 * @throws Exception If the value is outside Avvance's eligible range.
+	 */
+	public function validate_min_order_amount_field( $key, $value ) {
+		$amount = $this->validate_eligibility_amount_field( $value, __( 'Minimum Order Amount', 'avvance-for-woocommerce' ) );
+		$max    = $this->get_posted_sibling_amount( 'max_order_amount' );
+
+		if ( null !== $max && floatval( $amount ) >= $max ) {
+			throw new Exception(
+				esc_html__( 'Minimum Order Amount must be less than Maximum Order Amount. The previous value was kept.', 'avvance-for-woocommerce' )
+			);
+		}
+
+		return $amount;
+	}
+
+	/**
+	 * Validate the maximum order amount field.
+	 *
+	 * @param string $key   Field key.
+	 * @param string $value Posted value.
+	 * @return string
+	 * @throws Exception If the value is outside Avvance's eligible range.
+	 */
+	public function validate_max_order_amount_field( $key, $value ) {
+		$amount = $this->validate_eligibility_amount_field( $value, __( 'Maximum Order Amount', 'avvance-for-woocommerce' ) );
+		$min    = $this->get_posted_sibling_amount( 'min_order_amount' );
+
+		if ( null !== $min && floatval( $amount ) <= $min ) {
+			throw new Exception(
+				esc_html__( 'Maximum Order Amount must be greater than Minimum Order Amount. The previous value was kept.', 'avvance-for-woocommerce' )
+			);
+		}
+
+		return $amount;
+	}
+
+	/**
+	 * Read the sibling min/max field's raw posted value, for cross-field
+	 * comparison during validation. Read directly from $_POST (rather than
+	 * $this->settings) since fields are validated in definition order, so a
+	 * later field's $this->settings entry may still hold its pre-save value
+	 * while the sibling's newly posted value is what actually matters here.
+	 *
+	 * @param string $field_key Field key (e.g. 'max_order_amount').
+	 * @return float|null
+	 */
+	private function get_posted_sibling_amount( $field_key ) {
+		$post_key = $this->get_field_key( $field_key );
+
+		if ( ! isset( $_POST[ $post_key ] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already verified by WC_Admin_Settings::save() before process_admin_options() runs
+			return null;
+		}
+
+		$raw = sanitize_text_field( wp_unslash( $_POST[ $post_key ] ) ); // phpcs:ignore WordPress.Security.NonceVerification.Missing -- nonce already verified by WC_Admin_Settings::save() before process_admin_options() runs
+
+		return '' === $raw ? null : floatval( wc_format_decimal( $raw ) );
+	}
+
+	/**
+	 * Shared range check for the min/max order amount fields. Avvance only
+	 * finances orders between MIN_ELIGIBLE_AMOUNT and MAX_ELIGIBLE_AMOUNT, so
+	 * neither field is allowed to save a value outside that range.
+	 *
+	 * @param string $value      Posted value.
+	 * @param string $field_name Human-readable field name for the error message.
+	 * @return string
+	 * @throws Exception If the value is outside Avvance's eligible range.
+	 */
+	private function validate_eligibility_amount_field( $value, $field_name ) {
+		$value  = is_null( $value ) ? '' : sanitize_text_field( wp_unslash( $value ) );
+		$amount = '' === $value ? '' : wc_format_decimal( $value );
+
+		if ( '' === $amount || floatval( $amount ) < self::MIN_ELIGIBLE_AMOUNT || floatval( $amount ) > self::MAX_ELIGIBLE_AMOUNT ) {
+			throw new Exception(
+				sprintf(
+					/* translators: %1$s: field name, %2$s: minimum allowed amount, %3$s: maximum allowed amount */
+					esc_html__( '%1$s must be between $%2$s and $%3$s — Avvance only operates in that range. The previous value was kept.', 'avvance-for-woocommerce' ),
+					esc_html( $field_name ),
+					number_format( self::MIN_ELIGIBLE_AMOUNT ),
+					number_format( self::MAX_ELIGIBLE_AMOUNT )
+				)
+			);
+		}
+
+		return $amount;
 	}
 
 	/**
