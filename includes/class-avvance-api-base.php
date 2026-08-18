@@ -74,8 +74,23 @@ abstract class Avvance_API_Base {
 		$this->partner_id    = $settings['partner_id'] ?? '';
 		$this->environment   = $settings['environment'] ?? 'sandbox';
 
-		$this->base_url = ( 'production' === $this->environment )
-			? 'https://alpha-api2.usbank.com'
+		$this->base_url = self::get_base_url( $this->environment );
+	}
+
+	/**
+	 * Get the API base URL for a given environment.
+	 *
+	 * Single source of truth for these URLs — anything needing the base URL
+	 * outside an API subclass (e.g. the gateway's save-time credential check)
+	 * should call this rather than hardcoding its own copy, so the two can't
+	 * drift out of sync with each other.
+	 *
+	 * @param string $environment 'production' or 'sandbox'.
+	 * @return string
+	 */
+	public static function get_base_url( $environment ) {
+		return ( 'production' === $environment )
+			? 'https://api.usbank.com'
 			: 'https://alpha-api.usbank.com';
 	}
 

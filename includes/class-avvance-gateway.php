@@ -916,9 +916,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			return;
 		}
 
-		$base_url = ( 'production' === $environment )
-			? 'https://alpha-api2.usbank.com'
-			: 'https://alpha-api.usbank.com';
+		$base_url = Avvance_API_Base::get_base_url( $environment );
 
 		// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- required for HTTP Basic Auth
 		$auth = base64_encode( $client_key . ':' . $client_secret );
