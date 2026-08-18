@@ -35,6 +35,13 @@ class Avvance_Order_Handler {
 			wp_schedule_event( time(), 'daily', 'avvance_daily_cleanup' );
 		}
 
+		// Reconcile aging pending orders (hourly, via Action Scheduler) — a safety net for
+		// webhooks that never arrived, or arrived but couldn't be fully processed.
+		add_action( 'avvance_reconcile_pending_orders', array( __CLASS__, 'reconcile_pending_orders' ) );
+		if ( function_exists( 'as_has_scheduled_action' ) && ! as_has_scheduled_action( 'avvance_reconcile_pending_orders', array(), 'avvance' ) ) {
+			as_schedule_recurring_action( time(), HOUR_IN_SECONDS, 'avvance_reconcile_pending_orders', array(), 'avvance' );
+		}
+
 		// Admin order meta box.
 		add_action( 'add_meta_boxes', array( __CLASS__, 'add_order_meta_box' ) );
 	}
@@ -140,22 +147,76 @@ class Avvance_Order_Handler {
 			wp_send_json_error( array( 'message' => __( 'Order not found', 'avvance-for-woocommerce' ) ) );
 		}
 
-		// If already paid, redirect to order received.
+		$result = self::reconcile_order( $order );
+
+		switch ( $result['status'] ) {
+			case 'already_paid':
+			case 'paid':
+			case 'refunded':
+				wp_send_json_success( array( 'redirect' => $result['redirect'] ) );
+				break;
+
+			case 'not_yet_authorized':
+			case 'pending':
+				wp_send_json_success(
+					array(
+						'pending' => true,
+						'status'  => $result['loan_status'] ?? 'not_yet_authorized',
+						'message' => $result['message'],
+					)
+				);
+				break;
+
+			default: // missing_session, error, voided.
+				wp_send_json_error( array( 'message' => $result['message'] ) );
+				break;
+		}
+	}
+
+	/**
+	 * Check an order's live loan status via the Avvance API and reconcile the
+	 * order accordingly (mark paid, cancel if voided, or leave pending).
+	 * Shared by the manual "Check Avvance Status" AJAX action and the
+	 * automated hourly reconciliation job — webhooks are best-effort, not
+	 * guaranteed delivery, so both a user-triggered and an automatic path
+	 * need to be able to fall back on this same live status check.
+	 *
+	 * @param WC_Order $order Order to reconcile.
+	 * @return array {
+	 *     @type string      $status      One of: already_paid, missing_session, error,
+	 *                                    not_yet_authorized, paid, voided, refunded, pending.
+	 *     @type string|null $message     Human-readable message, where applicable.
+	 *     @type string|null $redirect    Order-received URL, where applicable.
+	 *     @type string|null $loan_status Raw Avvance loan status, if the API call succeeded.
+	 * }
+	 */
+	private static function reconcile_order( WC_Order $order ) {
+		$order_id = $order->get_id();
+
 		if ( $order->is_paid() ) {
-			avvance_log( 'Manual status check: order ' . $order_id . ' already paid, redirecting' );
-			wp_send_json_success( array( 'redirect' => $order->get_checkout_order_received_url() ) );
+			avvance_log( 'Reconcile: order ' . $order_id . ' already paid' );
+			return array(
+				'status'   => 'already_paid',
+				'redirect' => $order->get_checkout_order_received_url(),
+			);
 		}
 
 		$partner_session_id = $order->get_meta( '_avvance_partner_session_id' );
 
 		if ( empty( $partner_session_id ) ) {
-			avvance_log( 'Manual status check: missing partnerSessionId on order #' . $order_id, 'error' );
-			wp_send_json_error( array( 'message' => __( 'Application ID not found.', 'avvance-for-woocommerce' ) ) );
+			avvance_log( 'Reconcile: missing partnerSessionId on order #' . $order_id, 'error' );
+			return array(
+				'status'  => 'missing_session',
+				'message' => __( 'Application ID not found.', 'avvance-for-woocommerce' ),
+			);
 		}
 
 		$gateway = avvance_get_gateway();
 		if ( ! $gateway ) {
-			wp_send_json_error( array( 'message' => __( 'Payment gateway not available.', 'avvance-for-woocommerce' ) ) );
+			return array(
+				'status'  => 'error',
+				'message' => __( 'Payment gateway not available.', 'avvance-for-woocommerce' ),
+			);
 		}
 
 		$api = new Avvance_Loan_Status_API(
@@ -168,26 +229,26 @@ class Avvance_Order_Handler {
 			)
 		);
 
-		avvance_log( 'Manual status check: calling loan-status for order #' . $order_id );
+		avvance_log( 'Reconcile: calling loan-status for order #' . $order_id );
 
 		$status = $api->get_loan_status( $partner_session_id );
 
 		if ( is_wp_error( $status ) ) {
 			if ( 'loan_not_authorized' === $status->get_error_code() ) {
-				avvance_log( 'Manual status check: loan not yet authorized for order #' . $order_id );
-				wp_send_json_success(
-					array(
-						'pending' => true,
-						'status'  => 'not_yet_authorized',
-						'message' => __( 'Your application is still being processed.', 'avvance-for-woocommerce' ),
-					)
+				avvance_log( 'Reconcile: loan not yet authorized for order #' . $order_id );
+				return array(
+					'status'  => 'not_yet_authorized',
+					'message' => __( 'Your application is still being processed.', 'avvance-for-woocommerce' ),
 				);
 			}
-			avvance_log( 'Manual status check API error: ' . $status->get_error_message(), 'error' );
-			wp_send_json_error( array( 'message' => __( 'Unable to check status. Please try again.', 'avvance-for-woocommerce' ) ) );
+			avvance_log( 'Reconcile API error: ' . $status->get_error_message(), 'error' );
+			return array(
+				'status'  => 'error',
+				'message' => __( 'Unable to check status. Please try again.', 'avvance-for-woocommerce' ),
+			);
 		}
 
-		avvance_log( 'Manual status check: loan status is ' . $status . ' for order #' . $order_id );
+		avvance_log( 'Reconcile: loan status is ' . $status . ' for order #' . $order_id );
 
 		switch ( $status ) {
 			case 'AUTHORIZED':
@@ -196,45 +257,90 @@ class Avvance_Order_Handler {
 				$order->add_order_note(
 					sprintf(
 						/* translators: %s: loan status string */
-						__( 'Payment confirmed via manual status check. Loan status: %s', 'avvance-for-woocommerce' ),
+						__( 'Payment confirmed via status reconciliation. Loan status: %s', 'avvance-for-woocommerce' ),
 						$status
 					)
 				);
-				wp_send_json_success( array( 'redirect' => $order->get_checkout_order_received_url() ) );
-				break;
+				return array(
+					'status'      => 'paid',
+					'redirect'    => $order->get_checkout_order_received_url(),
+					'loan_status' => $status,
+				);
 
 			case 'VOIDED':
 				$order->update_status(
 					'cancelled',
-					__( 'Loan voided - confirmed via manual status check.', 'avvance-for-woocommerce' )
+					__( 'Loan voided - confirmed via status reconciliation.', 'avvance-for-woocommerce' )
 				);
-				wp_send_json_error(
-					array( 'message' => __( 'Your financing application was voided. Please return to cart and select a different payment method.', 'avvance-for-woocommerce' ) )
+				return array(
+					'status'      => 'voided',
+					'message'     => __( 'Your financing application was voided. Please return to cart and select a different payment method.', 'avvance-for-woocommerce' ),
+					'loan_status' => $status,
 				);
-				break;
 
 			case 'REFUNDED':
 			case 'REFUND_IN_PROGRESS':
-				wp_send_json_success( array( 'redirect' => $order->get_checkout_order_received_url() ) );
-				break;
+				return array(
+					'status'      => 'refunded',
+					'redirect'    => $order->get_checkout_order_received_url(),
+					'loan_status' => $status,
+				);
 
 			default:
 				$order->add_order_note(
 					sprintf(
 						/* translators: %s: loan status string */
-						__( 'Manual status check: loan status is %s - still pending.', 'avvance-for-woocommerce' ),
+						__( 'Status reconciliation: loan status is %s - still pending.', 'avvance-for-woocommerce' ),
 						$status
 					)
 				);
-				wp_send_json_success(
-					array(
-						'pending' => true,
-						'status'  => $status,
-						'message' => __( 'Your application is still being processed.', 'avvance-for-woocommerce' ),
-					)
+				return array(
+					'status'      => 'pending',
+					'message'     => __( 'Your application is still being processed.', 'avvance-for-woocommerce' ),
+					'loan_status' => $status,
 				);
-				break;
 		}
+	}
+
+	/**
+	 * Hourly Action Scheduler job: re-check loan status for aging pending
+	 * Avvance orders as a safety net for webhooks that never arrived, or
+	 * arrived but couldn't be fully processed. Orders without a partner
+	 * session ID are skipped (nothing to check against the API) and left for
+	 * the daily cleanup job to eventually cancel once their link expires.
+	 */
+	public static function reconcile_pending_orders() {
+		avvance_log( 'Running hourly reconciliation of pending Avvance orders' );
+
+		$orders = wc_get_orders(
+			array(
+				'limit'          => -1,
+				'status'         => 'pending',
+				'payment_method' => 'avvance',
+				'date_created'   => '<' . ( time() - HOUR_IN_SECONDS ),
+				'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query
+					array(
+						'key'     => '_avvance_partner_session_id',
+						'compare' => 'EXISTS',
+					),
+				),
+			)
+		);
+
+		$resolved_count = 0;
+		$pending_count  = 0;
+
+		foreach ( $orders as $order ) {
+			$result = self::reconcile_order( $order );
+
+			if ( in_array( $result['status'], array( 'paid', 'voided', 'refunded', 'already_paid' ), true ) ) {
+				++$resolved_count;
+			} else {
+				++$pending_count;
+			}
+		}
+
+		avvance_log( "Reconciliation complete: {$resolved_count} resolved, {$pending_count} still pending" );
 	}
 
 	/**

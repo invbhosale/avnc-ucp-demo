@@ -26,6 +26,10 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 function avvance_uninstall_cleanup() {
 	global $wpdb;
 
+	// Always clear scheduled jobs, regardless of the data-retention choice below —
+	// an orphaned cron/Action Scheduler entry isn't "data" a merchant would want kept.
+	avvance_cleanup_scheduled_jobs();
+
 	// Only clean up if user has confirmed (check for option).
 	// Some merchants may want to keep data for audit purposes.
 	$delete_data = get_option( 'avvance_delete_data_on_uninstall', false );
@@ -51,6 +55,17 @@ function avvance_uninstall_cleanup() {
 	// Clean up order meta (optional - kept for order history).
 	// To also remove all Avvance order metadata, add delete queries for
 	// {$wpdb->postmeta} and {$wpdb->prefix}wc_orders_meta here.
+}
+
+/**
+ * Clear scheduled cron and Action Scheduler jobs
+ */
+function avvance_cleanup_scheduled_jobs() {
+	wp_clear_scheduled_hook( 'avvance_daily_cleanup' );
+
+	if ( function_exists( 'as_unschedule_all_actions' ) ) {
+		as_unschedule_all_actions( 'avvance_reconcile_pending_orders', array(), 'avvance' );
+	}
 }
 
 /**

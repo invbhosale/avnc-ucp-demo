@@ -28,6 +28,9 @@ class Avvance_PreApproval_Handler {
 		// AJAX endpoint for checking pre-approval status.
 		add_action( 'wp_ajax_avvance_check_preapproval_status', array( __CLASS__, 'ajax_check_preapproval_status' ) );
 		add_action( 'wp_ajax_nopriv_avvance_check_preapproval_status', array( __CLASS__, 'ajax_check_preapproval_status' ) );
+
+		// Prune expired, never-used pre-approvals — reuses the existing daily cleanup cron.
+		add_action( 'avvance_daily_cleanup', array( __CLASS__, 'cleanup_expired_preapprovals' ) );
 	}
 
 	/**
@@ -371,6 +374,40 @@ class Avvance_PreApproval_Handler {
 			avvance_log( 'Failed to mark pre-approval BOOKED for fingerprint: ' . $fingerprint, 'error' );
 		} elseif ( $result > 0 ) {
 			avvance_log( 'Pre-approval marked BOOKED for fingerprint: ' . $fingerprint );
+		}
+	}
+
+	/**
+	 * Daily cleanup: delete expired, never-used pre-approval records.
+	 *
+	 * Rows with status BOOKED are preserved (they were actually used for a
+	 * transaction, kept for history). A row is deleted once its Avvance-set
+	 * expiry_date has passed, or — for rows that never received a webhook
+	 * response at all, so expiry_date was never set — once it's older than
+	 * 30 days (the same window Avvance uses for pre-approval expiry).
+	 */
+	public static function cleanup_expired_preapprovals() {
+		global $wpdb;
+		$table_name = esc_sql( $wpdb->prefix . 'avvance_preapprovals' );
+
+		$deleted = $wpdb->query( // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared
+			$wpdb->prepare(
+                // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- table name is safe, prefixed with $wpdb->prefix
+				"DELETE FROM {$table_name}
+				WHERE status != 'BOOKED'
+				AND (
+					( expiry_date IS NOT NULL AND expiry_date < %s )
+					OR ( expiry_date IS NULL AND created_at < %s )
+				)",
+				current_time( 'mysql' ),
+				gmdate( 'Y-m-d H:i:s', time() - self::COOKIE_EXPIRY )
+			)
+		);
+
+		if ( false === $deleted ) {
+			avvance_log( 'Failed to clean up expired pre-approvals: ' . $wpdb->last_error, 'error' );
+		} elseif ( $deleted > 0 ) {
+			avvance_log( "Cleaned up {$deleted} expired, never-used pre-approval record(s)" );
 		}
 	}
 

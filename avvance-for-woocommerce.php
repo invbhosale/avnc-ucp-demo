@@ -304,3 +304,16 @@ register_activation_hook(
 		Avvance_PreApproval_Handler::create_preapproval_table();
 	}
 );
+
+// Clear scheduled cron/Action Scheduler jobs on deactivation so they don't remain
+// orphaned in the schedule after the callbacks that would handle them are gone.
+register_deactivation_hook(
+	AVVANCE_PLUGIN_FILE,
+	function () {
+		wp_clear_scheduled_hook( 'avvance_daily_cleanup' );
+
+		if ( function_exists( 'as_unschedule_all_actions' ) ) {
+			as_unschedule_all_actions( 'avvance_reconcile_pending_orders', array(), 'avvance' );
+		}
+	}
+);
