@@ -166,7 +166,6 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 				'options'     => array(
 					'after_price'    => __( 'After product price (Recommended)', 'avvance-for-woocommerce' ),
 					'after_add_cart' => __( 'After Add to Cart button', 'avvance-for-woocommerce' ),
-					'both'           => __( 'Both locations', 'avvance-for-woocommerce' ),
 				),
 				'desc_tip'    => true,
 			),
@@ -221,16 +220,6 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 					'light' => __( 'Light (for light backgrounds)', 'avvance-for-woocommerce' ),
 					'dark'  => __( 'Dark (for dark backgrounds)', 'avvance-for-woocommerce' ),
 				),
-				'desc_tip'    => true,
-			),
-
-			// Show Logo.
-			'widget_show_logo'            => array(
-				'title'       => __( 'Show Avvance Logo', 'avvance-for-woocommerce' ),
-				'label'       => __( 'Display the Avvance logo in widget messaging', 'avvance-for-woocommerce' ),
-				'type'        => 'checkbox',
-				'description' => __( 'When disabled, "Avvance" text will be shown instead of the logo.', 'avvance-for-woocommerce' ),
-				'default'     => 'yes',
 				'desc_tip'    => true,
 			),
 

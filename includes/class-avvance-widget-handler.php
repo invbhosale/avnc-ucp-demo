@@ -53,7 +53,6 @@ class Avvance_Widget_Handler {
 			'checkout_enabled'     => self::$gateway->get_option( 'checkout_widget_enabled', 'yes' ) === 'yes',
 			'new_in_store_enabled' => self::$gateway->get_option( 'new_in_store_widget_enabled', 'yes' ) === 'yes',
 			'theme'                => self::$gateway->get_option( 'widget_theme', 'light' ),
-			'show_logo'            => self::$gateway->get_option( 'widget_show_logo', 'yes' ) === 'yes',
 			'min_amount'           => floatval( self::$gateway->get_option( 'min_order_amount', 300 ) ),
 			'max_amount'           => floatval( self::$gateway->get_option( 'max_order_amount', 25000 ) ),
 		);
@@ -84,12 +83,10 @@ class Avvance_Widget_Handler {
 		if ( self::$settings['product_enabled'] ) {
 			$position = self::$settings['product_position'];
 
-			if ( 'after_price' === $position || 'both' === $position ) {
-				add_action( 'woocommerce_single_product_summary', array( __CLASS__, 'render_product_widget' ), 15 );
-			}
-
-			if ( 'after_add_cart' === $position || 'both' === $position ) {
+			if ( 'after_add_cart' === $position ) {
 				add_action( 'woocommerce_after_add_to_cart_form', array( __CLASS__, 'render_product_widget_after_cart' ), 10 );
+			} else {
+				add_action( 'woocommerce_single_product_summary', array( __CLASS__, 'render_product_widget' ), 15 );
 			}
 		}
 
@@ -221,7 +218,6 @@ class Avvance_Widget_Handler {
 				'isProductPage'     => is_product(),
 				'isCartPage'        => is_cart(),
 				'isCheckoutPage'    => is_checkout(),
-				'showLogo'          => self::$settings['show_logo'],
 				'newInStoreEnabled' => self::$settings['new_in_store_enabled'],
 			)
 		);
@@ -629,11 +625,7 @@ class Avvance_Widget_Handler {
 					<div class="avvance-checkout-banner-text">
 						<strong>You're pre-approved for $<?php echo number_format( $preapproval['max_amount'], 0 ); ?>!</strong>
 						Pay over time with
-						<?php if ( self::$settings['show_logo'] ) : ?>
-							<img src="<?php echo esc_url( $theme_logo_url ); ?>" alt="U.S. Bank Avvance" class="avvance-logo-inline">
-						<?php else : ?>
-							<span class="avvance-brand">U.S. Bank Avvance</span>
-						<?php endif; ?>
+						<img src="<?php echo esc_url( $theme_logo_url ); ?>" alt="U.S. Bank Avvance" class="avvance-logo-inline">
 						<a href="#" class="avvance-cta-link" data-modal="preapproved-details">See your details</a>
 					</div>
 				</div>

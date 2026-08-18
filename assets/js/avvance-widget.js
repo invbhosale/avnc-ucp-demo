@@ -152,13 +152,10 @@
         }
 
         var formattedPayment = displayPayment ? '$' + parseFloat(displayPayment).toFixed(2) : null;
-        var showLogo = avvanceWidget.showLogo !== false;
         var logoUrl = getLogoUrlForElement($widget);
         var badgeHtml = '';
         var rateHtml, ctaHtml;
-        var logoHtml = showLogo
-            ? '<span class="avvance-widget-logo"><img src="' + logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline"></span>'
-            : '<span class="avvance-brand avvance-widget-logo">U.S. Bank Avvance</span>';
+        var logoHtml = '<span class="avvance-widget-logo"><img src="' + logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline"></span>';
 
         if (hasPreapproval && maxAmount) {
             badgeHtml = '<span class="avvance-preapproved-badge">You\'re pre-approved!</span>';
@@ -830,11 +827,8 @@
         var $checkoutBanner = $('#avvance-checkout-banner');
         if ($checkoutBanner.length) {
             var formattedMax = parseFloat(maxAmount).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
-            var showLogo = avvanceWidget.showLogo !== false;
             var logoUrl = getLogoUrlForElement($checkoutBanner);
-            var logoHtml = showLogo
-                ? '<span class="avvance-widget-logo"><img src="' + logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline"></span>'
-                : '<span class="avvance-brand avvance-widget-logo">U.S. Bank Avvance</span>';
+            var logoHtml = '<span class="avvance-widget-logo"><img src="' + logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline"></span>';
             $checkoutBanner.html(
                 '<div class="avvance-checkout-preapproved">' +
                 '<div class="avvance-checkout-banner-check">&#10003;</div>' +
@@ -1361,12 +1355,8 @@
         if (configuredTheme !== 'light' && configuredTheme !== 'dark') {
             configuredTheme = 'light';
         }
-        var showLogo = avvanceWidget.showLogo !== false;
         var logoUrl = avvanceWidget.logoUrl;
-
-        var logoHtml = showLogo
-            ? '<img src="' + logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline">'
-            : '<strong>U.S. Bank Avvance</strong>';
+        var logoHtml = '<img src="' + logoUrl + '" alt="U.S. Bank Avvance" class="avvance-logo-inline">';
 
         var bannerHtml = '<div id="avvance-checkout-banner" class="avvance-checkout-banner avvance-widget-' + configuredTheme + '"' +
             ' data-amount="' + total + '"' +
