@@ -394,6 +394,7 @@ class WC_Gateway_Avvance extends WC_Payment_Gateway {
 			$icon = '<img src="' . esc_url( AVVANCE_PLUGIN_URL . 'assets/images/avvance-icon.svg' ) . '" alt="U.S. Bank Avvance">';
 		}
 
+		// phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- intentionally re-firing WooCommerce core's own WC_Payment_Gateway::get_icon() filter, not a new hook, so existing filters on it keep working for our gateway.
 		return apply_filters( 'woocommerce_gateway_icon', $icon, $this->id );
 	}
 
