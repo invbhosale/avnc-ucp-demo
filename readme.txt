@@ -17,10 +17,11 @@ U.S. Bank Avvance for WooCommerce enables you to offer point-of-sale financing t
 = Key Features =
 
 * **Seamless Integration** - Adds Avvance as a payment method during checkout
-* **Real-time Webhooks** - Automatic order status updates via webhooks
+* **Pre-Approval / "Check Your Spending Power"** - Customers can check their eligibility and see personalized loan offers before completing a purchase, from widgets on product, cart, category, checkout, and empty-cart pages
+* **Real-time Webhooks with Automatic Reconciliation** - Order status updates via webhooks, backed by a scheduled background job that resolves orders even if a webhook is missed or delayed
 * **Application Resume** - Customers can resume incomplete applications
 * **Full Refund Support** - Process full and partial refunds directly from WooCommerce
-* **Blocks Checkout Compatible** - Works with both classic and block-based checkouts
+* **Blocks Checkout & Blocks Cart Compatible** - Works with classic and block-based checkout and cart
 * **HPOS Compatible** - Full support for High-Performance Order Storage
 
 = How It Works =
@@ -63,8 +64,9 @@ U.S. Bank Avvance for WooCommerce enables you to offer point-of-sale financing t
    - Client Key
    - Client Secret
    - Merchant ID
-4. Copy the Webhook URL, Username, and Password
-5. Contact Avvance Support to register your webhook endpoint
+   - Partner ID
+4. Copy the Webhook URL and Authentication Token
+5. Contact Avvance Support to register your webhook endpoint with that URL and token
 6. Enable the payment method and save changes
 
 == Frequently Asked Questions ==
@@ -93,7 +95,7 @@ The plugin automatically determines which method to use based on transaction sta
 
 = What happens if a customer closes the application window? =
 
-The order remains in "pending payment" status. Customers can resume their application from the cart page or by returning to the order.
+The order remains in "pending payment" status. Customers can resume or retry their application by returning to the order (via the "Pay for order" link in their account, an order-status email, or the cart page on classic-cart stores).
 
 = How long is the application link valid? =
 
@@ -110,13 +112,33 @@ Application links are valid for 30 days. After 30 days, expired orders are autom
 == Changelog ==
 
 = 1.4.0 =
-* Refactored inline payment messaging widgets across
-  product, category, cart, and checkout pages
+* Refactored inline payment messaging widgets across product, category,
+  cart, checkout, and empty-cart ("New in store") pages
+* Added Pre-Approval / "Check your spending power" flow with dedicated
+  modals, live status polling, and personalized offers for pre-approved
+  customers
 * Added always-visible checkout banner above payment methods
-* Removed info icon approach from category page widgets
 * Unified modal trigger system using data-modal attributes
-* Fixed min/max amount validation to use gateway settings
-* Added showLogo flag to widget JavaScript configuration
+* Added automatic cart/checkout widget refresh (including WooCommerce
+  Cart block support) when quantities or totals change, hiding the
+  widget when the order total falls outside the configured range
+* Enforced hard minimum/maximum order amount validation ($300-$25,000)
+  on the gateway settings page, including a check that the minimum
+  stays below the maximum
+* Simplified the payment method display everywhere to "Pay over time
+  with [Avvance logo]", removing the separate marketing description
+  and "Learn more" link
+* Removed the "Show Avvance Logo" toggle - the logo is now always shown
+* Switched webhook authentication from Basic Auth to HMAC-SHA256, with
+  a deprecated Bearer-token fallback for backward compatibility
+* Added a scheduled hourly reconciliation job (via Action Scheduler)
+  that automatically resolves pending orders if a webhook is missed
+  or fails to process
+* Added automatic cleanup of expired, unused pre-approval records
+* Fixed a bug that could crash the site when another WooCommerce
+  payment gateway plugin was also active
+* Various security and reliability fixes (webhook payload logging,
+  PII handling, credential validation URL consistency)
 
 = 1.0.0 - 2025-01-XX =
 * Initial release
