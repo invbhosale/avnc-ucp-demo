@@ -38,12 +38,32 @@ class Avvance_Order_Handler {
 		// Reconcile aging pending orders (hourly, via Action Scheduler) — a safety net for
 		// webhooks that never arrived, or arrived but couldn't be fully processed.
 		add_action( 'avvance_reconcile_pending_orders', array( __CLASS__, 'reconcile_pending_orders' ) );
-		if ( function_exists( 'as_has_scheduled_action' ) && ! as_has_scheduled_action( 'avvance_reconcile_pending_orders', array(), 'avvance' ) ) {
-			as_schedule_recurring_action( time(), HOUR_IN_SECONDS, 'avvance_reconcile_pending_orders', array(), 'avvance' );
-		}
+		// Deferred to init: this fires during plugins_loaded, before Action Scheduler is
+		// guaranteed to have loaded (it's bootstrapped by WooCommerce's own plugins_loaded
+		// callback, whose relative order isn't guaranteed) — as_*() calls this early would
+		// silently no-op via the function_exists() guard, never scheduling the job at all.
+		add_action( 'init', array( __CLASS__, 'maybe_schedule_reconciliation_job' ) );
 
 		// Admin order meta box.
 		add_action( 'add_meta_boxes', array( __CLASS__, 'add_order_meta_box' ) );
+	}
+
+	/**
+	 * Schedule the hourly reconciliation job via Action Scheduler, if not
+	 * already scheduled. Run on init (not plugins_loaded) so Action
+	 * Scheduler — bootstrapped by WooCommerce's own plugins_loaded callback —
+	 * is guaranteed to have finished loading by the time this runs.
+	 */
+	public static function maybe_schedule_reconciliation_job() {
+		if ( ! function_exists( 'as_has_scheduled_action' ) ) {
+			avvance_log( 'Action Scheduler not available - reconciliation job not scheduled', 'error' );
+			return;
+		}
+
+		if ( ! as_has_scheduled_action( 'avvance_reconcile_pending_orders', array(), 'avvance' ) ) {
+			as_schedule_recurring_action( time(), HOUR_IN_SECONDS, 'avvance_reconcile_pending_orders', array(), 'avvance' );
+			avvance_log( 'Scheduled avvance_reconcile_pending_orders via Action Scheduler' );
+		}
 	}
 
 	/**
